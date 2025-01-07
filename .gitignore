@@ -102,6 +102,7 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+*.log
 .coverage/
 
 # Optional npm cache directory

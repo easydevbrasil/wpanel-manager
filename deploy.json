@@ -13,7 +13,7 @@
         {
             "name": "Build",
             "icon": "package",
-            "command": "bun run build"
+            "command": "bun run build && pm2 restart all"
         },
         {
             "name": "Restart",
@@ -28,7 +28,7 @@
         {
             "name": "Backup",
             "icon": "cloud",
-    "command": "bash /docker/scripts/vc_backup.sh"
+            "command": "bash /docker/wpanel/scripts/backup.sh"
         }
     ]
 }

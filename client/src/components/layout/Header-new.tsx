@@ -20,7 +20,6 @@ import {
   Bell,
   ChevronDown,
   User as UserIcon,
-  Settings,
   LogOut,
   Trash2,
   Plus,
@@ -110,10 +109,15 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const [userProfileDialogOpen, setUserProfileDialogOpen] = useState(false);
   const [editingNotification, setEditingNotification] = useState<NotificationItem | null>(null);
   const [editingQuickLink, setEditingQuickLink] = useState<QuickLink | null>(null);
-  const [notificationForm, setNotificationForm] = useState({
+  const [notificationForm, setNotificationForm] = useState<{
+    title: string;
+    message: string;
+    type: "info" | "success" | "warning" | "error";
+    isRead: boolean;
+  }>({
     title: '',
     message: '',
-    type: 'info' as const,
+    type: 'info',
     isRead: false
   });
   const [quickLinkForm, setQuickLinkForm] = useState({
@@ -318,7 +322,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
       <div className="relative border-b border-white/20 px-4 lg:px-6 py-4 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           {/* Logo Section */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 mb-2 mt-2">
             <Button
               variant="ghost"
               size="sm"
@@ -548,10 +552,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   <DropdownMenuItem>
                     <UserIcon className="h-4 w-4 mr-2" />
                     Meu Perfil
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Configurações
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="text-red-600">

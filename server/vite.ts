@@ -23,7 +23,8 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true,
+    host: true,
+    allowedHosts: "all",
   };
 
   const vite = await createViteServer({
@@ -36,13 +37,54 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-    server: serverOptions,
+    server: {
+      ...serverOptions,
+      ...viteConfig.server,
+      allowedHosts: true,
+    },
     appType: "custom",
   });
 
+  // Override host header before Vite middleware to bypass host validation
+  app.use((req, res, next) => {
+    // Allow all hosts by overriding the host header for Vite
+    const originalUrl = req.url;
+    const originalHost = req.headers.host;
+    
+    // If this is not an API route and the request has a different host,
+    // temporarily change the host header to localhost for Vite
+    if (!originalUrl?.startsWith('/api/') && originalHost && originalHost !== 'localhost:8000') {
+      req.headers.host = 'localhost:8000';
+    }
+    
+    next();
+  });
+
   app.use(vite.middlewares);
+  
+  // Override the Vite middleware to bypass host validation
+  app.use((req, res, next) => {
+    // Allow all hosts by overriding the host header for Vite
+    const originalUrl = req.url;
+    const originalHost = req.headers.host;
+    
+    // If this is not an API route and the request is being blocked,
+    // temporarily change the host header to localhost
+    if (!originalUrl?.startsWith('/api/') && originalHost && originalHost !== 'localhost:8000') {
+      req.headers.host = 'localhost:8000';
+    }
+    
+    next();
+  });
+  
+  // Only handle non-API routes with the catch-all
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+
+    // Skip API routes
+    if (url.startsWith('/api/')) {
+      return next();
+    }
 
     try {
       const clientTemplate = path.resolve(
@@ -68,7 +110,7 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
