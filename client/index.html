@@ -1,10 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-  <title>wPanel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>wPanel - Gerenciamento de Servidor</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  
+  <!-- Theme Colors -->
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="msapplication-TileColor" content="#1e1b4b" />
+  
+  <!-- Apple PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="wPanel" />
+  <meta name="apple-mobile-web-app-orientation" content="landscape" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  
+  <!-- Microsoft PWA -->
+  <meta name="msapplication-starturl" content="/" />
+  <meta name="msapplication-navbutton-color" content="#4f46e5" />
+  
+  <!-- Icons and Favicons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="mask-icon" href="/icon-192.svg" color="#4f46e5" />
+  
+  <!-- Prevent zoom on inputs (mobile) -->
+  <meta name="format-detection" content="telephone=no" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  
+  <!-- Force landscape orientation hints -->
+  <meta name="screen-orientation" content="landscape" />
+  <meta name="orientation" content="landscape" />
+  
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+  
+  <!-- Prevent zoom on inputs (mobile) -->
+  <style>
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+    
+    @media screen and (max-width: 1024px) and (orientation: portrait) {
+      body {
+        overflow: hidden !important;
+      }
+    }
+  </style>
 </head>
 
 <body>

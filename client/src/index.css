@@ -532,7 +532,7 @@ select.backdrop-blur-3xl {
   display: none;
 }
 
-/* Screen Orientation Controls */
+/* Screen Orientation Controls - MANDATORY */
 .force-landscape {
   /* Force landscape for debugging purposes only */
   transform: rotate(90deg) !important;
@@ -540,6 +540,38 @@ select.backdrop-blur-3xl {
   width: 100vh !important;
   height: 100vw !important;
   overflow: hidden;
+}
+
+/* Strict orientation lock for mobile/tablet */
+@media screen and (max-width: 1024px) and (orientation: portrait) {
+  body:not(.force-landscape) {
+    overflow: hidden !important;
+    height: 100vh !important;
+    touch-action: none !important;
+  }
+  
+  /* Hide main content when in portrait mode */
+  #root > *:not([data-orientation-overlay]) {
+    display: none !important;
+  }
+}
+
+/* PWA specific styles */
+@media (display-mode: standalone) {
+  /* Hide address bar in PWA mode */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Better PWA experience */
+  .pwa-optimized {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* Prevent zoom on mobile inputs */
@@ -567,7 +599,6 @@ select.backdrop-blur-3xl {
   /* Better mobile scroll behavior */
   .mobile-scroll {
     -webkit-overflow-scrolling: touch;
-    overflow-scrolling: touch;
   }
   
   /* Prevent text selection on mobile gestures */
@@ -577,5 +608,31 @@ select.backdrop-blur-3xl {
     -ms-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
+  }
+}
+
+/* Install PWA prompt */
+.install-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

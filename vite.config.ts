@@ -24,12 +24,7 @@ export default defineConfig({
   clearScreen: false,
   server: {
     host: true,
-    allowedHosts: [
-      "wpanel.easydev.com.br",
-      "localhost",
-      "127.0.0.1",
-      "0.0.0.0"
-    ],
+    allowedHosts: true,
     proxy: {
       "/api": "http://localhost:8000",
     },
@@ -45,5 +40,6 @@ export default defineConfig({
       ignored: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
     },
     cors: true,
+    // disableHostCheck: true, // Property doesn't exist in Vite 5
   },
 });
