@@ -1,5 +1,4 @@
 import { RotateCcw, Smartphone, Tablet, Monitor } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
 interface RotateScreenOverlayProps {
@@ -19,98 +18,81 @@ export function RotateScreenOverlay({ isVisible }: RotateScreenOverlayProps) {
                     deviceInfo.isTablet ? 'tablet' : 'dispositivo';
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 flex items-center justify-center p-6">
-      <div className="text-center text-white max-w-md mx-auto">
-        {/* Animated Device Icon */}
-        <div className="relative mb-8">
-          <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
-            <DeviceIcon className="w-16 h-16 text-white animate-pulse" />
+    <div className="fixed inset-0 z-[99999] bg-gradient-to-br from-indigo-700 via-purple-700 to-blue-800 flex items-center justify-center p-4 select-none touch-none">
+      <div className="text-center text-white max-w-sm mx-auto">
+        {/* Compact animated device icon */}
+        <div className="relative mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 shadow-2xl">
+            <DeviceIcon className="w-10 h-10 text-white" />
           </div>
           
-          {/* Rotation Indicator */}
-          <div className="absolute -top-2 -right-2 w-12 h-12 bg-white/30 rounded-full flex items-center justify-center animate-spin-slow">
-            <RotateCcw className="w-6 h-6 text-white" />
-          </div>
-          
-          {/* Curved Arrow Animation */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="w-40 h-40 border-2 border-dashed border-white/40 rounded-full animate-spin-slower relative">
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                <div className="w-0 h-0 border-l-4 border-r-4 border-b-8 border-l-transparent border-r-transparent border-b-white/60"></div>
-              </div>
-            </div>
+          {/* Rotation indicator - more prominent */}
+          <div className="absolute -top-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-spin-slow shadow-lg">
+            <RotateCcw className="w-4 h-4 text-yellow-900" />
           </div>
         </div>
 
-        {/* Main Message */}
-        <h1 className="text-3xl font-bold mb-4 animate-fade-in">
-          Rotacione seu {deviceName}
+        {/* Compact main message */}
+        <h1 className="text-2xl font-bold mb-3 animate-fade-in">
+          🔄 Rotacione para Continuar
         </h1>
         
-        <p className="text-lg text-white/90 mb-6 leading-relaxed">
-          Para uma melhor experiência, utilize o{' '}
-          <span className="font-semibold text-yellow-300">wPanel</span> em modo{' '}
-          <span className="font-semibold">paisagem</span> (horizontal).
+        <p className="text-base text-white/90 mb-4 leading-snug">
+          O <span className="font-bold text-yellow-300">wPanel</span> requer modo{' '}
+          <span className="font-bold text-green-300">paisagem</span>
         </p>
 
-        {/* Instructions */}
-        <div className="space-y-4 text-white/80">
+        {/* Simplified instructions */}
+        <div className="space-y-2 text-white/80 text-sm mb-6">
           <div className="flex items-center gap-3 justify-center">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
-            <span className="text-left">Gire seu {deviceName} para o lado (modo paisagem)</span>
+            <span className="text-2xl">📱</span>
+            <span>Gire seu {deviceName} para o lado</span>
           </div>
           
-          <div className="flex items-center gap-3 justify-center">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
-            <span className="text-left">A tela se ajustará automaticamente</span>
-          </div>
-
           {deviceInfo.isMobile && (
             <div className="flex items-center gap-3 justify-center">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold flex-shrink-0">💡</div>
-              <span className="text-left text-sm">Você pode precisar desbloquear a rotação da tela</span>
+              <span className="text-lg">⚙️</span>
+              <span className="text-xs">Ative a rotação automática se necessário</span>
             </div>
           )}
         </div>
 
-        {/* Device-specific Tips */}
-        <div className="mt-6 p-4 bg-white/10 rounded-lg backdrop-blur-sm border border-white/20">
-          <h3 className="font-semibold mb-2 text-yellow-300">
-            {deviceInfo.isMobile && '📱 Dica para Celular'}
-            {deviceInfo.isTablet && '📱 Dica para Tablet'}
-            {deviceInfo.isDesktop && '💻 Tela Pequena Detectada'}
-          </h3>
-          <p className="text-sm text-white/80">
-            {deviceInfo.isMobile && 'Certifique-se de que a rotação automática está ativada nas configurações do seu celular.'}
-            {deviceInfo.isTablet && 'Para uma experiência otimizada, use seu tablet na horizontal com apoio.'}
-            {deviceInfo.isDesktop && 'Esta tela é muito pequena para a interface completa. Considere usar em modo paisagem ou uma tela maior.'}
-          </p>
+        {/* Pulsing continue indicator */}
+        <div className="animate-pulse">
+          <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 border-2 border-green-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-green-400 flex items-center justify-center">
+              <span className="text-green-900 font-bold text-sm">↻</span>
+            </div>
+          </div>
+          <p className="text-xs text-green-300 mt-2">Automático após rotação</p>
         </div>
 
-        {/* Skip Button (for debugging or special cases) */}
-        <div className="mt-8">
-          <Button 
-            variant="outline" 
-            className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm text-sm"
-            onClick={() => {
-              // Add a temporary override for development/testing
-              if (window.confirm('⚠️ Esta ação não é recomendada e pode resultar em uma experiência ruim.\n\nO wPanel foi projetado para telas maiores.\n\nContinuar mesmo assim?')) {
-                document.body.classList.add('force-landscape');
-              }
-            }}
-          >
-            🚫 Continuar assim mesmo (não recomendado)
-          </Button>
-        </div>
+        {/* Install PWA hint for supported devices */}
+        {(deviceInfo.isMobile || deviceInfo.isTablet) && (
+          <div className="mt-6 p-3 bg-blue-600/30 rounded-lg border border-blue-400/30">
+            <p className="text-xs text-blue-200">
+              💡 <strong>Dica:</strong> Instale como app para melhor experiência!
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 25% 25%, white 2px, transparent 2px),
-                           radial-gradient(circle at 75% 75%, white 2px, transparent 2px)`,
-          backgroundSize: '50px 50px'
+          backgroundImage: `repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 35px,
+            rgba(255,255,255,0.1) 35px,
+            rgba(255,255,255,0.1) 70px
+          )`,
         }} />
+      </div>
+
+      {/* Lock indicator - show this is mandatory */}
+      <div className="absolute top-4 right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+        <span className="text-white text-sm font-bold">🔒</span>
       </div>
     </div>
   );

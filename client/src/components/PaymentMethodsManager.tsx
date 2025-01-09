@@ -307,8 +307,8 @@ export function PaymentMethodsManager() {
       {/* Lista de Métodos */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {paymentMethods
-          .sort((a, b) => a.sortOrder - b.sortOrder)
-          .map((method) => (
+          .sort((a: PaymentMethod, b: PaymentMethod) => a.sortOrder - b.sortOrder)
+          .map((method: PaymentMethod) => (
             <Card key={method.id} className="relative">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

@@ -92,7 +92,10 @@ export function useScreenOrientation() {
     isSmallScreen,
     isPortrait: orientation === 'portrait',
     isLandscape: orientation === 'landscape',
-    shouldRotate: (deviceInfo.isMobile || deviceInfo.isTablet || isSmallScreen) && orientation === 'portrait',
+    // More strict rotation requirement - mandatory for small devices
+    shouldRotate: (deviceInfo.isMobile || deviceInfo.isTablet || isSmallScreen) && 
+                  orientation === 'portrait' && 
+                  window.innerWidth < 1024,
     deviceInfo
   };
 }

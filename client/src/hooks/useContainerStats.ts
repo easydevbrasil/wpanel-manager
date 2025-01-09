@@ -27,7 +27,10 @@ export interface StatsDataPoint {
 export function useContainerStats(containerId: string, enabled: boolean = true) {
     return useQuery<ContainerStats>({
         queryKey: ["/api/docker/containers", containerId, "stats"],
-        queryFn: () => apiRequest(`/api/docker/containers/${containerId}/stats`),
+        queryFn: async () => {
+            const response = await apiRequest("GET", `/api/docker/containers/${containerId}/stats`);
+            return await response.json();
+        },
         refetchInterval: enabled ? 2000 : false, // Update every 2 seconds
         refetchIntervalInBackground: true,
         staleTime: 1000, // Consider data stale after 1 second

@@ -5,7 +5,6 @@ import {
   Database, 
   Shield, 
   Monitor,
-  Settings,
   Terminal,
   FileText,
   Users,
@@ -93,14 +92,6 @@ const systemLinks: SystemLink[] = [
     description: "Logs do sistema",
     href: "/logs",
     icon: <FileText className="w-5 h-5" />,
-    status: "online"
-  },
-  {
-    id: "settings",
-    title: "Configurações",
-    description: "Configurações gerais",
-    href: "/settings",
-    icon: <Settings className="w-5 h-5" />,
     status: "online"
   }
 ];

@@ -12,7 +12,8 @@ import {
     FileText,
     DollarSign,
     Bell,
-    Zap
+    Zap,
+    Tag
 } from "lucide-react";
 
 interface Expense {
@@ -135,15 +136,15 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
                             {isInternationalCurrency ? (
                                 <div>
                                     <div className="text-base font-bold">
-                                        {formatCurrency(parseFloat(expense.amountConverted || expense.amount))}
+                                        {formatCurrency(Number(expense.amountConverted || expense.amount))}
                                     </div>
                                     <div className="text-xs text-muted-foreground truncate">
-                                        Original: {currency} {parseFloat(expense.originalAmount || expense.amount).toFixed(2)}
+                                        Original: {currency} {Number(expense.originalAmount || expense.amount).toFixed(2)}
                                     </div>
                                 </div>
                             ) : (
                                 <div className="text-base font-bold">
-                                    {formatCurrency(parseFloat(expense.amount))}
+                                    {formatCurrency(Number(expense.amount))}
                                 </div>
                             )}
                         </div>

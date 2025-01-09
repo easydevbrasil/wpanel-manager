@@ -37,6 +37,7 @@ export function useAuthState() {
   useEffect(() => {
     if (lastMessage?.type === 'auth_status_response') {
       const { valid, user: userData } = lastMessage.data;
+      console.log(`[useAuth] Received auth_status_response: valid=${valid}, user=`, userData);
       if (valid && userData) {
         setUser(userData);
       } else {
@@ -44,33 +45,65 @@ export function useAuthState() {
       }
       setIsLoading(false);
     } else if (lastMessage?.type === 'session_expired') {
-      setUser(null);
-      window.location.href = "/login";
+      console.log('[useAuth] ⚠️ CRITICAL: session_expired received - about to redirect to login');
+      console.log('[useAuth] Current timestamp:', new Date().toISOString());
+      console.log('[useAuth] Message data:', lastMessage.data);
+      console.log('[useAuth] WebSocket connected:', isConnected);
+      
+      // Instead of immediately redirecting, try to revalidate once more
+      // This helps prevent false positives due to temporary network issues
+      setTimeout(() => {
+        if (isConnected) {
+          console.log('[useAuth] Attempting session revalidation after session_expired...');
+          requestAuthStatusViaWebSocket();
+        }
+      }, 1000);
+      
+      // Set a fallback timeout - if no valid response in 5 seconds, then redirect
+      setTimeout(() => {
+        if (!user) {
+          console.log('[useAuth] 🔴 REDIRECT TO LOGIN: Session revalidation failed, redirecting...');
+          setUser(null);
+          window.location.href = "/login";
+        } else {
+          console.log('[useAuth] ✅ Session revalidation successful, staying logged in');
+        }
+      }, 5000);
     }
-  }, [lastMessage]);
+  }, [lastMessage, isConnected, user]);
 
   useEffect(() => {
     // Initial auth check via WebSocket only
     if (isConnected) {
+      console.log('[useAuth] Initial auth check via WebSocket');
       requestAuthStatusViaWebSocket();
     }
     
     // Set up WebSocket session verification every minute
     const interval = setInterval(() => {
       if (isConnected) {
+        console.log('[useAuth] ⏰ Periodic auth check (60s interval) - requesting auth status');
         requestAuthStatusViaWebSocket();
+      } else {
+        console.log('[useAuth] ⏰ Periodic auth check skipped - WebSocket not connected');
       }
     }, 60 * 1000); // 1 minute
     
-    return () => clearInterval(interval);
+    return () => {
+      console.log('[useAuth] Cleaning up auth interval timer');
+      clearInterval(interval);
+    };
   }, [isConnected, sendMessage]);
 
   const requestAuthStatusViaWebSocket = () => {
     if (isConnected && sendMessage) {
+      console.log('[useAuth] 📤 Sending auth_status_request via WebSocket');
       sendMessage({
         type: 'auth_status_request',
         timestamp: new Date().toISOString()
       });
+    } else {
+      console.log('[useAuth] ❌ Cannot send auth_status_request - WebSocket not connected or sendMessage not available');
     }
   };
 
