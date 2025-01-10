@@ -178,6 +178,18 @@ const useExpenseCategories = () => {
   });
 };
 
+// Tipo local para PaymentMethod
+interface PaymentMethod {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Hook para buscar métodos de pagamento do banco de dados
 const usePaymentMethods = () => {
   return useQuery<PaymentMethod[]>({
@@ -259,14 +271,14 @@ const ExpenseAmount = ({ expense }: { expense: Expense }) => {
   if (currency === 'BRL') {
     return (
       <div className="text-lg font-bold">
-        {formatCurrency(parseFloat(expense.amount))}
+        {formatCurrency(Number(expense.amount))}
       </div>
     );
   }
 
   // Para moedas estrangeiras, usar amountConverted (já em BRL) e mostrar valor original
-  const convertedAmount = parseFloat(expense.amountConverted || expense.amount);
-  const originalAmount = parseFloat(expense.originalAmount || expense.amount);
+  const convertedAmount = Number(expense.amountConverted || expense.amount);
+  const originalAmount = Number(expense.originalAmount || expense.amount);
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '';
 
   return (
@@ -599,7 +611,7 @@ export default function Expenses() {
   };
 
   const getPaymentMethodColor = (method: string) => {
-    const paymentMethod = getPaymentMethodData(method);
+    const paymentMethod = getPaymentMethodData(method) as PaymentMethod | null;
     if (paymentMethod && paymentMethod.color) {
       // Converte cor hex para classes CSS
       const colorMap: { [key: string]: string } = {
@@ -628,7 +640,7 @@ export default function Expenses() {
   };
 
   const getPaymentMethodIcon = (methodName: string) => {
-    const method = getPaymentMethodData(methodName);
+    const method = getPaymentMethodData(methodName) as PaymentMethod | null;
     if (method) {
       const iconMap: { [key: string]: any } = {
         'Zap': Zap,

@@ -67,7 +67,7 @@ export default function Sales() {
     queryKey: ["/api/sales"],
   });
 
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<any[]>({
     queryKey: ["/api/clients"],
   });
 
@@ -77,6 +77,15 @@ export default function Sales() {
 
   const { data: services = [] } = useQuery({
     queryKey: ["/api/services"],
+  });
+
+  // Queries para planos de desconto
+  const { data: discountPlans = [] } = useQuery<any[]>({
+    queryKey: ["/api/client-discount-plans"],
+  });
+
+  const { data: discountRules = [] } = useQuery<any[]>({
+    queryKey: ["/api/client-discount-rules"],
   });
 
   // Hook para buscar itens de uma venda específica
@@ -98,6 +107,14 @@ export default function Sales() {
     service?: any;
     type: 'product' | 'service';
   }>>([]);
+
+  // Estados para desconto automático
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    planName: string;
+    discountValue: number;
+    discountType: string;
+    paymentMethod: string;
+  } | null>(null);
 
   // Estado para controlar se o popover está aberto
   const [productPopoverOpen, setProductPopoverOpen] = useState(false);
@@ -283,6 +300,99 @@ export default function Sales() {
     // Atualizar os valores no formulário
     setTimeout(updateFormTotals, 0);
   };
+
+  // Função para calcular desconto automático baseado no plano do cliente e forma de pagamento
+  const calculateAutomaticDiscount = (clientId: number, paymentMethod: string, subtotal: number) => {
+    if (!clientId || !paymentMethod || !clients.length || !discountPlans.length || !discountRules.length) {
+      return { discount: 0, discountInfo: null };
+    }
+
+    // Buscar o cliente selecionado
+    const client = clients.find((c: any) => c.id === clientId);
+    if (!client || !client.discountPlanId) {
+      return { discount: 0, discountInfo: null };
+    }
+
+    // Buscar o plano de desconto do cliente
+    const discountPlan = discountPlans.find((p: any) => p.id === client.discountPlanId);
+    if (!discountPlan || !discountPlan.isActive) {
+      return { discount: 0, discountInfo: null };
+    }
+
+    // Buscar as regras de desconto para o plano e forma de pagamento
+    const rule = discountRules.find((r: any) => 
+      r.discountPlanId === discountPlan.id && 
+      r.paymentMethod === paymentMethod &&
+      r.isActive
+    );
+
+    if (!rule) {
+      return { discount: 0, discountInfo: null };
+    }
+
+    // Verificar valor mínimo do pedido se especificado
+    if (rule.minOrderValue && subtotal < Number(rule.minOrderValue)) {
+      return { discount: 0, discountInfo: null };
+    }
+
+    let discountAmount = 0;
+
+    if (rule.discountType === 'percentage') {
+      discountAmount = (subtotal * Number(rule.discountValue)) / 100;
+      
+      // Aplicar limite máximo se especificado
+      if (rule.maxDiscountAmount && discountAmount > Number(rule.maxDiscountAmount)) {
+        discountAmount = Number(rule.maxDiscountAmount);
+      }
+    } else if (rule.discountType === 'fixed') {
+      discountAmount = Number(rule.discountValue);
+    }
+
+    const discountInfo = {
+      planName: discountPlan.name,
+      discountValue: Number(rule.discountValue),
+      discountType: rule.discountType,
+      paymentMethod: paymentMethod,
+    };
+
+    return { discount: discountAmount, discountInfo };
+  };
+
+  // Função para aplicar desconto automático quando cliente ou forma de pagamento mudar
+  const applyAutomaticDiscount = () => {
+    const clientId = form.getValues("clientId");
+    const paymentMethod = form.getValues("paymentMethod");
+    const subtotal = Number(form.getValues("subtotal") || 0);
+
+    if (!clientId || !paymentMethod || subtotal === 0) {
+      setAppliedDiscount(null);
+      form.setValue("discount", "0.00");
+      updateFormTotals();
+      return;
+    }
+
+    const { discount, discountInfo } = calculateAutomaticDiscount(clientId, paymentMethod, subtotal);
+    
+    if (discount > 0 && discountInfo) {
+      setAppliedDiscount(discountInfo);
+      form.setValue("discount", discount.toFixed(2));
+    } else {
+      setAppliedDiscount(null);
+      form.setValue("discount", "0.00");
+    }
+    
+    updateFormTotals();
+  };
+
+  // Efeito para aplicar desconto automático quando dados relevantes mudarem
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "clientId" || name === "paymentMethod") {
+        applyAutomaticDiscount();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, clients, discountPlans, discountRules]);
 
   const onSubmit = async (data: SaleFormData) => {
     // Usar os itens atuais que estão sendo editados na interface
@@ -952,6 +1062,18 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                           <Input type="number" step="0.01" placeholder="0.00" {...field} />
                         </FormControl>
                         <FormMessage />
+                        {appliedDiscount && (
+                          <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                              <CheckCircle className="w-4 h-4" />
+                              <span className="text-sm font-medium">Desconto Automático Aplicado!</span>
+                            </div>
+                            <div className="mt-1 text-xs text-green-600 dark:text-green-400">
+                              Plano {appliedDiscount.planName}: {appliedDiscount.discountType === 'percentage' ? `${appliedDiscount.discountValue}%` : `R$ ${appliedDiscount.discountValue.toFixed(2)}`} 
+                              {' '}para {appliedDiscount.paymentMethod}
+                            </div>
+                          </div>
+                        )}
                       </FormItem>
                     )}
                   />

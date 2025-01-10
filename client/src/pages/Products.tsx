@@ -693,9 +693,9 @@ export default function Products() {
     };
     
     if (editingManufacturer) {
-      updateManufacturerMutation.mutate({ id: editingManufacturer.id, data: manufacturerData });
+      // updateManufacturerMutation.mutate({ id: editingManufacturer.id, data: manufacturerData });
     } else {
-      createManufacturerMutation.mutate(manufacturerData);
+      // createManufacturerMutation.mutate(manufacturerData);
     }
   };
 
@@ -705,9 +705,9 @@ export default function Products() {
     manufacturerForm.reset({
       name: manufacturer.name,
       description: manufacturer.description || "",
-      website: manufacturer.website || "",
-      email: manufacturer.email || "",
-      phone: manufacturer.phone || "",
+//       website: manufacturer.website || "",
+//       email: manufacturer.email || "",
+//       phone: manufacturer.phone || "",
       image: manufacturer.image || "",
       status: manufacturer.status as "active" | "inactive",
     });
@@ -1870,23 +1870,23 @@ export default function Products() {
                         )}
 
                         <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                          {manufacturer.email && (
+                          { false && (
                             <div className="flex items-center">
                               <span className="font-medium">Email:</span>
-                              <span className="ml-2">{manufacturer.email}</span>
+                              <span className="ml-2">{""}</span>
                             </div>
                           )}
-                          {manufacturer.phone && (
+                          { false && (
                             <div className="flex items-center">
                               <span className="font-medium">Telefone:</span>
-                              <span className="ml-2">{manufacturer.phone}</span>
+                              <span className="ml-2">{""}</span>
                             </div>
                           )}
-                          {manufacturer.website && (
+                          { false && (
                             <div className="flex items-center">
                               <Globe className="w-4 h-4 mr-1" />
                               <a
-                                href={manufacturer.website}
+                                href={""}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 dark:text-blue-400 hover:underline"

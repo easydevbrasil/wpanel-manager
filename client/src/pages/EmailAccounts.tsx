@@ -645,7 +645,7 @@ export default function EmailAccounts() {
 
       {/* Modal de Loading para Restart do Mailserver */}
       <Dialog open={isRestartingMailserver} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" closeDisabled>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <div className="w-6 h-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>

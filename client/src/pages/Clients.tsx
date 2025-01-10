@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -56,10 +57,23 @@ import {
   MoreVertical,
   Upload,
   X,
+  Crown,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Client, InsertClient } from "@shared/schema";
+import type { Client, InsertClient, Plan } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+
+// Types for discount plans
+type ClientDiscountPlan = {
+  id: number;
+  name: string;
+  description?: string;
+  gradient: string;
+  isActive: boolean;
+  order: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
 const clientFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -70,6 +84,7 @@ const clientFormSchema = z.object({
   image: z.string().optional(),
   status: z.enum(["active", "inactive", "pending"]).default("active"),
   notes: z.string().optional(),
+  planId: z.number().optional(),
 });
 
 type ClientFormData = z.infer<typeof clientFormSchema>;
@@ -147,12 +162,20 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "pending">("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [activeTab, setActiveTab] = useState("clients");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
+
+  const { data: plans = [] } = useQuery<Plan[]>({
+    queryKey: ["/api/plans"],
+  });
+
+  // Get default plan (Carbon)
+  const defaultPlan = plans.find(plan => plan.isDefault) || plans.find(plan => plan.name.toLowerCase() === 'carbon');
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
@@ -165,6 +188,7 @@ export default function Clients() {
       image: "",
       status: "active",
       notes: "",
+      planId: defaultPlan?.id,
     },
   });
 
@@ -289,6 +313,7 @@ export default function Clients() {
       image: client.image || "",
       status: client.status as "active" | "inactive",
       notes: client.notes || "",
+      planId: client.planId || defaultPlan?.id,
     });
     setIsDialogOpen(true);
   };
@@ -299,7 +324,9 @@ export default function Clients() {
 
   const handleNewClient = () => {
     setEditingClient(null);
-    form.reset();
+    form.reset({
+      planId: defaultPlan?.id,
+    });
     setIsDialogOpen(true);
   };
 
@@ -508,6 +535,41 @@ export default function Clients() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="planId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground">Plano de Assinatura</FormLabel>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} 
+                          value={field.value?.toString()}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
+                              <SelectValue placeholder="Selecione um plano" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-popover border-border">
+                            {plans.map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: plan.color }}
+                                  />
+                                  <span>{plan.name}</span>
+                                  <span className="text-sm text-gray-500">- R$ {plan.price}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
                   <FormField
                     control={form.control}
@@ -550,14 +612,22 @@ export default function Clients() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Buscar clientes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="clients">Clientes</TabsTrigger>
+          <TabsTrigger value="discount-plans">Planos de Desconto</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="clients" className="space-y-6">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Buscar clientes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-popover border-border text-foreground"
           />
         </div>
@@ -704,6 +774,22 @@ export default function Clients() {
                       <span className="truncate">{client.company}</span>
                     </div>
                   )}
+                  {(() => {
+                    const clientPlan = plans.find(plan => plan.id === client.planId) || defaultPlan;
+                    return clientPlan ? (
+                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 min-w-0">
+                        <Crown className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">
+                          Plano {clientPlan.name} - R$ {clientPlan.price}
+                        </span>
+                        <div
+                          className="w-3 h-3 rounded-full ml-2 flex-shrink-0"
+                          style={{ backgroundColor: clientPlan.color }}
+                          title={clientPlan.name}
+                        />
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 
                 {client.notes && (
@@ -713,6 +799,301 @@ export default function Clients() {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+        </TabsContent>
+        
+        <TabsContent value="discount-plans" className="space-y-6">
+          <DiscountPlansManager />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// Component for managing discount plans
+function DiscountPlansManager() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<any>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Predefined plans with gradients
+  const predefinedPlans = [
+    { name: "Carbon", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", description: "Plano básico com desconto mínimo" },
+    { name: "Bronze", gradient: "linear-gradient(135deg, #cd7f32 0%, #d2691e 100%)", description: "Plano bronze com descontos intermediários" },
+    { name: "Gold", gradient: "linear-gradient(135deg, #ffd700 0%, #ffb347 100%)", description: "Plano gold com bons descontos" },
+    { name: "Platinum", gradient: "linear-gradient(135deg, #e5e4e2 0%, #b0b0b0 100%)", description: "Plano platinum com ótimos descontos" },
+    { name: "Diamond", gradient: "linear-gradient(135deg, #b9f2ff 0%, #00d4ff 100%)", description: "Plano diamond com descontos máximos" }
+  ];
+
+  const { data: discountPlans = [], isLoading } = useQuery<ClientDiscountPlan[]>({
+    queryKey: ["/api/client-discount-plans"],
+  });
+
+  const createPlanMutation = useMutation({
+    mutationFn: async (plan: any) => {
+      const response = await fetch("/api/client-discount-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(plan),
+      });
+      if (!response.ok) throw new Error("Failed to create discount plan");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client-discount-plans"] });
+      setIsDialogOpen(false);
+      toast({
+        title: "Plano criado",
+        description: "Plano de desconto foi criado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao criar plano de desconto.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ id, ...plan }: any) => {
+      const response = await fetch(`/api/client-discount-plans/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(plan),
+      });
+      if (!response.ok) throw new Error("Failed to update discount plan");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client-discount-plans"] });
+      setIsDialogOpen(false);
+      setEditingPlan(null);
+      toast({
+        title: "Plano atualizado",
+        description: "Plano de desconto foi atualizado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar plano de desconto.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePlanMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/client-discount-plans/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete discount plan");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client-discount-plans"] });
+      toast({
+        title: "Plano excluído",
+        description: "Plano de desconto foi excluído com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir plano de desconto.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreatePredefinedPlans = async () => {
+    for (const [index, plan] of predefinedPlans.entries()) {
+      const existingPlan = discountPlans.find((p: ClientDiscountPlan) => p.name === plan.name);
+      if (!existingPlan) {
+        await createPlanMutation.mutateAsync({
+          name: plan.name,
+          description: plan.description,
+          gradient: plan.gradient,
+          order: index + 1,
+          isActive: true,
+        });
+      }
+    }
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-8">Carregando planos de desconto...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Planos de Desconto</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Configure os planos de desconto para seus clientes (Carbon, Bronze, Gold, Platinum, Diamond)
+          </p>
+        </div>
+        
+        <div className="flex gap-2">
+          {discountPlans.length === 0 && (
+            <Button 
+              onClick={handleCreatePredefinedPlans}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Crown className="w-4 h-4" />
+              Criar Planos Padrão
+            </Button>
+          )}
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Novo Plano
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] max-w-[600px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-foreground">
+                  {editingPlan ? "Editar Plano de Desconto" : "Novo Plano de Desconto"}
+                </DialogTitle>
+                <DialogDescription className="text-gray-600 dark:text-gray-400">
+                  {editingPlan 
+                    ? "Atualize as informações do plano de desconto."
+                    : "Crie um novo plano de desconto para seus clientes."
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label>Nome do Plano</Label>
+                  <Input placeholder="Ex: Diamond, Platinum..." />
+                </div>
+                <div>
+                  <Label>Descrição</Label>
+                  <Textarea placeholder="Descrição do plano de desconto..." />
+                </div>
+                <div>
+                  <Label>Gradiente (CSS)</Label>
+                  <Input placeholder="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button>
+                    {editingPlan ? "Atualizar" : "Criar"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <Input
+          placeholder="Buscar planos..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Plans Grid */}
+      {discountPlans.length === 0 ? (
+        <div className="text-center py-12">
+          <Crown className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum plano de desconto encontrado</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Comece criando os planos padrão ou crie um plano personalizado.
+          </p>
+          <Button onClick={handleCreatePredefinedPlans} className="flex items-center gap-2">
+            <Crown className="w-4 h-4" />
+            Criar Planos Padrão
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {discountPlans.map((plan: ClientDiscountPlan) => (
+            <Card key={plan.id} className="relative overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              {/* Plan Header with Gradient */}
+              <div 
+                className="h-20 relative"
+                style={{ background: plan.gradient }}
+              >
+                <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+                <div className="relative p-4 text-white">
+                  <h3 className="font-bold text-lg">{plan.name}</h3>
+                  {plan.isActive ? (
+                    <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-white border-opacity-30 text-xs">
+                      Ativo
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-red-500 bg-opacity-80 text-white text-xs">
+                      Inativo
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <CardContent className="p-4">
+                {plan.description && (
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                    {plan.description}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingPlan(plan);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-white dark:bg-gray-800">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir o plano "{plan.name}"? Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => deletePlanMutation.mutate(plan.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardContent>
             </Card>
           ))}

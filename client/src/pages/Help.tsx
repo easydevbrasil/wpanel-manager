@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Key } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,10 +30,10 @@ import {
 } from "lucide-react";
 
 // VS Code style editor component
-function CodeEditor({ value, onChange, language = "json" }: { 
-  value: string; 
-  onChange: (value: string) => void; 
-  language?: string; 
+function CodeEditor({ value, onChange, language = "json" }: {
+  value: string;
+  onChange: (value: string) => void;
+  language?: string;
 }) {
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
@@ -53,7 +53,7 @@ function CodeEditor({ value, onChange, language = "json" }: {
           {language.toUpperCase()}
         </Badge>
       </div>
-      
+
       {/* Editor content */}
       <div className="relative">
         <textarea
@@ -65,7 +65,7 @@ function CodeEditor({ value, onChange, language = "json" }: {
           }}
           spellCheck={false}
         />
-        
+
         {/* Line numbers */}
         <div className="absolute top-0 left-0 p-4 pr-2 text-gray-400 dark:text-gray-600 font-mono text-sm leading-6 pointer-events-none select-none">
           {value.split('\n').map((_, index) => (
@@ -87,30 +87,30 @@ function CategorySidebar({ selectedCategory, onSelectCategory }: {
   const categories = [
     { id: 'auth', label: 'Autenticação', icon: Users, count: 6 },
     { id: 'clients', label: 'Clientes', icon: Users, count: 5 },
-    { id: 'products', label: 'Produtos', icon: Package, count: 5 },
-    { id: 'suppliers', label: 'Fornecedores', icon: Truck, count: 5 },
-    { id: 'sales', label: 'Vendas', icon: ShoppingCart, count: 5 },
-    { id: 'services', label: 'Serviços', icon: Settings, count: 5 },
-    { id: 'categories', label: 'Categorias', icon: Folder, count: 5 },
+    { id: 'products', label: 'Produtos', icon: Package, count: 6 },
+    { id: 'suppliers', label: 'Fornecedores', icon: Truck, count: 6 },
+    { id: 'sales', label: 'Vendas', icon: ShoppingCart, count: 6 },
+    { id: 'services', label: 'Serviços', icon: Settings, count: 6 },
+    { id: 'categories', label: 'Categorias', icon: Folder, count: 6 },
     { id: 'support', label: 'Suporte', icon: Headphones, count: 5 },
     { id: 'expenses', label: 'Despesas', icon: FileText, count: 8 },
-    { id: 'providers', label: 'Provedores', icon: Truck, count: 5 },
-    { id: 'exchange-rates', label: 'Câmbio', icon: BarChart3, count: 7 },
+    { id: 'providers', label: 'Provedores', icon: Truck, count: 6 },
+    { id: 'exchange-rates', label: 'Câmbio', icon: BarChart3, count: 8 },
     { id: 'notifications', label: 'Notificações', icon: Bell, count: 4 },
     { id: 'email-accounts', label: 'Contas Email', icon: Mail, count: 4 },
     { id: 'navigation', label: 'Navegação', icon: Settings, count: 3 },
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, count: 2 },
     { id: 'cart', label: 'Carrinho', icon: ShoppingCart, count: 4 },
-    { id: 'firewall', label: 'Firewall', icon: Shield, count: 12 },
-    { id: 'docker', label: 'Docker', icon: Container, count: 6 },
-    { id: 'nginx', label: 'Nginx', icon: Settings, count: 11 },
-    { id: 'dns', label: 'DNS', icon: Settings, count: 7 },
-    { id: 'users', label: 'Usuários', icon: Users, count: 5 },
-    { id: 'system', label: 'Sistema', icon: Settings, count: 4 },
+    { id: 'firewall', label: 'Firewall', icon: Shield, count: 13 },
+    { id: 'docker', label: 'Docker', icon: Container, count: 7 },
+    { id: 'nginx', label: 'Nginx', icon: Settings, count: 15 },
+    { id: 'dns', label: 'DNS', icon: Settings, count: 8 },
+    { id: 'users', label: 'Usuários', icon: Users, count: 6 },
+    { id: 'system', label: 'Sistema', icon: Settings, count: 5 },
   ];
 
   return (
-    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto max-h-[80vh]">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <h3 className="font-semibold text-foreground">
           Referência da API
@@ -119,18 +119,17 @@ function CategorySidebar({ selectedCategory, onSelectCategory }: {
           Teste interativo das rotas
         </p>
       </div>
-      
+
       <ScrollArea className="h-full">
         <div className="p-2">
           {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => onSelectCategory(category.id)}
-              className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
-                selectedCategory === category.id
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-muted/50 dark:hover:bg-gray-700'
-              }`}
+              className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${selectedCategory === category.id
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-muted/50 dark:hover:bg-gray-700'
+                }`}
             >
               <div className="flex items-center space-x-3">
                 <category.icon className="w-5 h-5" />
@@ -194,9 +193,9 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
       const data = await response.json();
       setResult({ status: response.status, data });
     } catch (error) {
-      setResult({ 
-        status: 'Error', 
-        data: { error: error instanceof Error ? error.message : 'Unknown error' } 
+      setResult({
+        status: 'Error',
+        data: { error: error instanceof Error ? error.message : 'Unknown error' }
       });
     } finally {
       setIsLoading(false);
@@ -205,11 +204,11 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
 
   const downloadResult = (format: 'json' | 'txt') => {
     if (!result) return;
-    
-    const content = format === 'json' 
+
+    const content = format === 'json'
       ? JSON.stringify(result, null, 2)
       : `Status: ${result.status}\n\nData:\n${JSON.stringify(result.data, null, 2)}`;
-    
+
     const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -242,7 +241,7 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
         </div>
         <p className="text-gray-600 dark:text-gray-400">{description}</p>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {resourceId && (
           <div>
@@ -297,7 +296,7 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
                 </Button>
               </div>
             </div>
-            
+
             <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 border-b">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -367,31 +366,31 @@ export default function Help() {
   // Auto-update HMAC header when secret key changes
   useEffect(() => {
     if (webhookConfig.secretKey.trim()) {
-      const hmacHeaderExists = customHeaders.find(h => h.key === 'X-Hub-Signature');
+      const hmacHeaderExists = customHeaders.find((h: { key: string; }) => h.key === 'X-Hub-Signature');
       if (!hmacHeaderExists) {
-        setCustomHeaders(prev => [...prev, { 
-          key: 'X-Hub-Signature', 
-          value: webhookConfig.secretKey, 
-          id: Date.now() 
+        setCustomHeaders((prev: any) => [...prev, {
+          key: 'X-Hub-Signature',
+          value: webhookConfig.secretKey,
+          id: Date.now()
         }]);
       } else {
         // Update existing HMAC header with new secret key
-        setCustomHeaders(prev => prev.map(header => 
-          header.key === 'X-Hub-Signature' 
+        setCustomHeaders((prev: any[]) => prev.map((header: { key: string; }) =>
+          header.key === 'X-Hub-Signature'
             ? { ...header, value: webhookConfig.secretKey }
             : header
         ));
       }
     } else {
-      setCustomHeaders(prev => prev.filter(header => header.key !== 'X-Hub-Signature'));
+      setCustomHeaders((prev: any[]) => prev.filter((header: { key: string; }) => header.key !== 'X-Hub-Signature'));
     }
   }, [webhookConfig.secretKey]);
 
   const handleEventToggle = (eventName: string) => {
-    setWebhookConfig(prev => ({
+    setWebhookConfig((prev: { events: string[]; }) => ({
       ...prev,
       events: prev.events.includes(eventName)
-        ? prev.events.filter(e => e !== eventName)
+        ? prev.events.filter((e: string) => e !== eventName)
         : [...prev.events, eventName]
     }));
   };
@@ -423,31 +422,31 @@ export default function Help() {
 
   const addCustomHeader = () => {
     const newHeader = { key: '', value: '', id: Date.now() };
-    setCustomHeaders(prev => [...prev, newHeader]);
+    setCustomHeaders((prev: any) => [...prev, newHeader]);
   };
 
-  const updateCustomHeader = (id: number, field: 'key' | 'value', newValue: string) => {
-    setCustomHeaders(prev => prev.map(header => 
+  const updateCustomHeader = (id: any, field: 'key' | 'value', newValue: string) => {
+    setCustomHeaders((prev: any[]) => prev.map((header: { id: any; }) =>
       header.id === id ? { ...header, [field]: newValue } : header
     ));
   };
 
-  const removeCustomHeader = (id: number) => {
-    setCustomHeaders(prev => prev.filter(header => header.id !== id));
+  const removeCustomHeader = (id: any) => {
+    setCustomHeaders((prev: any[]) => prev.filter((header: { id: any; }) => header.id !== id));
   };
 
   const updateHMACHeader = () => {
     if (webhookConfig.secretKey.trim()) {
-      const hmacHeaderExists = customHeaders.find(h => h.key === 'X-Hub-Signature');
+      const hmacHeaderExists = customHeaders.find((h: { key: string; }) => h.key === 'X-Hub-Signature');
       if (!hmacHeaderExists) {
-        setCustomHeaders(prev => [...prev, { 
-          key: 'X-Hub-Signature', 
-          value: 'sha256=[será gerado automaticamente]', 
-          id: Date.now() 
+        setCustomHeaders((prev: any) => [...prev, {
+          key: 'X-Hub-Signature',
+          value: 'sha256=[será gerado automaticamente]',
+          id: Date.now()
         }]);
       }
     } else {
-      setCustomHeaders(prev => prev.filter(header => header.key !== 'X-Hub-Signature'));
+      setCustomHeaders((prev: any[]) => prev.filter((header: { key: string; }) => header.key !== 'X-Hub-Signature'));
     }
   };
 
@@ -457,7 +456,7 @@ export default function Help() {
     for (let i = 0; i < 64; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setWebhookConfig(prev => ({ ...prev, secretKey: result }));
+    setWebhookConfig((prev: any) => ({ ...prev, secretKey: result }));
     updateHMACHeader();
     toast({
       title: "🔑 Chave gerada",
@@ -469,7 +468,7 @@ export default function Help() {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
     const messageData = encoder.encode(payload);
-    
+
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       keyData,
@@ -477,7 +476,7 @@ export default function Help() {
       false,
       ['sign']
     );
-    
+
     const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
     const hashArray = Array.from(new Uint8Array(signature));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -643,7 +642,7 @@ export default function Help() {
     }
 
     setIsTestingWebhook(true);
-    
+
     toast({
       title: "📡 Enviando webhook...",
       description: "Testando conexão com o endpoint configurado",
@@ -655,7 +654,7 @@ export default function Help() {
       let headers: Record<string, string> = {};
 
       // Build headers from custom headers array
-      customHeaders.forEach(header => {
+      customHeaders.forEach((header: { key: string; value: string; }) => {
         if (header.key.trim() && header.value.trim()) {
           headers[header.key] = header.value;
         }
@@ -704,7 +703,7 @@ export default function Help() {
         timestamp: new Date().toISOString(),
         requestPayload: testPayload
       });
-      
+
       if (response.ok) {
         toast({
           title: "✅ Webhook enviado com sucesso",
@@ -726,7 +725,7 @@ export default function Help() {
         url: webhookConfig.url
       };
       setTestResult(result);
-      
+
       toast({
         title: "❌ Erro de conexão",
         description: "Não foi possível conectar ao webhook. Verifique a URL.",
@@ -748,7 +747,7 @@ export default function Help() {
     }
 
     setIsSaving(true);
-    
+
     toast({
       title: "💾 Salvando configuração...",
       description: "Aguarde enquanto salvamos as configurações",
@@ -891,7 +890,7 @@ export default function Help() {
             resourceId: true,
           },
         ];
-      
+
       case 'products':
         return [
           {
@@ -1771,7 +1770,7 @@ export default function Help() {
           <TabsTrigger value="documentation">Visão Geral</TabsTrigger>
           <TabsTrigger value="examples">Tutoriais</TabsTrigger>
           <TabsTrigger value="api-reference">API & Integrações</TabsTrigger>
-          <TabsTrigger value="webhooks">Configurações</TabsTrigger>
+          <TabsTrigger value="webhooks">Webhook</TabsTrigger>
         </TabsList>
 
         {/* Documentação Tab */}
@@ -2064,11 +2063,11 @@ export default function Help() {
         {/* API Reference Tab */}
         <TabsContent value="api-reference" className="mt-6">
           <div className="flex h-screen overflow-hidden -m-6">
-            <CategorySidebar 
-              selectedCategory={selectedCategory} 
-              onSelectCategory={setSelectedCategory} 
+            <CategorySidebar
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
             />
-            
+
             <div className="flex-1 overflow-auto">
               <div className="p-6">
                 <div className="mb-6">
@@ -2127,7 +2126,7 @@ export default function Help() {
                         <input
                           type="url"
                           value={webhookConfig.url}
-                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, url: e.target.value }))}
+                          onChange={(e) => setWebhookConfig((prev: any) => ({ ...prev, url: e.target.value }))}
                           placeholder="https://sua-api.com/webhooks/projecthub"
                           className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         />
@@ -2137,15 +2136,15 @@ export default function Help() {
                         </Button>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Método HTTP
                         </label>
-                        <select 
+                        <select
                           value={webhookConfig.method}
-                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, method: e.target.value }))}
+                          onChange={(e) => setWebhookConfig((prev: any) => ({ ...prev, method: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         >
                           <option value="POST">POST</option>
@@ -2153,14 +2152,14 @@ export default function Help() {
                           <option value="PATCH">PATCH</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Formato de Dados
                         </label>
-                        <select 
+                        <select
                           value={webhookConfig.format}
-                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, format: e.target.value }))}
+                          onChange={(e) => setWebhookConfig((prev: any) => ({ ...prev, format: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         >
                           <option value="json">JSON</option>
@@ -2189,7 +2188,7 @@ export default function Help() {
                         </Button>
                       </div>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {customHeaders.map((header) => (
+                        {customHeaders.map((header: { id: any; key: string | number | readonly string[] | undefined; value: string | number | readonly string[] | undefined; }) => (
                           <div key={header.id} className="flex gap-2 items-center p-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
                             <input
                               type="text"
@@ -2211,7 +2210,7 @@ export default function Help() {
                             {header.key !== 'Content-Type' && header.key !== 'X-Hub-Signature' && (
                               <button
                                 type="button"
-                                onClick={() => removeCustomHeader(header.id)}
+                                onClick={() => removeCustomHeader(header?.id)}
                                 className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2246,29 +2245,29 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('client.created')}
                             onChange={() => handleEventToggle('client.created')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('client.updated')}
                             onChange={() => handleEventToggle('client.updated')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.updated</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('client.deleted')}
                             onChange={() => handleEventToggle('client.deleted')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.deleted</code>
                         </label>
@@ -2283,38 +2282,38 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('product.created')}
                             onChange={() => handleEventToggle('product.created')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('product.updated')}
                             onChange={() => handleEventToggle('product.updated')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.updated</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('product.deleted')}
                             onChange={() => handleEventToggle('product.deleted')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.deleted</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('product.stock_low')}
                             onChange={() => handleEventToggle('product.stock_low')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.stock_low</code>
                         </label>
@@ -2329,38 +2328,38 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('sale.created')}
                             onChange={() => handleEventToggle('sale.created')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('sale.completed')}
                             onChange={() => handleEventToggle('sale.completed')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.completed</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('sale.cancelled')}
                             onChange={() => handleEventToggle('sale.cancelled')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.cancelled</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('sale.refunded')}
                             onChange={() => handleEventToggle('sale.refunded')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.refunded</code>
                         </label>
@@ -2375,29 +2374,29 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('ticket.created')}
                             onChange={() => handleEventToggle('ticket.created')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('ticket.updated')}
                             onChange={() => handleEventToggle('ticket.updated')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.updated</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('ticket.resolved')}
                             onChange={() => handleEventToggle('ticket.resolved')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.resolved</code>
                         </label>
@@ -2412,29 +2411,29 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('user.login')}
                             onChange={() => handleEventToggle('user.login')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">user.login</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('user.logout')}
                             onChange={() => handleEventToggle('user.logout')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">user.logout</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('backup.completed')}
                             onChange={() => handleEventToggle('backup.completed')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">backup.completed</code>
                         </label>
@@ -2449,29 +2448,29 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('container.started')}
                             onChange={() => handleEventToggle('container.started')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.started</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('container.stopped')}
                             onChange={() => handleEventToggle('container.stopped')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.stopped</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={webhookConfig.events.includes('container.error')}
                             onChange={() => handleEventToggle('container.error')}
-                            className="rounded" 
+                            className="rounded"
                           />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.error</code>
                         </label>
@@ -2505,7 +2504,7 @@ export default function Help() {
                             "username": "admin"
                           }
                         }, null, 2)}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         language="json"
                       />
                     </div>
@@ -2537,7 +2536,7 @@ export default function Help() {
                             "username": "admin"
                           }
                         }, null, 2)}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         language="json"
                       />
                     </div>
@@ -2561,7 +2560,7 @@ export default function Help() {
                             <input
                               type={showSecretKey ? "text" : "password"}
                               value={webhookConfig.secretKey}
-                              onChange={(e) => setWebhookConfig(prev => ({ ...prev, secretKey: e.target.value }))}
+                              onChange={(e) => setWebhookConfig((prev: any) => ({ ...prev, secretKey: e.target.value }))}
                               placeholder="sua-chave-secreta-hmac"
                               className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                             />
@@ -2614,7 +2613,7 @@ export default function Help() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Selecione o Tipo de Evento
                         </label>
-                        <select 
+                        <select
                           value={selectedTestEvent}
                           onChange={(e) => setSelectedTestEvent(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
@@ -2626,11 +2625,11 @@ export default function Help() {
                           ))}
                         </select>
                       </div>
-                      
-                      <Button 
-                        onClick={testWebhook} 
+
+                      <Button
+                        onClick={testWebhook}
                         disabled={isTestingWebhook}
-                        className="w-full" 
+                        className="w-full"
                         variant="outline"
                       >
                         {isTestingWebhook ? (
@@ -2668,7 +2667,7 @@ export default function Help() {
                                 {testResponse.status} {testResponse.statusText}
                               </div>
                             </div>
-                            
+
                             {/* Response Content */}
                             <div className="p-4 font-mono text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-x-auto max-h-96 overflow-y-auto">
                               <pre className="whitespace-pre-wrap">
@@ -2722,7 +2721,7 @@ export default function Help() {
                   })}>
                     Cancelar
                   </Button>
-                  <Button 
+                  <Button
                     onClick={saveWebhookConfig}
                     disabled={isSaving}
                   >

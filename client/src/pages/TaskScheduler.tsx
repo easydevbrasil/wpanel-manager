@@ -1,3 +1,4 @@
+// ...existing code...
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,10 +61,42 @@ const taskTemplates: TaskTemplate[] = [
     category: "backup"
   },
   {
+    id: "backup_db_to_proton",
+    name: "Backup BD para Proton Drive",
+    description: "Backup do banco PostgreSQL direto para Proton Drive",
+    command: "pg_dump -h localhost -U postgres wpanel | gzip | rclone rcat protondrive:/backups/database/wpanel_$(date +%Y%m%d_%H%M%S).sql.gz",
+    schedule: "0 2 * * *",
+    category: "backup"
+  },
+  {
+    id: "backup_uploads_to_proton",
+    name: "Backup Uploads para Proton Drive",
+    description: "Sincroniza pasta uploads com Proton Drive",
+    command: "rclone sync /docker/wpanel/uploads/ protondrive:/backups/uploads/ --progress --protondrive-replace-existing-draft=true",
+    schedule: "0 3 * * *",
+    category: "backup"
+  },
+  {
+    id: "backup_full_system_proton",
+    name: "Backup Completo Sistema Proton",
+    description: "Backup completo dos dados do sistema para Proton Drive",
+    command: "tar -czf - /docker/wpanel /etc/nginx /var/lib/docker/volumes | rclone rcat protondrive:/backups/system/full_backup_$(date +%Y%m%d).tar.gz",
+    schedule: "0 1 * * 0",
+    category: "backup"
+  },
+  {
+    id: "backup_configs_proton",
+    name: "Backup Configurações Proton",
+    description: "Backup de configurações importantes para Proton Drive",
+    command: "rclone sync /docker/wpanel/server/ protondrive:/backups/configs/server/ --exclude '*.log' --exclude 'node_modules/**' --protondrive-replace-existing-draft=true",
+    schedule: "0 4 * * *",
+    category: "backup"
+  },
+  {
     id: "cleanup_logs",
     name: "Limpeza de Logs",
     description: "Remove logs antigos para liberar espaço em disco",
-    command: "find /var/log -name '*.log' -mtime +30 -delete",
+    command: "find /var/log -name '*.log' -mtime +30 -delete && find /docker/wpanel/logs -name '*.log' -mtime +7 -delete",
     schedule: "0 3 * * 0",
     category: "maintenance"
   },
@@ -79,22 +112,38 @@ const taskTemplates: TaskTemplate[] = [
     id: "docker_cleanup",
     name: "Limpeza Docker",
     description: "Remove imagens, containers e volumes não utilizados",
-    command: "docker system prune -af",
+    command: "docker system prune -af --volumes",
     schedule: "0 1 * * 0",
+    category: "maintenance"
+  },
+  {
+    id: "docker_images_cleanup",
+    name: "Limpeza Imagens Docker",
+    description: "Remove imagens Docker antigas e não utilizadas",
+    command: "docker image prune -af --filter 'until=168h'",
+    schedule: "0 2 * * 0",
     category: "maintenance"
   },
   {
     id: "check_services",
     name: "Verificar Serviços",
     description: "Monitora status dos serviços críticos",
-    command: "systemctl status nginx postgresql docker | logger",
+    command: "systemctl status nginx postgresql docker redis | logger -t service-check",
     schedule: "*/30 * * * *",
     category: "monitoring"
   },
   {
+    id: "check_disk_space",
+    name: "Verificar Espaço em Disco",
+    description: "Monitora uso do espaço em disco e alerta quando necessário",
+    command: "df -h / | awk 'NR==2 {if ($5+0 > 85) print \"WARNING: Disk usage is \" $5}' | logger -t disk-check",
+    schedule: "0 */2 * * *",
+    category: "monitoring"
+  },
+  {
     id: "backup_uploads",
-    name: "Backup de Uploads",
-    description: "Sincroniza pasta de uploads com storage externo",
+    name: "Backup de Uploads Local",
+    description: "Backup local da pasta de uploads",
     command: "rsync -av /docker/wpanel/uploads/ /backup/uploads/",
     schedule: "0 5 * * *",
     category: "backup"
@@ -114,10 +163,120 @@ const taskTemplates: TaskTemplate[] = [
     command: "psql -h localhost -U postgres -d wpanel -c 'VACUUM ANALYZE;'",
     schedule: "0 23 * * 0",
     category: "maintenance"
+  },
+  {
+    id: "update_system",
+    name: "Atualizar Sistema",
+    description: "Atualiza pacotes do sistema (Debian/Ubuntu)",
+    command: "apt update && apt upgrade -y && apt autoremove -y",
+    schedule: "0 5 * * 1",
+    category: "maintenance"
+  },
+  {
+    id: "restart_services",
+    name: "Reiniciar Serviços",
+    description: "Reinicia serviços essenciais do sistema",
+    command: "systemctl restart nginx && systemctl restart postgresql && docker container restart $(docker ps -q)",
+    schedule: "0 6 * * 0",
+    category: "maintenance"
+  },
+  {
+    id: "proton_sync_test",
+    name: "Teste Conexão Proton Drive",
+    description: "Testa conectividade com Proton Drive",
+    command: "rclone ls protondrive:/ --max-depth 1",
+    schedule: "0 */6 * * *",
+    category: "monitoring"
+  },
+  {
+    id: "backup_database_incremental",
+    name: "Backup Incremental BD",
+    description: "Backup incremental do banco usando WAL",
+    command: "pg_basebackup -h localhost -U postgres -D /backup/incremental/$(date +%Y%m%d) -Ft -z -P",
+    schedule: "0 */4 * * *",
+    category: "backup"
+  },
+  {
+    id: "monitor_memory",
+    name: "Monitor de Memória",
+    description: "Monitora uso de memória e registra alertas",
+    command: "free -m | awk 'NR==2{printf \"Memory Usage: %s/%sMB (%.2f%%)\", $3,$2,$3*100/$2}' | logger -t memory-check",
+    schedule: "*/15 * * * *",
+    category: "monitoring"
+  },
+  {
+    id: "backup_rotation_proton",
+    name: "Rotação Backups Proton",
+    description: "Remove backups antigos do Proton Drive (mantém últimos 30 dias)",
+    command: "rclone delete protondrive:/backups/ --min-age 30d --dry-run=false",
+    schedule: "0 0 * * 0",
+    category: "maintenance"
   }
 ];
 
 export default function TaskScheduler() {
+  // Função para parar tarefa em execução
+  const handleStopTask = async (task: Task) => {
+    try {
+      const response = await fetch(`/api/scheduled-tasks/${task.id}/stop`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Erro ao parar tarefa');
+      }
+      // Atualiza status localmente
+      setTasks(prev => prev.map(t =>
+        t.id === task.id ? { ...t, status: 'inactive' } : t
+      ));
+      setRunningTasks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(task.id);
+        return newSet;
+      });
+      toast({
+        title: '⏸️ Tarefa parada',
+        description: `A tarefa "${task.name}" foi parada com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: '❌ Erro ao parar tarefa',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    }
+  };
+  const [viewingLogs, setViewingLogs] = useState<string | null>(null);
+  const [taskLogs, setTaskLogs] = useState<string>("");
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  // Polling para buscar logs em tempo real
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (viewingLogs) {
+      setLogsLoading(true);
+      const fetchLogs = async () => {
+        try {
+          const response = await fetch(`/api/scheduled-tasks/${viewingLogs}/logs`);
+          if (response.ok) {
+            const data = await response.text();
+            setTaskLogs(data);
+          } else {
+            setTaskLogs("Erro ao buscar logs");
+          }
+        } catch (err) {
+          setTaskLogs("Erro de rede ao buscar logs");
+        } finally {
+          setLogsLoading(false);
+        }
+      };
+      fetchLogs();
+      interval = setInterval(fetchLogs, 2000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+      setTaskLogs("");
+    };
+  }, [viewingLogs]);
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -132,6 +291,11 @@ export default function TaskScheduler() {
     category: '',
     status: 'active' as Task['status']
   });
+  // Removido selectedTemplate, pois não é necessário para o preenchimento automático
+
+  // Removido useEffect de selectedTemplate
+
+  // Evento beforeunload removido para evitar recarregamento automático
 
   // Simular dados iniciais
   useEffect(() => {
@@ -272,9 +436,9 @@ export default function TaskScheduler() {
     return (
       <Badge variant={variants[status] || 'secondary'} className="flex items-center gap-1">
         {getStatusIcon(status)}
-        {status === 'active' ? 'Ativo' : 
-         status === 'inactive' ? 'Inativo' : 
-         status === 'running' ? 'Executando' : 'Erro'}
+        {status === 'active' ? 'Ativo' :
+          status === 'inactive' ? 'Inativo' :
+            status === 'running' ? 'Executando' : 'Erro'}
       </Badge>
     );
   };
@@ -299,7 +463,7 @@ export default function TaskScheduler() {
         }
 
         const updatedTask = await response.json();
-        setTasks(tasks.map(task => 
+        setTasks(tasks.map(task =>
           task.id === editingTask.id ? updatedTask : task
         ));
 
@@ -395,7 +559,7 @@ export default function TaskScheduler() {
       }
 
       const updatedTask = await response.json();
-      setTasks(tasks.map(task => 
+      setTasks(tasks.map(task =>
         task.id === taskId ? updatedTask : task
       ));
 
@@ -419,9 +583,9 @@ export default function TaskScheduler() {
       newSet.add(task.id);
       return newSet;
     });
-    
+
     // Atualizar status da tarefa para 'running'
-    setTasks(prev => prev.map(t => 
+    setTasks(prev => prev.map(t =>
       t.id === task.id ? { ...t, status: 'running' } : t
     ));
 
@@ -448,16 +612,16 @@ export default function TaskScheduler() {
       }
 
       const result = await response.json();
-      
+
       // Atualizar task com resultado da execução
-      setTasks(prev => prev.map(t => 
-        t.id === task.id 
-          ? { 
-              ...t, 
-              status: result.success ? 'active' : 'error',
-              lastRun: new Date().toISOString(),
-              nextRun: result.nextRun || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Próxima em 24h
-            } 
+      setTasks(prev => prev.map(t =>
+        t.id === task.id
+          ? {
+            ...t,
+            status: result.success ? 'active' : 'error',
+            lastRun: new Date().toISOString(),
+            nextRun: result.nextRun || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Próxima em 24h
+          }
           : t
       ));
 
@@ -479,7 +643,7 @@ export default function TaskScheduler() {
           ),
         });
       } else {
-        setTasks(prev => prev.map(t => 
+        setTasks(prev => prev.map(t =>
           t.id === task.id ? { ...t, status: 'error' } : t
         ));
 
@@ -498,7 +662,7 @@ export default function TaskScheduler() {
       }
     } catch (error) {
       // Tratar erro real
-      setTasks(prev => prev.map(t => 
+      setTasks(prev => prev.map(t =>
         t.id === task.id ? { ...t, status: 'error' } : t
       ));
 
@@ -518,6 +682,7 @@ export default function TaskScheduler() {
   };
 
   const applyTemplate = (template: TaskTemplate) => {
+    console.log('applyTemplate chamado:', template);
     setFormData({
       name: template.name,
       description: template.description,
@@ -526,7 +691,7 @@ export default function TaskScheduler() {
       category: template.category,
       status: 'active'
     });
-    
+
     // Mostrar toast informativo com comando
     toast({
       title: "🎯 Template aplicado com sucesso!",
@@ -536,7 +701,7 @@ export default function TaskScheduler() {
             <CheckCircle className="h-4 w-4 text-green-500" />
             <p><strong>{template.name}</strong> foi aplicado</p>
           </div>
-          
+
           <div className="bg-gray-900 p-3 rounded-lg border">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -546,12 +711,12 @@ export default function TaskScheduler() {
               $ {template.command}
             </code>
           </div>
-          
+
           <div className="flex items-center justify-between text-xs">
             <span className="text-blue-600">📅 {template.schedule}</span>
             <span className="text-purple-600">📂 {template.category}</span>
           </div>
-          
+
           <p className="text-sm text-gray-600">
             ✨ Todos os campos foram preenchidos. Você pode modificá-los conforme necessário.
           </p>
@@ -563,7 +728,7 @@ export default function TaskScheduler() {
 
   // Função para detectar template atual baseado no comando e outros campos
   const detectCurrentTemplate = (task: Task): TaskTemplate | null => {
-    return taskTemplates.find(template => 
+    return taskTemplates.find(template =>
       template.command === task.command ||
       (template.name === task.name && template.category === task.category)
     ) || null;
@@ -589,8 +754,8 @@ export default function TaskScheduler() {
           <h1 className="text-3xl font-bold">Agendador de Tarefas</h1>
           <p className="text-gray-600">Gerencie tarefas automáticas do sistema e personalizadas</p>
         </div>
-        <Dialog 
-          open={isDialogOpen} 
+        <Dialog
+          open={isDialogOpen}
           onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
@@ -624,12 +789,12 @@ export default function TaskScheduler() {
                 )}
               </DialogTitle>
               <DialogDescription>
-                {editingTask 
-                  ? `Modifique os dados da tarefa "${editingTask.name}"` 
+                {editingTask
+                  ? `Modifique os dados da tarefa "${editingTask.name}"`
                   : 'Crie uma nova tarefa agendada para automação'
                 }
               </DialogDescription>
-              
+
               {/* Task Edit Info Banner */}
               {editingTask && (
                 <div className="space-y-4 mt-4">
@@ -660,7 +825,7 @@ export default function TaskScheduler() {
                     }
                     return null;
                   })()}
-                  
+
                   {/* Task Edit Info */}
                   <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <div className="flex items-start gap-3">
@@ -684,50 +849,51 @@ export default function TaskScheduler() {
                 </div>
               )}
             </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Templates Section - Only show when creating new task */}
-              {!editingTask && (
-                <div className="space-y-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <Label className="text-base font-semibold text-blue-700 dark:text-blue-300">🚀 Templates de Tarefas</Label>
-                  <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
-                    Escolha um template para preencher automaticamente os campos
-                  </p>
-                  <Select onValueChange={(value) => {
-                    const template = taskTemplates.find(t => t.id === value);
-                    if (template) applyTemplate(template);
-                  }}>
-                    <SelectTrigger className="bg-white dark:bg-gray-800">
-                      <SelectValue placeholder="🎯 Selecione um template para começar rapidamente" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-80 overflow-y-auto">
-                      {taskTemplates.map((template) => (
-                        <SelectItem key={template.id} value={template.id} className="p-0">
-                          <div className="w-full p-3 hover:bg-muted/50 dark:hover:bg-gray-800 cursor-pointer">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-900 dark:text-gray-100">{template.name}</span>
-                                <Badge variant="outline" className="text-xs">{template.category}</Badge>
-                              </div>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{template.description}</p>
-                              <div className="text-xs space-y-1">
-                                <p className="text-blue-600 dark:text-blue-400">
-                                  📅 <strong>Agenda:</strong> {template.schedule}
+
+            <form onSubmit={handleSubmit} className="space-y-4" key={formData.name + formData.command + formData.schedule + formData.category}>
+              {/* Templates Section - disponível tanto na criação quanto edição */}
+              <div className="space-y-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <Label className="text-base font-semibold text-blue-700 dark:text-blue-300">🚀 Templates de Tarefas</Label>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
+                  Escolha um template para preencher automaticamente os campos
+                </p>
+                <Select onValueChange={(value) => {
+                  console.log('Select onValueChange:', value);
+                  const template = taskTemplates.find(t => t.id === value);
+                  if (template) {
+                    applyTemplate(template);
+                  }
+                }}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800">
+                    <SelectValue placeholder="🎯 Selecione um template para começar rapidamente" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80 overflow-y-auto">
+                    {taskTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id} className="p-0">
+                        <div className="w-full p-3 hover:bg-muted/50 dark:hover:bg-gray-800 cursor-pointer">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{template.name}</span>
+                              <Badge variant="outline" className="text-xs">{template.category}</Badge>
+                            </div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{template.description}</p>
+                            <div className="text-xs space-y-1">
+                              <p className="text-blue-600 dark:text-blue-400">
+                                📅 <strong>Agenda:</strong> {template.schedule}
+                              </p>
+                              <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded font-mono text-xs">
+                                <p className="text-gray-700 dark:text-gray-300">
+                                  <strong>💻 Comando:</strong> {template.command}
                                 </p>
-                                <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded font-mono text-xs">
-                                  <p className="text-gray-700 dark:text-gray-300">
-                                    <strong>💻 Comando:</strong> {template.command}
-                                  </p>
-                                </div>
                               </div>
                             </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {/* Task Information Section */}
               <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
@@ -782,7 +948,7 @@ export default function TaskScheduler() {
                 </h3>
                 <div className="space-y-2">
                   <Label htmlFor="schedule">Agendamento (Cron)</Label>
-                  <Select value={formData.schedule} onValueChange={(value) => setFormData({ ...formData, schedule: value })}>
+                  <Select value={formData.schedule || ''} onValueChange={(value) => setFormData({ ...formData, schedule: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Escolha um horário ou digite um cron personalizado" />
                     </SelectTrigger>
@@ -798,7 +964,7 @@ export default function TaskScheduler() {
                     </SelectContent>
                   </Select>
                   <Input
-                    value={formData.schedule}
+                    value={formData.schedule || ''}
                     onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
                     placeholder="Ou digite uma expressão cron personalizada"
                     className="mt-2 font-mono"
@@ -850,7 +1016,7 @@ export default function TaskScheduler() {
                           $ {formData.command}
                         </code>
                       </div>
-                      
+
                       {/* Command Analysis */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
@@ -864,7 +1030,7 @@ export default function TaskScheduler() {
                             <p><strong>Segurança:</strong> {formData.command.includes('rm') || formData.command.includes('delete') ? '⚠️ Destrutivo' : '✅ Seguro'}</p>
                           </div>
                         </div>
-                        
+
                         <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700">
                           <div className="flex items-center gap-2 mb-1">
                             <AlertCircle className="h-4 w-4 text-green-600" />
@@ -904,9 +1070,9 @@ export default function TaskScheduler() {
 
               <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
                 {!editingTask && (
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={resetForm}
                     className="text-gray-500 hover:text-gray-700"
                   >
@@ -914,9 +1080,9 @@ export default function TaskScheduler() {
                   </Button>
                 )}
                 <div className="flex space-x-3 ml-auto">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => {
                       setIsDialogOpen(false);
                       setEditingTask(null);
@@ -990,6 +1156,25 @@ export default function TaskScheduler() {
                 {tasks.map((task) => (
                   <TableRow key={task.id}>
                     <TableCell>
+                      {/* Diálogo para exibir logs em tempo real */}
+                      {viewingLogs === task.id && (
+                        <Dialog open={true} onOpenChange={(open) => { if (!open) setViewingLogs(null); }}>
+                          <DialogContent className="max-w-xl">
+                            <DialogHeader>
+                              <DialogTitle>Logs da Tarefa: {task.name}</DialogTitle>
+                              <DialogDescription>
+                                Visualização em tempo real dos logs da execução
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="bg-black text-green-400 p-3 rounded-lg font-mono text-xs max-h-80 overflow-y-auto">
+                              {logsLoading ? <span>Carregando logs...</span> : <pre>{taskLogs}</pre>}
+                            </div>
+                            <div className="flex justify-end mt-4">
+                              <Button variant="outline" onClick={() => setViewingLogs(null)}>Fechar</Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
                       <div>
                         <p className="font-medium">{task.name}</p>
                         <p className="text-sm text-gray-500">{task.description}</p>
@@ -1026,6 +1211,26 @@ export default function TaskScheduler() {
                             <Play className="h-4 w-4" />
                           )}
                         </Button>
+                        {/* Botão para exibir logs em tempo real */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setViewingLogs(task.id)}
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        >
+                          <Clock className="h-4 w-4" />
+                        </Button>
+                        {/* Botão para parar tarefa em execução */}
+                        {runningTasks.has(task.id) || task.status === 'running' ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleStopTask(task)}
+                            className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                          >
+                            <Pause className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"
