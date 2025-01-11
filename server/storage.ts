@@ -42,6 +42,13 @@ import {
   paymentMethods,
   expenseReminders,
   exchangeRates,
+  plans,
+  planPaymentDiscounts,
+  planSubscriptionDiscounts,
+  planResources,
+  planResourceAssignments,
+  clientDiscountPlans,
+  clientDiscountRules,
   type User,
   type UserPreferences,
   type InsertUserPreferences,
@@ -109,7 +116,21 @@ import {
   type ExpenseReminder,
   type InsertExpenseReminder,
   type ExchangeRate,
-  type InsertExchangeRate
+  type InsertExchangeRate,
+  type Plan,
+  type InsertPlan,
+  type PlanPaymentDiscount,
+  type InsertPlanPaymentDiscount,
+  type PlanSubscriptionDiscount,
+  type InsertPlanSubscriptionDiscount,
+  type PlanResource,
+  type InsertPlanResource,
+  type PlanResourceAssignment,
+  type InsertPlanResourceAssignment,
+  type ClientDiscountPlan,
+  type InsertClientDiscountPlan,
+  type ClientDiscountRule,
+  type InsertClientDiscountRule
 } from "../shared/schema";
 
 export interface IStorage {
@@ -165,6 +186,20 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
+
+  // Client Discount Plans
+  getClientDiscountPlans(): Promise<ClientDiscountPlan[]>;
+  getClientDiscountPlan(id: number): Promise<ClientDiscountPlan | undefined>;
+  createClientDiscountPlan(plan: InsertClientDiscountPlan): Promise<ClientDiscountPlan>;
+  updateClientDiscountPlan(id: number, plan: Partial<InsertClientDiscountPlan>): Promise<ClientDiscountPlan>;
+  deleteClientDiscountPlan(id: number): Promise<void>;
+
+  // Client Discount Rules
+  getClientDiscountRules(): Promise<ClientDiscountRule[]>;
+  getClientDiscountRulesByPlan(planId: number): Promise<ClientDiscountRule[]>;
+  createClientDiscountRule(rule: InsertClientDiscountRule): Promise<ClientDiscountRule>;
+  updateClientDiscountRule(id: number, rule: Partial<InsertClientDiscountRule>): Promise<ClientDiscountRule>;
+  deleteClientDiscountRule(id: number): Promise<void>;
 
   // Categories
   getCategories(): Promise<Category[]>;
@@ -349,6 +384,42 @@ export interface IStorage {
   getLatestExchangeRate(fromCurrency: string, toCurrency?: string): Promise<ExchangeRate | undefined>;
   getExchangeRateHistory(fromCurrency: string, toCurrency?: string, days?: number): Promise<ExchangeRate[]>;
   updateExchangeRates(): Promise<void>;
+
+  // Plans
+  getPlans(): Promise<Plan[]>;
+  getPlan(id: number): Promise<Plan | undefined>;
+  createPlan(plan: InsertPlan): Promise<Plan>;
+  updatePlan(id: number, plan: Partial<InsertPlan>): Promise<Plan>;
+  deletePlan(id: number): Promise<void>;
+
+  // Plan Payment Discounts
+  getPlanPaymentDiscounts(planId: number): Promise<PlanPaymentDiscount[]>;
+  getPlanPaymentDiscount(id: number): Promise<PlanPaymentDiscount | undefined>;
+  createPlanPaymentDiscount(discount: InsertPlanPaymentDiscount): Promise<PlanPaymentDiscount>;
+  updatePlanPaymentDiscount(id: number, discount: Partial<InsertPlanPaymentDiscount>): Promise<PlanPaymentDiscount>;
+  deletePlanPaymentDiscount(id: number): Promise<void>;
+
+  // Plan Subscription Discounts
+  getPlanSubscriptionDiscounts(planId: number): Promise<PlanSubscriptionDiscount[]>;
+  getPlanSubscriptionDiscount(id: number): Promise<PlanSubscriptionDiscount | undefined>;
+  createPlanSubscriptionDiscount(discount: InsertPlanSubscriptionDiscount): Promise<PlanSubscriptionDiscount>;
+  updatePlanSubscriptionDiscount(id: number, discount: Partial<InsertPlanSubscriptionDiscount>): Promise<PlanSubscriptionDiscount>;
+  deletePlanSubscriptionDiscount(id: number): Promise<void>;
+
+  // Plan Resources
+  getPlanResources(): Promise<PlanResource[]>;
+  getPlanResource(id: number): Promise<PlanResource | undefined>;
+  createPlanResource(resource: InsertPlanResource): Promise<PlanResource>;
+  updatePlanResource(id: number, resource: Partial<InsertPlanResource>): Promise<PlanResource>;
+  deletePlanResource(id: number): Promise<void>;
+
+  // Plan Resource Assignments
+  getPlanResourceAssignments(planId: number): Promise<PlanResourceAssignment[]>;
+  getAllPlanResourceAssignments(): Promise<(PlanResourceAssignment & { resource: PlanResource })[]>;
+  getPlanResourceAssignment(id: number): Promise<PlanResourceAssignment | undefined>;
+  createPlanResourceAssignment(assignment: InsertPlanResourceAssignment): Promise<PlanResourceAssignment>;
+  updatePlanResourceAssignment(id: number, assignment: Partial<InsertPlanResourceAssignment>): Promise<PlanResourceAssignment>;
+  deletePlanResourceAssignment(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1695,8 +1766,17 @@ export class DatabaseStorage implements IStorage {
         return null;
       }
 
+      // Debug: print username and password hash
+      console.log('Auth debug:', { username, dbPassword: user.password, inputPassword: password });
+
       // Verify password using Argon2
-      const isValid = await argon2.verify(user.password, password);
+      let isValid = false;
+      try {
+        isValid = await argon2.verify(user.password, password);
+        console.log('Argon2 verification result:', isValid);
+      } catch (err) {
+        console.error('Argon2 verification error:', err);
+      }
       if (!isValid) {
         console.log('Invalid password for user:', username);
         return null;
@@ -1765,7 +1845,7 @@ export class DatabaseStorage implements IStorage {
 
   async validateSession(sessionToken: string, ipAddress?: string): Promise<{ user: any } | null> {
     try {
-      console.log('Validating session token');
+      console.log(`[Session Validation] Starting validation for token: ${sessionToken.substring(0, 10)}...`);
 
       // Try database sessions first
       try {
@@ -1780,13 +1860,13 @@ export class DatabaseStorage implements IStorage {
           .from(sessions)
           .where(sql`${sessions.expiresAt} > NOW()`);
 
-        console.log(`Found ${activeSessions.length} active sessions in database`);
+        console.log(`[Session Validation] Found ${activeSessions.length} active sessions in database`);
 
         // Find matching session by direct token comparison (tokens are stored in plain text now)
         const matchingSession = activeSessions.find(session => session.token === sessionToken);
 
         if (matchingSession) {
-          console.log('Session validated successfully for user:', matchingSession.userId);
+          console.log(`[Session Validation] Session found and valid for user: ${matchingSession.userId}`);
 
           // Get user information
           const [user] = await db.select()
@@ -1795,10 +1875,11 @@ export class DatabaseStorage implements IStorage {
             .limit(1);
 
           if (!user) {
-            console.log('User not found for session');
+            console.log(`[Session Validation] User not found for session userId: ${matchingSession.userId}`);
             return null;
           }
 
+          console.log(`[Session Validation] Success - User found: ${user.username}`);
           return {
             user: {
               id: user.id,
@@ -1808,6 +1889,8 @@ export class DatabaseStorage implements IStorage {
               avatar: user.avatar
             }
           };
+        } else {
+          console.log(`[Session Validation] No matching session found in database`);
         }
       } catch (error) {
         console.log('Database session validation failed, trying in-memory fallback:', error);
@@ -2377,7 +2460,127 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteClient(id: number): Promise<void> {
-    await db.delete(clients).where(eq(clients.id, id));
+    try {
+      console.log(`[Delete Client] Attempting to delete client with ID: ${id}`);
+      
+      // Check if client exists first
+      const [existingClient] = await db.select().from(clients).where(eq(clients.id, id));
+      if (!existingClient) {
+        console.log(`[Delete Client] Client with ID ${id} not found`);
+        throw new Error(`Client with ID ${id} not found`);
+      }
+      
+      console.log(`[Delete Client] Found client: ${existingClient.name} (${existingClient.email})`);
+      
+      // Check for foreign key constraints - sales table
+      const relatedSales = await db.select({ count: sql`COUNT(*)` })
+        .from(sales)
+        .where(eq(sales.clientId, id));
+      
+      console.log(`[Delete Client] Found ${relatedSales[0]?.count || 0} related sales`);
+      
+      // Check for foreign key constraints - support tickets
+      const relatedTickets = await db.select({ count: sql`COUNT(*)` })
+        .from(supportTickets)
+        .where(eq(supportTickets.clientId, id));
+      
+      console.log(`[Delete Client] Found ${relatedTickets[0]?.count || 0} related support tickets`);
+      
+      // If there are related sales, we need to handle them first
+      if (relatedSales[0]?.count && Number(relatedSales[0].count) > 0) {
+        console.log(`[Delete Client] Cannot delete client - has ${relatedSales[0].count} related sales`);
+        throw new Error(`Cannot delete client - client has ${relatedSales[0].count} related sales. Please delete or reassign sales first.`);
+      }
+      
+      // Proceed with deletion
+      console.log(`[Delete Client] Proceeding with deletion of client ID: ${id}`);
+      const result = await db.delete(clients).where(eq(clients.id, id));
+      console.log(`[Delete Client] Deletion completed successfully for client ID: ${id}`);
+      
+    } catch (error) {
+      console.error(`[Delete Client] Error deleting client ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  // Client Discount Plans CRUD operations
+  async getClientDiscountPlans(): Promise<ClientDiscountPlan[]> {
+    return await db.select().from(clientDiscountPlans).orderBy(clientDiscountPlans.order, clientDiscountPlans.name);
+  }
+
+  async getClientDiscountPlan(id: number): Promise<ClientDiscountPlan | undefined> {
+    const [plan] = await db.select().from(clientDiscountPlans).where(eq(clientDiscountPlans.id, id));
+    return plan || undefined;
+  }
+
+  async createClientDiscountPlan(plan: InsertClientDiscountPlan): Promise<ClientDiscountPlan> {
+    const [newPlan] = await db.insert(clientDiscountPlans).values(plan).returning();
+    return newPlan;
+  }
+
+  async updateClientDiscountPlan(id: number, plan: Partial<InsertClientDiscountPlan>): Promise<ClientDiscountPlan> {
+    const [updatedPlan] = await db.update(clientDiscountPlans)
+      .set({ ...plan, updatedAt: new Date() })
+      .where(eq(clientDiscountPlans.id, id))
+      .returning();
+    
+    if (!updatedPlan) {
+      throw new Error(`Client discount plan with ID ${id} not found`);
+    }
+    
+    return updatedPlan;
+  }
+
+  async deleteClientDiscountPlan(id: number): Promise<void> {
+    try {
+      // Check if plan exists
+      const existingPlan = await this.getClientDiscountPlan(id);
+      if (!existingPlan) {
+        throw new Error(`Client discount plan with ID ${id} not found`);
+      }
+      
+      // Delete related discount rules first
+      await db.delete(clientDiscountRules).where(eq(clientDiscountRules.discountPlanId, id));
+      
+      // Delete the plan
+      await db.delete(clientDiscountPlans).where(eq(clientDiscountPlans.id, id));
+    } catch (error) {
+      console.error(`Error deleting client discount plan ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  // Client Discount Rules CRUD operations
+  async getClientDiscountRules(): Promise<ClientDiscountRule[]> {
+    return await db.select().from(clientDiscountRules).orderBy(clientDiscountRules.discountPlanId, clientDiscountRules.paymentMethod);
+  }
+
+  async getClientDiscountRulesByPlan(planId: number): Promise<ClientDiscountRule[]> {
+    return await db.select().from(clientDiscountRules)
+      .where(eq(clientDiscountRules.discountPlanId, planId))
+      .orderBy(clientDiscountRules.paymentMethod);
+  }
+
+  async createClientDiscountRule(rule: InsertClientDiscountRule): Promise<ClientDiscountRule> {
+    const [newRule] = await db.insert(clientDiscountRules).values(rule).returning();
+    return newRule;
+  }
+
+  async updateClientDiscountRule(id: number, rule: Partial<InsertClientDiscountRule>): Promise<ClientDiscountRule> {
+    const [updatedRule] = await db.update(clientDiscountRules)
+      .set({ ...rule, updatedAt: new Date() })
+      .where(eq(clientDiscountRules.id, id))
+      .returning();
+    
+    if (!updatedRule) {
+      throw new Error(`Client discount rule with ID ${id} not found`);
+    }
+    
+    return updatedRule;
+  }
+
+  async deleteClientDiscountRule(id: number): Promise<void> {
+    await db.delete(clientDiscountRules).where(eq(clientDiscountRules.id, id));
   }
 
   // Category CRUD operations
@@ -4102,6 +4305,427 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error) {
       console.error("Error updating exchange rates:", error);
+      throw error;
+    }
+  }
+
+  // Plans methods
+  async getPlans(): Promise<Plan[]> {
+    try {
+      const result = await db.select().from(plans).orderBy(asc(plans.sortOrder));
+      return result;
+    } catch (error) {
+      console.error("Error getting plans:", error);
+      throw error;
+    }
+  }
+
+  async getPlan(id: number): Promise<Plan | undefined> {
+    try {
+      const result = await db.select().from(plans).where(eq(plans.id, id)).limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting plan:", error);
+      throw error;
+    }
+  }
+
+  async createPlan(plan: InsertPlan): Promise<Plan> {
+    try {
+      // If this plan is being set as default, unset all other defaults first
+      if (plan.isDefault) {
+        await db.update(plans).set({ isDefault: false }).where(eq(plans.isDefault, true));
+      }
+
+      const result = await db.insert(plans).values({
+        ...plan,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error creating plan:", error);
+      throw error;
+    }
+  }
+
+  async updatePlan(id: number, plan: Partial<InsertPlan>): Promise<Plan> {
+    try {
+      // If this plan is being set as default, unset all other defaults first
+      if (plan.isDefault) {
+        await db.update(plans).set({ isDefault: false }).where(eq(plans.isDefault, true));
+      }
+
+      const result = await db.update(plans)
+        .set({
+          ...plan,
+          updatedAt: new Date()
+        })
+        .where(eq(plans.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan not found");
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error updating plan:", error);
+      throw error;
+    }
+  }
+
+  async deletePlan(id: number): Promise<void> {
+    try {
+      const result = await db.delete(plans).where(eq(plans.id, id)).returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan not found");
+      }
+    } catch (error) {
+      console.error("Error deleting plan:", error);
+      throw error;
+    }
+  }
+
+  // Plan Payment Discounts methods
+  async getPlanPaymentDiscounts(planId: number): Promise<PlanPaymentDiscount[]> {
+    try {
+      const result = await db.select()
+        .from(planPaymentDiscounts)
+        .where(eq(planPaymentDiscounts.planId, planId));
+      return result;
+    } catch (error) {
+      console.error("Error getting plan payment discounts:", error);
+      throw error;
+    }
+  }
+
+  async getPlanPaymentDiscount(id: number): Promise<PlanPaymentDiscount | undefined> {
+    try {
+      const result = await db.select()
+        .from(planPaymentDiscounts)
+        .where(eq(planPaymentDiscounts.id, id))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting plan payment discount:", error);
+      throw error;
+    }
+  }
+
+  async createPlanPaymentDiscount(discount: InsertPlanPaymentDiscount): Promise<PlanPaymentDiscount> {
+    try {
+      const result = await db.insert(planPaymentDiscounts)
+        .values({
+          ...discount,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error creating plan payment discount:", error);
+      throw error;
+    }
+  }
+
+  async updatePlanPaymentDiscount(id: number, discount: Partial<InsertPlanPaymentDiscount>): Promise<PlanPaymentDiscount> {
+    try {
+      const result = await db.update(planPaymentDiscounts)
+        .set({
+          ...discount,
+          updatedAt: new Date()
+        })
+        .where(eq(planPaymentDiscounts.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan payment discount not found");
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error updating plan payment discount:", error);
+      throw error;
+    }
+  }
+
+  async deletePlanPaymentDiscount(id: number): Promise<void> {
+    try {
+      const result = await db.delete(planPaymentDiscounts)
+        .where(eq(planPaymentDiscounts.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan payment discount not found");
+      }
+    } catch (error) {
+      console.error("Error deleting plan payment discount:", error);
+      throw error;
+    }
+  }
+
+  // Plan Subscription Discounts methods
+  async getPlanSubscriptionDiscounts(planId: number): Promise<PlanSubscriptionDiscount[]> {
+    try {
+      const result = await db.select()
+        .from(planSubscriptionDiscounts)
+        .where(eq(planSubscriptionDiscounts.planId, planId));
+      return result;
+    } catch (error) {
+      console.error("Error getting plan subscription discounts:", error);
+      throw error;
+    }
+  }
+
+  async getPlanSubscriptionDiscount(id: number): Promise<PlanSubscriptionDiscount | undefined> {
+    try {
+      const result = await db.select()
+        .from(planSubscriptionDiscounts)
+        .where(eq(planSubscriptionDiscounts.id, id))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting plan subscription discount:", error);
+      throw error;
+    }
+  }
+
+  async createPlanSubscriptionDiscount(discount: InsertPlanSubscriptionDiscount): Promise<PlanSubscriptionDiscount> {
+    try {
+      const result = await db.insert(planSubscriptionDiscounts)
+        .values({
+          ...discount,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error creating plan subscription discount:", error);
+      throw error;
+    }
+  }
+
+  async updatePlanSubscriptionDiscount(id: number, discount: Partial<InsertPlanSubscriptionDiscount>): Promise<PlanSubscriptionDiscount> {
+    try {
+      const result = await db.update(planSubscriptionDiscounts)
+        .set({
+          ...discount,
+          updatedAt: new Date()
+        })
+        .where(eq(planSubscriptionDiscounts.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan subscription discount not found");
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error updating plan subscription discount:", error);
+      throw error;
+    }
+  }
+
+  async deletePlanSubscriptionDiscount(id: number): Promise<void> {
+    try {
+      const result = await db.delete(planSubscriptionDiscounts)
+        .where(eq(planSubscriptionDiscounts.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan subscription discount not found");
+      }
+    } catch (error) {
+      console.error("Error deleting plan subscription discount:", error);
+      throw error;
+    }
+  }
+
+  // Plan Resources methods
+  async getPlanResources(): Promise<PlanResource[]> {
+    try {
+      const result = await db.select().from(planResources).orderBy(asc(planResources.sortOrder));
+      return result;
+    } catch (error) {
+      console.error("Error getting plan resources:", error);
+      throw error;
+    }
+  }
+
+  async getPlanResource(id: number): Promise<PlanResource | undefined> {
+    try {
+      const result = await db.select().from(planResources).where(eq(planResources.id, id)).limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting plan resource:", error);
+      throw error;
+    }
+  }
+
+  async createPlanResource(resource: InsertPlanResource): Promise<PlanResource> {
+    try {
+      const result = await db.insert(planResources)
+        .values({
+          ...resource,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error creating plan resource:", error);
+      throw error;
+    }
+  }
+
+  async updatePlanResource(id: number, resource: Partial<InsertPlanResource>): Promise<PlanResource> {
+    try {
+      const result = await db.update(planResources)
+        .set({
+          ...resource,
+          updatedAt: new Date()
+        })
+        .where(eq(planResources.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan resource not found");
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error updating plan resource:", error);
+      throw error;
+    }
+  }
+
+  async deletePlanResource(id: number): Promise<void> {
+    try {
+      const result = await db.delete(planResources)
+        .where(eq(planResources.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan resource not found");
+      }
+    } catch (error) {
+      console.error("Error deleting plan resource:", error);
+      throw error;
+    }
+  }
+
+  // Plan Resource Assignments methods
+  async getPlanResourceAssignments(planId: number): Promise<PlanResourceAssignment[]> {
+    try {
+      const result = await db.select()
+        .from(planResourceAssignments)
+        .where(eq(planResourceAssignments.planId, planId));
+      return result;
+    } catch (error) {
+      console.error("Error getting plan resource assignments:", error);
+      throw error;
+    }
+  }
+
+  async getAllPlanResourceAssignments(): Promise<(PlanResourceAssignment & { resource: PlanResource })[]> {
+    try {
+      const result = await db.select({
+        id: planResourceAssignments.id,
+        planId: planResourceAssignments.planId,
+        resourceId: planResourceAssignments.resourceId,
+        isEnabled: planResourceAssignments.isEnabled,
+        customValue: planResourceAssignments.customValue,
+        createdAt: planResourceAssignments.createdAt,
+        updatedAt: planResourceAssignments.updatedAt,
+        resource: {
+          id: planResources.id,
+          name: planResources.name,
+          value: planResources.value,
+          image: planResources.image,
+          isActive: planResources.isActive,
+          sortOrder: planResources.sortOrder,
+          createdAt: planResources.createdAt,
+          updatedAt: planResources.updatedAt,
+        }
+      })
+        .from(planResourceAssignments)
+        .innerJoin(planResources, eq(planResourceAssignments.resourceId, planResources.id));
+      return result;
+    } catch (error) {
+      console.error("Error getting all plan resource assignments:", error);
+      throw error;
+    }
+  }
+
+  async getPlanResourceAssignment(id: number): Promise<PlanResourceAssignment | undefined> {
+    try {
+      const result = await db.select()
+        .from(planResourceAssignments)
+        .where(eq(planResourceAssignments.id, id))
+        .limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting plan resource assignment:", error);
+      throw error;
+    }
+  }
+
+  async createPlanResourceAssignment(assignment: InsertPlanResourceAssignment): Promise<PlanResourceAssignment> {
+    try {
+      const result = await db.insert(planResourceAssignments)
+        .values({
+          ...assignment,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error creating plan resource assignment:", error);
+      throw error;
+    }
+  }
+
+  async updatePlanResourceAssignment(id: number, assignment: Partial<InsertPlanResourceAssignment>): Promise<PlanResourceAssignment> {
+    try {
+      const result = await db.update(planResourceAssignments)
+        .set({
+          ...assignment,
+          updatedAt: new Date()
+        })
+        .where(eq(planResourceAssignments.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan resource assignment not found");
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error updating plan resource assignment:", error);
+      throw error;
+    }
+  }
+
+  async deletePlanResourceAssignment(id: number): Promise<void> {
+    try {
+      const result = await db.delete(planResourceAssignments)
+        .where(eq(planResourceAssignments.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error("Plan resource assignment not found");
+      }
+    } catch (error) {
+      console.error("Error deleting plan resource assignment:", error);
       throw error;
     }
   }

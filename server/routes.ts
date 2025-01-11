@@ -1,11 +1,16 @@
 // Route to list nginx hosts from directory specified in .env
 // This route must be defined after authenticateToken is declared
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage as dbStorage } from "./storage";
 import { cloudflareService } from "./cloudflare";
+import { evolutionService } from "./evolution";
+
+import { initializeTaskScheduler, getTaskScheduler, taskScheduler } from "./scheduler";
+import { db } from "./db";
+import MinioService from "./minio";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -678,7 +683,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   }
 };
 
-// Configurar multer para upload de imagens
+// Configurar multer para upload de imagens (legado - local)
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(process.cwd(), "uploads");
@@ -696,6 +701,9 @@ const multerStorage = multer.diskStorage({
   },
 });
 
+// Configurar multer para upload temporário antes do MinIO
+const tempStorage = multer.memoryStorage();
+
 const upload = multer({
   storage: multerStorage,
   limits: {
@@ -706,6 +714,34 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error("Apenas arquivos de imagem são permitidos!"));
+    }
+  },
+});
+
+// Upload para MinIO - aceita vários tipos de arquivo
+const uploadToMinio = multer({
+  storage: tempStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Aceitar imagens, PDFs e documentos
+    const allowedTypes = [
+      'image/',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain'
+    ];
+    
+    const isAllowed = allowedTypes.some(type => file.mimetype.startsWith(type));
+    
+    if (isAllowed) {
+      cb(null, true);
+    } else {
+      cb(new Error("Tipo de arquivo não permitido!"));
     }
   },
 });
@@ -942,6 +978,14 @@ async function getContainerStats(containerId: string): Promise<any> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize task scheduler
+  console.log('Initializing task scheduler...');
+  const scheduler = initializeTaskScheduler();
+  console.log(`Task scheduler initialized with ${scheduler.getScheduledTasksCount()} tasks`);
+
+  // Server port
+  const port = process.env.PORT || 8000;
+
   // Serve uploaded files statically
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
@@ -949,16 +993,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/upload/container-logo",
     authenticateToken,
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const { containerId, containerName } = req.body;
+        if (!containerId) {
+          return res.status(400).json({ message: "Container ID é obrigatório" });
+        }
+
+        // Upload to MinIO
+        const objectName = MinioService.generateObjectName('general', req.file.originalname);
+        await MinioService.uploadBuffer(
+          req.file.buffer,
+          objectName,
+          req.file.mimetype
+        );
+
+        // Generate presigned URL for long-term access
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, ); // 1 year
+
+        // Save/update container logo in database
+        const { containerLogos } = await import("../shared/schema");
+        await db.insert(containerLogos)
+          .values({
+            containerId: containerId,
+            logoUrl: presignedUrl,
+            originalName: containerName || null,
+          })
+          .onConflictDoUpdate({
+            target: containerLogos.containerId,
+            set: {
+              logoUrl: presignedUrl,
+              originalName: containerName || null,
+              updatedAt: new Date(),
+            }
+          });
+
+        res.json({
+          url: presignedUrl,
+          filename: req.file.originalname,
+          containerId: containerId,
+          objectName: objectName
+        });
       } catch (error) {
+        console.error("Error uploading container logo:", error);
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
     },
@@ -967,15 +1049,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/upload/product-image",
     authenticateToken,
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const objectName = MinioService.generateObjectName('products', req.file.originalname);
+        await MinioService.uploadBuffer(req.file.buffer, objectName, req.file.mimetype);
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, );
+
+        res.json({ url: presignedUrl, filename: req.file.originalname, objectName });
       } catch (error) {
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
@@ -984,15 +1069,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/upload/client-image",
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const objectName = MinioService.generateObjectName('clients', req.file.originalname);
+        await MinioService.uploadBuffer(req.file.buffer, objectName, req.file.mimetype);
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, );
+
+        res.json({ url: presignedUrl, filename: req.file.originalname, objectName });
       } catch (error) {
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
@@ -1001,15 +1089,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/upload/supplier-image",
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const objectName = MinioService.generateObjectName('suppliers', req.file.originalname);
+        await MinioService.uploadBuffer(req.file.buffer, objectName, req.file.mimetype);
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, );
+
+        res.json({ url: presignedUrl, filename: req.file.originalname, objectName });
       } catch (error) {
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
@@ -1018,15 +1109,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/upload/category-image",
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const objectName = MinioService.generateObjectName('general', req.file.originalname);
+        await MinioService.uploadBuffer(req.file.buffer, objectName, req.file.mimetype);
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, );
+
+        res.json({ url: presignedUrl, filename: req.file.originalname, objectName });
       } catch (error) {
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
@@ -1035,15 +1129,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/upload/manufacturer-image",
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const objectName = MinioService.generateObjectName('general', req.file.originalname);
+        await MinioService.uploadBuffer(req.file.buffer, objectName, req.file.mimetype);
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, );
+
+        res.json({ url: presignedUrl, filename: req.file.originalname, objectName });
       } catch (error) {
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
@@ -1053,22 +1150,343 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     "/api/upload/provider-image",
     authenticateToken,
-    upload.single("image"),
-    (req, res) => {
+    uploadToMinio.single("image"),
+    async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Nenhum arquivo enviado" });
         }
 
-        const fileUrl = `/uploads/${req.file.filename}`;
-        res.json({ url: fileUrl, filename: req.file.filename });
+        const objectName = MinioService.generateObjectName('general', req.file.originalname);
+        await MinioService.uploadBuffer(req.file.buffer, objectName, req.file.mimetype);
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, );
+
+        res.json({ url: presignedUrl, filename: req.file.originalname, objectName });
       } catch (error) {
         res.status(500).json({ message: "Falha no upload da imagem" });
       }
     },
   );
 
+  // Resource image upload
+  app.post(
+    "/api/upload/resource-image",
+    authenticateToken,
+    uploadToMinio.single("image"),
+    async (req: Request, res: Response) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhuma imagem enviada" });
+        }
+
+        res.json({ url: req.file.path });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
+      }
+    },
+  );
+
+  // MinIO Upload Routes
+  app.post(
+    "/api/minio/upload/product",
+    authenticateToken,
+    uploadToMinio.single("file"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const objectName = MinioService.generateObjectName('products', req.file.originalname);
+        const uploadedPath = await MinioService.uploadBuffer(
+          req.file.buffer,
+          objectName,
+          req.file.mimetype
+        );
+
+        // Generate presigned URL for access
+        const presignedUrl = await MinioService.getPresignedUrl(uploadedPath, 24 * 60 * 60); // 24 hours
+
+        res.json({
+          success: true,
+          objectName: uploadedPath,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimeType: req.file.mimetype,
+          presignedUrl
+        });
+      } catch (error) {
+        console.error('[MinIO] Product upload error:', error);
+        res.status(500).json({ message: "Falha no upload do arquivo" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/minio/upload/client",
+    authenticateToken,
+    uploadToMinio.single("file"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const objectName = MinioService.generateObjectName('clients', req.file.originalname);
+        const uploadedPath = await MinioService.uploadBuffer(
+          req.file.buffer,
+          objectName,
+          req.file.mimetype
+        );
+
+        const presignedUrl = await MinioService.getPresignedUrl(uploadedPath, 24 * 60 * 60);
+
+        res.json({
+          success: true,
+          objectName: uploadedPath,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimeType: req.file.mimetype,
+          presignedUrl
+        });
+      } catch (error) {
+        console.error('[MinIO] Client upload error:', error);
+        res.status(500).json({ message: "Falha no upload do arquivo" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/minio/upload/supplier",
+    authenticateToken,
+    uploadToMinio.single("file"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const objectName = MinioService.generateObjectName('suppliers', req.file.originalname);
+        const uploadedPath = await MinioService.uploadBuffer(
+          req.file.buffer,
+          objectName,
+          req.file.mimetype
+        );
+
+        const presignedUrl = await MinioService.getPresignedUrl(uploadedPath, 24 * 60 * 60);
+
+        res.json({
+          success: true,
+          objectName: uploadedPath,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimeType: req.file.mimetype,
+          presignedUrl
+        });
+      } catch (error) {
+        console.error('[MinIO] Supplier upload error:', error);
+        res.status(500).json({ message: "Falha no upload do arquivo" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/minio/upload/general",
+    authenticateToken,
+    uploadToMinio.single("file"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const objectName = MinioService.generateObjectName('general', req.file.originalname);
+        const uploadedPath = await MinioService.uploadBuffer(
+          req.file.buffer,
+          objectName,
+          req.file.mimetype
+        );
+
+        const presignedUrl = await MinioService.getPresignedUrl(uploadedPath, 24 * 60 * 60);
+
+        res.json({
+          success: true,
+          objectName: uploadedPath,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimeType: req.file.mimetype,
+          presignedUrl
+        });
+      } catch (error) {
+        console.error('[MinIO] General upload error:', error);
+        res.status(500).json({ message: "Falha no upload do arquivo" });
+      }
+    }
+  );
+
+  // Get presigned URL for existing file
+  app.get(
+    "/api/minio/presigned/:objectName(*)",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const objectName = req.params.objectName;
+        
+        if (!objectName) {
+          return res.status(400).json({ message: "Nome do objeto é obrigatório" });
+        }
+
+        const exists = await MinioService.fileExists(objectName);
+        if (!exists) {
+          return res.status(404).json({ message: "Arquivo não encontrado" });
+        }
+
+        const presignedUrl = await MinioService.getPresignedUrl(objectName, 24 * 60 * 60);
+
+        res.json({
+          success: true,
+          objectName,
+          presignedUrl
+        });
+      } catch (error) {
+        console.error('[MinIO] Presigned URL error:', error);
+        res.status(500).json({ message: "Falha ao gerar URL do arquivo" });
+      }
+    }
+  );
+
+  // Delete file from MinIO
+  app.delete(
+    "/api/minio/file/:objectName(*)",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const objectName = req.params.objectName;
+        
+        if (!objectName) {
+          return res.status(400).json({ message: "Nome do objeto é obrigatório" });
+        }
+
+        await MinioService.deleteFile(objectName);
+
+        res.json({
+          success: true,
+          message: "Arquivo deletado com sucesso"
+        });
+      } catch (error) {
+        console.error('[MinIO] Delete file error:', error);
+        res.status(500).json({ message: "Falha ao deletar arquivo" });
+      }
+    }
+  );
+
+  // List files by type
+  app.get(
+    "/api/minio/files/:type",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const type = req.params.type;
+        const validTypes = ['products', 'clients', 'suppliers', 'general'];
+        
+        if (!validTypes.includes(type)) {
+          return res.status(400).json({ message: "Tipo de arquivo inválido" });
+        }
+
+        const files = await MinioService.listFiles(`${type}/`);
+
+        res.json({
+          success: true,
+          files: files.map(file => ({
+            name: file.name,
+            size: file.size,
+            lastModified: file.lastModified,
+            etag: file.etag
+          }))
+        });
+      } catch (error) {
+        console.error('[MinIO] List files error:', error);
+        res.status(500).json({ message: "Falha ao listar arquivos" });
+      }
+    }
+  );
+
+  // Migration route - Migrate files from local storage to MinIO
+  app.post(
+    "/api/minio/migrate",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const { filesMigration } = await import("./migration");
+        
+        console.log('[Migration] Starting files migration to MinIO...');
+        
+        // Create backup before migration
+        await filesMigration.createBackup();
+        
+        // Run migration
+        await filesMigration.migrateAllFiles();
+        
+        res.json({
+          success: true,
+          message: "Files migrated to MinIO successfully"
+        });
+      } catch (error) {
+        console.error('[Migration] Migration error:', error);
+        res.status(500).json({ 
+          success: false,
+          message: "Failed to migrate files to MinIO",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+  );
+
   // Authentication routes (no auth required)
+  /**
+   * @swagger
+   * /api/auth/login:
+   *   post:
+   *     tags:
+   *       - Autenticação
+   *     summary: Fazer login no sistema
+   *     description: Autentica um usuário e retorna token de sessão
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - username
+   *               - password
+   *             properties:
+   *               username:
+   *                 type: string
+   *                 description: Nome de usuário ou email
+   *               password:
+   *                 type: string
+   *                 description: Senha do usuário
+   *     responses:
+   *       200:
+   *         description: Login realizado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 user:
+   *                   $ref: '#/components/schemas/User'
+   *                 token:
+   *                   type: string
+   *                   description: Token de sessão
+   *       400:
+   *         description: Dados inválidos
+   *       401:
+   *         description: Credenciais inválidas
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
@@ -1121,6 +1539,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/logout:
+   *   post:
+   *     tags:
+   *       - Autenticação
+   *     summary: Fazer logout do sistema
+   *     description: Invalida a sessão atual e limpa os cookies de autenticação
+   *     responses:
+   *       200:
+   *         description: Logout realizado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: Logout realizado com sucesso
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.post("/api/auth/logout", async (req: any, res) => {
     try {
       const sessionToken =
@@ -1153,6 +1593,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/refresh:
+   *   post:
+   *     tags:
+   *       - Autenticação
+   *     summary: Atualizar token de sessão
+   *     description: Atualiza o token de sessão usando o refresh token
+   *     responses:
+   *       200:
+   *         description: Token atualizado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 user:
+   *                   $ref: '#/components/schemas/User'
+   *                 sessionToken:
+   *                   type: string
+   *                   description: Novo token de sessão
+   *       401:
+   *         description: Token de refresh inválido ou expirado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.post("/api/auth/refresh", async (req, res) => {
     try {
       const refreshToken = req.cookies.refreshToken;
@@ -1202,10 +1668,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/verify:
+   *   get:
+   *     tags:
+   *       - Autenticação
+   *     summary: Verificar token de autenticação
+   *     description: Verifica se o token de sessão atual é válido e retorna informações do usuário
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Token válido
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 user:
+   *                   $ref: '#/components/schemas/User'
+   *                 valid:
+   *                   type: boolean
+   *                   example: true
+   *       401:
+   *         description: Não autorizado - token inválido ou ausente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get("/api/auth/verify", authenticateToken, (req: any, res) => {
     res.json({ user: req.user, valid: true });
   });
 
+  /**
+   * @swagger
+   * /api/auth/status:
+   *   get:
+   *     tags:
+   *       - Autenticação
+   *     summary: Verificar status de autenticação
+   *     description: Retorna o status atual de autenticação e informações do usuário
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Status de autenticação
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 isAuthenticated:
+   *                   type: boolean
+   *                   example: true
+   *                 user:
+   *                   $ref: '#/components/schemas/User'
+   *       401:
+   *         description: Não autorizado
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   // Auth status check (similar to verify but with different response format)
   app.get("/api/auth/status", authenticateToken, (req: any, res) => {
     res.json({
@@ -1215,6 +1743,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Protected routes (require authentication)
+  /**
+   * @swagger
+   * /api/user:
+   *   get:
+   *     tags:
+   *       - Usuário
+   *     summary: Obter dados do usuário logado
+   *     description: Retorna as informações do usuário atualmente autenticado
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Dados do usuário
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/User'
+   *       404:
+   *         description: Usuário não encontrado
+   *       401:
+   *         description: Não autorizado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/user", authenticateToken, async (req: any, res) => {
     try {
       const user = await dbStorage.getUser(req.user.id);
@@ -1228,6 +1781,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Preferences routes
+  /**
+   * @swagger
+   * /api/user/preferences:
+   *   get:
+   *     tags:
+   *       - Usuário
+   *     summary: Obter preferências do usuário
+   *     description: Retorna as preferências salvas do usuário
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: Preferências do usuário
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 theme:
+   *                   type: string
+   *                   description: Tema da interface
+   *                 language:
+   *                   type: string
+   *                   description: Idioma preferido
+   *                 notifications:
+   *                   type: boolean
+   *                   description: Receber notificações
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/user/preferences", authenticateToken, async (req: any, res) => {
     try {
       const preferences = await dbStorage.getUserPreferences(req.user.id);
@@ -1238,6 +1822,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/user/preferences:
+   *   put:
+   *     tags:
+   *       - Usuário
+   *     summary: Atualizar preferências do usuário
+   *     description: Atualiza as preferências do usuário logado
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               theme:
+   *                 type: string
+   *                 description: Tema da interface
+   *               language:
+   *                 type: string
+   *                 description: Idioma preferido
+   *               notifications:
+   *                 type: boolean
+   *                 description: Receber notificações
+   *     responses:
+   *       200:
+   *         description: Preferências atualizadas com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 theme:
+   *                   type: string
+   *                 language:
+   *                   type: string
+   *                 notifications:
+   *                   type: boolean
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.put("/api/user/preferences", authenticateToken, async (req: any, res) => {
     try {
       const preferences = await dbStorage.updateUserPreferences(
@@ -1258,6 +1886,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CNPJ lookup endpoint
+  // CNPJ lookup route
+  /**
+   * @swagger
+   * /api/cnpj/{cnpj}:
+   *   get:
+   *     tags:
+   *       - Utilidades
+   *     summary: Consultar dados de CNPJ
+   *     description: Busca informações de uma empresa através do CNPJ na Receita Federal
+   *     parameters:
+   *       - in: path
+   *         name: cnpj
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: CNPJ da empresa (com ou sem formatação)
+   *     responses:
+   *       200:
+   *         description: Dados da empresa encontrados
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 cnpj:
+   *                   type: string
+   *                 nome:
+   *                   type: string
+   *                 fantasia:
+   *                   type: string
+   *                 situacao:
+   *                   type: string
+   *                 endereco:
+   *                   type: object
+   *       400:
+   *         description: CNPJ inválido
+   *       404:
+   *         description: CNPJ não encontrado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/cnpj/:cnpj", async (req, res) => {
     try {
       const cnpj = req.params.cnpj.replace(/\D/g, ''); // Remove non-digits
@@ -1314,6 +1983,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Providers routes
+  /**
+   * @swagger
+   * /api/providers:
+   *   get:
+   *     tags:
+   *       - Prestadores
+   *     summary: Listar todos os prestadores
+   *     description: Retorna a lista de todos os prestadores de serviço cadastrados
+   *     responses:
+   *       200:
+   *         description: Lista de prestadores
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   name:
+   *                     type: string
+   *                   email:
+   *                     type: string
+   *                   phone:
+   *                     type: string
+   *                   cnpj:
+   *                     type: string
+   *                   address:
+   *                     type: string
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/providers", async (req, res) => {
     try {
       const providers = await dbStorage.getProviders();
@@ -1324,6 +2026,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/providers/{id}:
+   *   get:
+   *     tags:
+   *       - Prestadores
+   *     summary: Obter prestador por ID
+   *     description: Retorna os dados de um prestador específico
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID do prestador
+   *     responses:
+   *       200:
+   *         description: Dados do prestador
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 email:
+   *                   type: string
+   *                 phone:
+   *                   type: string
+   *                 cnpj:
+   *                   type: string
+   *                 address:
+   *                   type: string
+   *       404:
+   *         description: Prestador não encontrado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/providers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1340,6 +2082,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/providers:
+   *   post:
+   *     tags:
+   *       - Prestadores
+   *     summary: Criar novo prestador
+   *     description: Cadastra um novo prestador de serviço
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *               - email
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Nome do prestador
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: Email do prestador
+   *               phone:
+   *                 type: string
+   *                 description: Telefone do prestador
+   *               cnpj:
+   *                 type: string
+   *                 description: CNPJ do prestador
+   *               address:
+   *                 type: string
+   *                 description: Endereço do prestador
+   *     responses:
+   *       201:
+   *         description: Prestador criado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 email:
+   *                   type: string
+   *                 phone:
+   *                   type: string
+   *                 cnpj:
+   *                   type: string
+   *                 address:
+   *                   type: string
+   *       400:
+   *         description: Dados inválidos
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.post("/api/providers", async (req, res) => {
     try {
       const providerData = req.body;
@@ -1357,6 +2158,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/providers/{id}:
+   *   put:
+   *     tags:
+   *       - Prestadores
+   *     summary: Atualizar prestador
+   *     description: Atualiza os dados de um prestador existente
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID do prestador
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Nome do prestador
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: Email do prestador
+   *               phone:
+   *                 type: string
+   *                 description: Telefone do prestador
+   *               cnpj:
+   *                 type: string
+   *                 description: CNPJ do prestador
+   *               address:
+   *                 type: string
+   *                 description: Endereço do prestador
+   *     responses:
+   *       200:
+   *         description: Prestador atualizado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 email:
+   *                   type: string
+   *                 phone:
+   *                   type: string
+   *                 cnpj:
+   *                   type: string
+   *                 address:
+   *                   type: string
+   *       404:
+   *         description: Prestador não encontrado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.put("/api/providers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1370,6 +2234,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/providers/{id}:
+   *   delete:
+   *     tags:
+   *       - Prestadores
+   *     summary: Excluir prestador
+   *     description: Remove um prestador do sistema
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID do prestador
+   *     responses:
+   *       200:
+   *         description: Prestador excluído com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *       404:
+   *         description: Prestador não encontrado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.delete("/api/providers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1382,6 +2276,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Exchange Rates routes
+  /**
+   * @swagger
+   * /api/exchange-rates:
+   *   get:
+   *     tags:
+   *       - Taxas de Câmbio
+   *     summary: Listar taxas de câmbio
+   *     description: Retorna todas as taxas de câmbio disponíveis
+   *     responses:
+   *       200:
+   *         description: Lista de taxas de câmbio
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   from:
+   *                     type: string
+   *                     description: Moeda de origem
+   *                   to:
+   *                     type: string
+   *                     description: Moeda de destino
+   *                   rate:
+   *                     type: number
+   *                     description: Taxa de conversão
+   *                   lastUpdated:
+   *                     type: string
+   *                     format: date-time
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/exchange-rates", async (req, res) => {
     try {
       const rates = await dbStorage.getExchangeRates();
@@ -1392,6 +2321,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/exchange-rates/{from}/{to}:
+   *   get:
+   *     tags:
+   *       - Taxas de Câmbio
+   *     summary: Obter taxa de câmbio específica
+   *     description: Retorna a taxa de câmbio entre duas moedas
+   *     parameters:
+   *       - in: path
+   *         name: from
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Moeda de origem (ex. USD)
+   *       - in: path
+   *         name: to
+   *         required: false
+   *         schema:
+   *           type: string
+   *           default: BRL
+   *         description: Moeda de destino (ex. BRL)
+   *     responses:
+   *       200:
+   *         description: Taxa de câmbio encontrada
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 from:
+   *                   type: string
+   *                 to:
+   *                   type: string
+   *                 rate:
+   *                   type: number
+   *                 lastUpdated:
+   *                   type: string
+   *                   format: date-time
+   *       404:
+   *         description: Taxa de câmbio não encontrada
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/exchange-rates/:from/:to?", async (req, res) => {
     try {
       const fromCurrency = req.params.from.toUpperCase();
@@ -1542,6 +2517,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Expense CRUD routes
+  /**
+   * @swagger
+   * /api/expenses:
+   *   get:
+   *     summary: Get all expenses
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: List of expenses
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Expense'
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/expenses", async (req, res) => {
     try {
       const expenses = await dbStorage.getExpenses();
@@ -1553,6 +2548,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get expense statistics (must be before /:id route)
+  /**
+   * @swagger
+   * /api/expenses/stats:
+   *   get:
+   *     summary: Get expense statistics
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: Expense statistics including monthly/yearly totals and category breakdown
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 totalMonth:
+   *                   type: number
+   *                   description: Total expenses for current month
+   *                 totalYear:
+   *                   type: number
+   *                   description: Total expenses for current year
+   *                 byCategory:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       category:
+   *                         type: string
+   *                       total:
+   *                         type: number
+   *                       count:
+   *                         type: integer
+   *                 monthlyTrend:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       month:
+   *                         type: string
+   *                       total:
+   *                         type: number
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/expenses/stats", async (req, res) => {
     try {
       console.log("Getting expense stats...");
@@ -1623,6 +2663,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/expenses/{id}:
+   *   get:
+   *     summary: Get expense by ID
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Expense ID
+   *     responses:
+   *       200:
+   *         description: Expense details
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Expense'
+   *       404:
+   *         description: Expense not found
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/expenses/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1638,6 +2705,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/expenses:
+   *   post:
+   *     summary: Create a new expense
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - description
+   *               - amount
+   *               - category
+   *               - date
+   *             properties:
+   *               description:
+   *                 type: string
+   *                 description: Expense description
+   *               amount:
+   *                 type: number
+   *                 description: Expense amount
+   *               category:
+   *                 type: string
+   *                 description: Expense category
+   *               date:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Expense date
+   *               currency:
+   *                 type: string
+   *                 description: Currency code (default BRL)
+   *               originalAmount:
+   *                 type: number
+   *                 description: Original amount before conversion
+   *               dueDate:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Due date for expense
+   *               scheduledDate:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Scheduled date for expense
+   *     responses:
+   *       201:
+   *         description: Expense created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Expense'
+   *       500:
+   *         description: Internal server error
+   */
   app.post("/api/expenses", async (req, res) => {
     try {
       console.log("Creating expense with data:", JSON.stringify(req.body, null, 2));
@@ -1700,6 +2824,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/expenses/{id}:
+   *   put:
+   *     summary: Update an expense
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Expense ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               description:
+   *                 type: string
+   *                 description: Expense description
+   *               amount:
+   *                 type: number
+   *                 description: Expense amount
+   *               category:
+   *                 type: string
+   *                 description: Expense category
+   *               date:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Expense date
+   *               currency:
+   *                 type: string
+   *                 description: Currency code
+   *               originalAmount:
+   *                 type: number
+   *                 description: Original amount before conversion
+   *               dueDate:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Due date for expense
+   *               scheduledDate:
+   *                 type: string
+   *                 format: date-time
+   *                 description: Scheduled date for expense
+   *     responses:
+   *       200:
+   *         description: Expense updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Expense'
+   *       404:
+   *         description: Expense not found
+   *       500:
+   *         description: Internal server error
+   */
   app.put("/api/expenses/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1763,6 +2948,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/expenses/{id}:
+   *   delete:
+   *     summary: Delete an expense
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Expense ID
+   *     responses:
+   *       200:
+   *         description: Expense deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
   app.delete("/api/expenses/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1775,6 +2988,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Fix existing expenses that have currency but no proper conversion
+  /**
+   * @swagger
+   * /api/expenses/fix-currency:
+   *   post:
+   *     summary: Fix currency conversion for existing expenses
+   *     tags: [Despesas]
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: Currency fixes applied successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                 updatedCount:
+   *                   type: integer
+   *       500:
+   *         description: Internal server error
+   */
   app.post("/api/expenses/fix-currency", async (req, res) => {
     try {
       console.log("Starting to fix currency for existing expenses...");
@@ -1891,6 +3127,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== PAYMENT METHODS ROUTES =====
 
+  /**
+   * @swagger
+   * /api/payment-methods:
+   *   get:
+   *     summary: Get all payment methods
+   *     tags: [Payment Methods]
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: List of payment methods
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   name:
+   *                     type: string
+   *                   type:
+   *                     type: string
+   *                   details:
+   *                     type: object
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/payment-methods", async (req, res) => {
     try {
       const methods = await dbStorage.getPaymentMethods();
@@ -1901,6 +3166,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/payment-methods/{id}:
+   *   get:
+   *     summary: Get payment method by ID
+   *     tags: [Payment Methods]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Payment method ID
+   *     responses:
+   *       200:
+   *         description: Payment method details
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 type:
+   *                   type: string
+   *                 details:
+   *                   type: object
+   *       404:
+   *         description: Payment method not found
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/payment-methods/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1917,6 +3218,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/payment-methods:
+   *   post:
+   *     summary: Create a new payment method
+   *     tags: [Payment Methods]
+   *     security:
+   *       - sessionToken: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *               - type
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Payment method name
+   *               type:
+   *                 type: string
+   *                 description: Payment method type
+   *               details:
+   *                 type: object
+   *                 description: Additional payment method details
+   *     responses:
+   *       201:
+   *         description: Payment method created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 type:
+   *                   type: string
+   *                 details:
+   *                   type: object
+   *       500:
+   *         description: Internal server error
+   */
   app.post("/api/payment-methods", async (req, res) => {
     try {
       const method = await dbStorage.createPaymentMethod(req.body);
@@ -1927,6 +3274,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/payment-methods/{id}:
+   *   put:
+   *     summary: Update a payment method
+   *     tags: [Payment Methods]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Payment method ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Payment method name
+   *               type:
+   *                 type: string
+   *                 description: Payment method type
+   *               details:
+   *                 type: object
+   *                 description: Additional payment method details
+   *     responses:
+   *       200:
+   *         description: Payment method updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 type:
+   *                   type: string
+   *                 details:
+   *                   type: object
+   *       500:
+   *         description: Internal server error
+   */
   app.put("/api/payment-methods/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1938,6 +3335,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/payment-methods/{id}:
+   *   delete:
+   *     summary: Delete a payment method
+   *     tags: [Payment Methods]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Payment method ID
+   *     responses:
+   *       200:
+   *         description: Payment method deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
   app.delete("/api/payment-methods/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -2014,6 +3439,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get dashboard stats
+  /**
+   * @swagger
+   * /api/dashboard/stats:
+   *   get:
+   *     tags:
+   *       - Dashboard
+   *     summary: Obter estatísticas do dashboard
+   *     description: Retorna estatísticas resumidas para o dashboard principal
+   *     responses:
+   *       200:
+   *         description: Estatísticas do dashboard
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 totalExpenses:
+   *                   type: number
+   *                 monthlyExpenses:
+   *                   type: number
+   *                 totalContainers:
+   *                   type: integer
+   *                 runningContainers:
+   *                   type: integer
+   *       404:
+   *         description: Estatísticas não encontradas
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
       const stats = await dbStorage.getDashboardStats(1); // Mock user ID
@@ -2026,6 +3480,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/system/stats:
+   *   get:
+   *     tags:
+   *       - System
+   *     summary: Get real-time system statistics
+   *     description: Returns current system resource usage including CPU, memory, disk, and uptime
+   *     responses:
+   *       200:
+   *         description: System statistics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/SystemStats'
+   *       500:
+   *         description: Failed to fetch system stats
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   // Get real-time system stats for monitoring alerts
   app.get("/api/system/stats", async (req, res) => {
     try {
@@ -2078,6 +3554,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notification routes
+  /**
+   * @swagger
+   * /api/notifications:
+   *   get:
+   *     tags:
+   *       - Notificações
+   *     summary: Listar notificações
+   *     description: Retorna as notificações do usuário
+   *     parameters:
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 5
+   *         description: Número máximo de notificações
+   *     responses:
+   *       200:
+   *         description: Lista de notificações
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   title:
+   *                     type: string
+   *                   message:
+   *                     type: string
+   *                   type:
+   *                     type: string
+   *                   isRead:
+   *                     type: boolean
+   *                   createdAt:
+   *                     type: string
+   *                     format: date-time
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/notifications", async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
@@ -2093,6 +3610,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notificationId = parseInt(req.params.id);
       const updated = await dbStorage.markNotificationAsRead(notificationId);
       res.json(updated);
+      // Broadcast notification update to all WebSocket clients
+      if (typeof wss !== 'undefined') {
+        wss.clients.forEach(client => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({ type: "notification_update" }));
+          }
+        });
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notification as read" });
     }
@@ -2103,6 +3628,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notificationId = parseInt(req.params.id);
       await dbStorage.deleteNotification(notificationId);
       res.json({ success: true });
+      // Broadcast notification update to all WebSocket clients
+      if (typeof wss !== 'undefined') {
+        wss.clients.forEach(client => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({ type: "notification_update" }));
+          }
+        });
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to delete notification" });
     }
@@ -2112,12 +3645,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await dbStorage.clearNotifications(1); // Mock user ID
       res.json({ success: true });
+      // Broadcast notification update to all WebSocket clients
+      if (typeof wss !== 'undefined') {
+        wss.clients.forEach(client => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({ type: "notification_update" }));
+          }
+        });
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to clear notifications" });
     }
   });
 
   // Email routes
+  /**
+   * @swagger
+   * /api/emails:
+   *   get:
+   *     summary: Get emails
+   *     tags: [Emails]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 5
+   *         description: Number of emails to return
+   *     responses:
+   *       200:
+   *         description: List of emails
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   subject:
+   *                     type: string
+   *                   body:
+   *                     type: string
+   *                   sender:
+   *                     type: string
+   *                   isRead:
+   *                     type: boolean
+   *                   createdAt:
+   *                     type: string
+   *                     format: date-time
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/emails", async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
@@ -2128,6 +3710,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/emails/{id}/read:
+   *   patch:
+   *     summary: Mark email as read
+   *     tags: [Emails]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Email ID
+   *     responses:
+   *       200:
+   *         description: Email marked as read successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 isRead:
+   *                   type: boolean
+   *       500:
+   *         description: Internal server error
+   */
   app.patch("/api/emails/:id/read", async (req, res) => {
     try {
       const emailId = parseInt(req.params.id);
@@ -2138,6 +3750,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/emails/{id}:
+   *   delete:
+   *     summary: Delete an email
+   *     tags: [Emails]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Email ID
+   *     responses:
+   *       200:
+   *         description: Email deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *       500:
+   *         description: Internal server error
+   */
   app.delete("/api/emails/:id", async (req, res) => {
     try {
       const emailId = parseInt(req.params.id);
@@ -2148,6 +3788,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/emails:
+   *   delete:
+   *     summary: Clear all emails
+   *     tags: [Emails]
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: All emails cleared successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *       500:
+   *         description: Internal server error
+   */
   app.delete("/api/emails", async (req, res) => {
     try {
       await dbStorage.clearEmails(1); // Mock user ID
@@ -2193,14 +3854,379 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid client ID" });
+      }
+      
       await dbStorage.deleteClient(id);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete client" });
+      console.error("Failed to delete client:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete client";
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Client Discount Plans routes
+  app.get("/api/client-discount-plans", async (req, res) => {
+    try {
+      const plans = await dbStorage.getClientDiscountPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Failed to get client discount plans:", error);
+      res.status(500).json({ message: "Failed to get client discount plans" });
+    }
+  });
+
+  app.get("/api/client-discount-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const plan = await dbStorage.getClientDiscountPlan(id);
+      if (!plan) {
+        return res.status(404).json({ message: "Client discount plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to get client discount plan:", error);
+      res.status(500).json({ message: "Failed to get client discount plan" });
+    }
+  });
+
+  app.post("/api/client-discount-plans", async (req, res) => {
+    try {
+      const plan = await dbStorage.createClientDiscountPlan(req.body);
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Failed to create client discount plan:", error);
+      res.status(500).json({ message: "Failed to create client discount plan" });
+    }
+  });
+
+  app.put("/api/client-discount-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const plan = await dbStorage.updateClientDiscountPlan(id, req.body);
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to update client discount plan:", error);
+      res.status(500).json({ message: "Failed to update client discount plan" });
+    }
+  });
+
+  app.delete("/api/client-discount-plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteClientDiscountPlan(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete client discount plan:", error);
+      res.status(500).json({ message: "Failed to delete client discount plan" });
+    }
+  });
+
+  // Client Discount Rules routes
+  app.get("/api/client-discount-rules", async (req, res) => {
+    try {
+      const { planId } = req.query;
+      const rules = planId ? 
+        await dbStorage.getClientDiscountRulesByPlan(parseInt(planId as string)) :
+        await dbStorage.getClientDiscountRules();
+      res.json(rules);
+    } catch (error) {
+      console.error("Failed to get client discount rules:", error);
+      res.status(500).json({ message: "Failed to get client discount rules" });
+    }
+  });
+
+  app.post("/api/client-discount-rules", async (req, res) => {
+    try {
+      const rule = await dbStorage.createClientDiscountRule(req.body);
+      res.status(201).json(rule);
+    } catch (error) {
+      console.error("Failed to create client discount rule:", error);
+      res.status(500).json({ message: "Failed to create client discount rule" });
+    }
+  });
+
+  app.put("/api/client-discount-rules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rule = await dbStorage.updateClientDiscountRule(id, req.body);
+      res.json(rule);
+    } catch (error) {
+      console.error("Failed to update client discount rule:", error);
+      res.status(500).json({ message: "Failed to update client discount rule" });
+    }
+  });
+
+  app.delete("/api/client-discount-rules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteClientDiscountRule(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete client discount rule:", error);
+      res.status(500).json({ message: "Failed to delete client discount rule" });
+    }
+  });
+
+  // Plans routes
+  app.get("/api/plans", async (req, res) => {
+    try {
+      const plans = await dbStorage.getPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Failed to get plans:", error);
+      res.status(500).json({ message: "Failed to get plans" });
+    }
+  });
+
+  app.get("/api/plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const plan = await dbStorage.getPlan(id);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to get plan:", error);
+      res.status(500).json({ message: "Failed to get plan" });
+    }
+  });
+
+  app.post("/api/plans", async (req, res) => {
+    try {
+      const plan = await dbStorage.createPlan(req.body);
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to create plan:", error);
+      res.status(500).json({ message: "Failed to create plan" });
+    }
+  });
+
+  app.put("/api/plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const plan = await dbStorage.updatePlan(id, req.body);
+      res.json(plan);
+    } catch (error) {
+      console.error("Failed to update plan:", error);
+      res.status(500).json({ message: "Failed to update plan" });
+    }
+  });
+
+  app.delete("/api/plans/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid plan ID" });
+      }
+      
+      await dbStorage.deletePlan(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete plan:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete plan";
+      res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  // Plan payment discounts routes
+  app.get("/api/plans/:planId/payment-discounts", async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const discounts = await dbStorage.getPlanPaymentDiscounts(planId);
+      res.json(discounts);
+    } catch (error) {
+      console.error("Failed to get plan payment discounts:", error);
+      res.status(500).json({ message: "Failed to get plan payment discounts" });
+    }
+  });
+
+  app.post("/api/plans/:planId/payment-discounts", async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const discount = await dbStorage.createPlanPaymentDiscount({
+        ...req.body,
+        planId
+      });
+      res.json(discount);
+    } catch (error) {
+      console.error("Failed to create plan payment discount:", error);
+      res.status(500).json({ message: "Failed to create plan payment discount" });
+    }
+  });
+
+  // Plan subscription discounts routes
+  app.get("/api/plans/:planId/subscription-discounts", async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const discounts = await dbStorage.getPlanSubscriptionDiscounts(planId);
+      res.json(discounts);
+    } catch (error) {
+      console.error("Failed to get plan subscription discounts:", error);
+      res.status(500).json({ message: "Failed to get plan subscription discounts" });
+    }
+  });
+
+  app.post("/api/plans/:planId/subscription-discounts", async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const discount = await dbStorage.createPlanSubscriptionDiscount({
+        ...req.body,
+        planId
+      });
+      res.json(discount);
+    } catch (error) {
+      console.error("Failed to create plan subscription discount:", error);
+      res.status(500).json({ message: "Failed to create plan subscription discount" });
+    }
+  });
+
+  // Plan Resources routes
+  app.get("/api/plan-resources", async (req, res) => {
+    try {
+      const resources = await dbStorage.getPlanResources();
+      res.json(resources);
+    } catch (error) {
+      console.error("Failed to get plan resources:", error);
+      res.status(500).json({ message: "Failed to get plan resources" });
+    }
+  });
+
+  app.get("/api/plan-resources/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const resource = await dbStorage.getPlanResource(id);
+      if (!resource) {
+        return res.status(404).json({ message: "Plan resource not found" });
+      }
+      res.json(resource);
+    } catch (error) {
+      console.error("Failed to get plan resource:", error);
+      res.status(500).json({ message: "Failed to get plan resource" });
+    }
+  });
+
+  app.post("/api/plan-resources", async (req, res) => {
+    try {
+      const resource = await dbStorage.createPlanResource(req.body);
+      res.json(resource);
+    } catch (error) {
+      console.error("Failed to create plan resource:", error);
+      res.status(500).json({ message: "Failed to create plan resource" });
+    }
+  });
+
+  app.put("/api/plan-resources/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const resource = await dbStorage.updatePlanResource(id, req.body);
+      res.json(resource);
+    } catch (error) {
+      console.error("Failed to update plan resource:", error);
+      res.status(500).json({ message: "Failed to update plan resource" });
+    }
+  });
+
+  app.delete("/api/plan-resources/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deletePlanResource(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete plan resource:", error);
+      res.status(500).json({ message: "Failed to delete plan resource" });
+    }
+  });
+
+  // Plan Resource Assignments routes
+  app.get("/api/plans/:planId/resources", async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const assignments = await dbStorage.getPlanResourceAssignments(planId);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Failed to get plan resource assignments:", error);
+      res.status(500).json({ message: "Failed to get plan resource assignments" });
+    }
+  });
+
+  app.post("/api/plans/:planId/resources", async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const assignment = await dbStorage.createPlanResourceAssignment({
+        ...req.body,
+        planId
+      });
+      res.json(assignment);
+    } catch (error) {
+      console.error("Failed to create plan resource assignment:", error);
+      res.status(500).json({ message: "Failed to create plan resource assignment" });
+    }
+  });
+
+  app.get("/api/plan-resource-assignments", async (req, res) => {
+    try {
+      const assignments = await dbStorage.getAllPlanResourceAssignments();
+      res.json(assignments);
+    } catch (error) {
+      console.error("Failed to get plan resource assignments:", error);
+      res.status(500).json({ message: "Failed to get plan resource assignments" });
+    }
+  });
+
+  app.put("/api/plan-resource-assignments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const assignment = await dbStorage.updatePlanResourceAssignment(id, req.body);
+      res.json(assignment);
+    } catch (error) {
+      console.error("Failed to update plan resource assignment:", error);
+      res.status(500).json({ message: "Failed to update plan resource assignment" });
+    }
+  });
+
+  app.delete("/api/plan-resource-assignments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deletePlanResourceAssignment(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete plan resource assignment:", error);
+      res.status(500).json({ message: "Failed to delete plan resource assignment" });
     }
   });
 
   // Category routes
+  /**
+   * @swagger
+   * /api/categories:
+   *   get:
+   *     summary: Get all categories
+   *     tags: [Categorias]
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: List of categories
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   id:
+   *                     type: integer
+   *                   name:
+   *                     type: string
+   *                   description:
+   *                     type: string
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/categories", async (req, res) => {
     try {
       const categories = await dbStorage.getCategories();
@@ -2210,6 +4236,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/categories/{id}:
+   *   get:
+   *     summary: Get category by ID
+   *     tags: [Categorias]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Category ID
+   *     responses:
+   *       200:
+   *         description: Category details
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 description:
+   *                   type: string
+   *       404:
+   *         description: Category not found
+   *       500:
+   *         description: Internal server error
+   */
   app.get("/api/categories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -2223,6 +4283,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/categories:
+   *   post:
+   *     summary: Create a new category
+   *     tags: [Categorias]
+   *     security:
+   *       - sessionToken: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Category name
+   *               description:
+   *                 type: string
+   *                 description: Category description
+   *     responses:
+   *       201:
+   *         description: Category created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 description:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
   app.post("/api/categories", async (req, res) => {
     try {
       const category = await dbStorage.createCategory(req.body);
@@ -2232,6 +4332,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/categories/{id}:
+   *   put:
+   *     summary: Update a category
+   *     tags: [Categorias]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Category ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Category name
+   *               description:
+   *                 type: string
+   *                 description: Category description
+   *     responses:
+   *       200:
+   *         description: Category updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 name:
+   *                   type: string
+   *                 description:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
   app.put("/api/categories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -2242,6 +4387,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/categories/{id}:
+   *   delete:
+   *     summary: Delete a category
+   *     tags: [Categorias]
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Category ID
+   *     responses:
+   *       200:
+   *         description: Category deleted successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *       500:
+   *         description: Internal server error
+   */
   app.delete("/api/categories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -2511,6 +4684,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Nginx Hosts routes
+  /**
+   * @swagger
+   * /api/nginx/hosts:
+   *   get:
+   *     tags:
+   *       - Nginx
+   *     summary: Listar hosts nginx
+   *     description: Retorna a lista de todos os hosts configurados no nginx
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: Lista de hosts nginx
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *                 properties:
+   *                   domain:
+   *                     type: string
+   *                   configFile:
+   *                     type: string
+   *                   sslEnabled:
+   *                     type: boolean
+   *                   proxyPass:
+   *                     type: string
+   *       404:
+   *         description: Diretório de hosts não encontrado
+   *       500:
+   *         description: Erro interno do servidor
+   */
   app.get("/api/nginx/hosts", authenticateToken, async (req: any, res: any) => {
     try {
       const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
@@ -2573,6 +4779,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check host status endpoint  
+  app.get("/api/nginx/hosts/status", authenticateToken, async (req: any, res: any) => {
+    try {
+      const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
+
+      if (!fs.existsSync(hostsDir)) {
+        return res.status(404).json({ message: "NGINX hosts directory not found" });
+      }
+
+      const files = await fs.promises.readdir(hostsDir);
+      const hostFiles = files.filter(f => f.endsWith(".conf"));
+
+      const hostsStatus = [];
+
+      // Helper function to check if a port is listening
+      const checkPortStatus = (port: number): Promise<boolean> => {
+        return new Promise((resolve) => {
+          const net = require('net');
+          const socket = new net.Socket();
+
+          const timeout = setTimeout(() => {
+            socket.destroy();
+            resolve(false);
+          }, 2000); // 2 second timeout
+
+          socket.connect(port, 'localhost', () => {
+            clearTimeout(timeout);
+            socket.destroy();
+            resolve(true);
+          });
+
+          socket.on('error', () => {
+            clearTimeout(timeout);
+            resolve(false);
+          });
+        });
+      };
+
+      // Check status for each host
+      const statusPromises = hostFiles.map(async (file) => {
+        const filePath = path.join(hostsDir, file);
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          const domain = file.replace(".conf", "");
+
+          // Extract proxy_pass port from nginx config
+          const proxyPassMatch = content.match(/proxy_pass\s+http:\/\/[^:]+:(\d+)/);
+          const port = proxyPassMatch ? parseInt(proxyPassMatch[1]) : null;
+
+          // Check if the service is running on the port
+          const isOnline = port ? await checkPortStatus(port) : false;
+
+          return {
+            id: domain,
+            filename: file,
+            port: port,
+            status: isOnline ? 'online' : 'offline',
+            lastChecked: new Date().toISOString()
+          };
+        } catch (error) {
+          return {
+            id: file.replace('.conf', ''),
+            filename: file,
+            port: null,
+            status: 'error',
+            error: 'Failed to read configuration',
+            lastChecked: new Date().toISOString()
+          };
+        }
+      });
+
+      const results = await Promise.all(statusPromises);
+      const activeHosts = results.filter(host => host.status === 'online').length;
+
+      res.json({
+        hosts: results,
+        activeHosts: activeHosts,
+        totalHosts: results.length,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error("Error checking host status:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to check host status", error: errMsg });
+    }
+  });
+
   app.get("/api/nginx/hosts/:id", authenticateToken, async (req: any, res: any) => {
     try {
       const { id } = req.params;
@@ -2632,85 +4926,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check host status endpoint
-  app.get("/api/nginx/hosts/status", authenticateToken, async (req: any, res: any) => {
-    try {
-      const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
-      if (!fs.existsSync(hostsDir)) {
-        return res.status(404).json({ message: "NGINX hosts directory not found" });
-      }
-      
-      const files = await fs.promises.readdir(hostsDir);
-      const hostFiles = files.filter(f => f.endsWith(".conf"));
-      const hostsStatus = [];
-      
-      // Helper function to check if a port is listening
-      const checkPortStatus = (port: number): Promise<boolean> => {
-        return new Promise((resolve) => {
-          const net = require('net');
-          const socket = new net.Socket();
-          
-          const timeout = setTimeout(() => {
-            socket.destroy();
-            resolve(false);
-          }, 2000); // 2 second timeout
-          
-          socket.connect(port, 'localhost', () => {
-            clearTimeout(timeout);
-            socket.destroy();
-            resolve(true);
-          });
-          
-          socket.on('error', () => {
-            clearTimeout(timeout);
-            resolve(false);
-          });
-        });
-      };
-      
-      // Check status for each host
-      const statusPromises = hostFiles.map(async (file) => {
-        const filePath = path.join(hostsDir, file);
-        try {
-          const content = await fs.promises.readFile(filePath, "utf8");
-          const domain = file.replace(".conf", "");
-          
-          // Extract proxy_pass port from nginx config
-          const proxyPassMatch = content.match(/proxy_pass\s+http:\/\/[^:]+:(\d+)/);
-          const port = proxyPassMatch ? parseInt(proxyPassMatch[1]) : null;
-          
-          // Check if the service is running on the port
-          const isOnline = port ? await checkPortStatus(port) : false;
-          
-          return {
-            id: domain,
-            filename: file,
-            port: port,
-            status: isOnline ? 'online' : 'offline',
-            lastChecked: new Date().toISOString()
-          };
-        } catch (error) {
-          return {
-            id: file.replace('.conf', ''),
-            filename: file,
-            port: null,
-            status: 'error',
-            error: 'Failed to read configuration',
-            lastChecked: new Date().toISOString()
-          };
-        }
-      });
-      
-      const results = await Promise.all(statusPromises);
-      res.json(results);
-      
-    } catch (error) {
-      console.error("Error checking host status:", error);
-      const errMsg = (error instanceof Error) ? error.message : String(error);
-      res.status(500).json({ message: "Failed to check host status", error: errMsg });
-    }
-  });
-
   // Cloudflare credentials endpoint
   app.get("/api/cloudflare/credentials", authenticateToken, async (req: any, res: any) => {
     try {
@@ -2734,6 +4949,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get Cloudflare credentials", error: errMsg });
     }
   });
+
+  // Test Cloudflare connection endpoint
+  /**
+   * @swagger
+   * /api/cloudflare/test:
+   *   post:
+   *     tags:
+   *       - Cloudflare
+   *     summary: Testar conexão com Cloudflare
+   *     description: Testa a conectividade e autenticação com a API do Cloudflare
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: Teste realizado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *       500:
+   *         description: Erro no teste
+   */
+  app.post("/api/cloudflare/test", authenticateToken, async (req: any, res: any) => {
+    try {
+      const success = await cloudflareService.testConnection();
+      if (success) {
+        res.json({
+          success: true,
+          message: "Conexão com Cloudflare estabelecida com sucesso!"
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: "Falha na conexão com Cloudflare. Verifique as credenciais."
+        });
+      }
+    } catch (error) {
+      console.error("Error testing Cloudflare connection:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({
+        success: false,
+        message: `Erro ao testar conexão: ${errMsg}`
+      });
+    }
+  });
+
 
   app.post("/api/nginx/hosts", authenticateToken, async (req, res) => {
     try {
@@ -2837,7 +5103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Script execution error:', error);
         res.status(500).json({
           message: "Erro ao executar script nginx_proxy.sh",
-          error: error.message
+          error: (error as Error).message
         });
       });
 
@@ -3106,11 +5372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           // Parse the expiration date
-          const notAfterMatch = certInfo.match(/notAfter=(.+)/);
+          const notAfterMatch = (certInfo as string).match(/notAfter=(.+)/);
           if (notAfterMatch) {
             expirationDate = new Date(notAfterMatch[1]);
             const now = new Date();
-            daysUntilExpiry = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
+            daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           }
         } catch (error) {
           console.warn('Could not read certificate details:', error);
@@ -3139,13 +5405,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expirationDate: expirationDate ? expirationDate.toISOString() : null,
         daysUntilExpiry,
         configFile,
-        valid: issued && daysUntilExpiry > 0,
+        valid: issued && (daysUntilExpiry !== null && daysUntilExpiry > 0),
         searchedFiles: possibleFiles,
         foundFile: configFile
       });
     } catch (error) {
       console.error("Error in debug SSL route:", error);
-      res.status(500).json({ message: "Failed to get SSL info", error: error.message });
+      res.status(500).json({ message: "Failed to get SSL info", error: (error as Error).message });
     }
   });
 
@@ -3219,11 +5485,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           // Parse the expiration date
-          const notAfterMatch = certInfo.match(/notAfter=(.+)/);
+          const notAfterMatch = (certInfo as string).match(/notAfter=(.+)/);
           if (notAfterMatch) {
             expirationDate = new Date(notAfterMatch[1]);
             const now = new Date();
-            daysUntilExpiry = Math.ceil((expirationDate - now) / (1000 * 60 * 60 * 24));
+            daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           }
         } catch (error) {
           console.warn('Could not read certificate details:', error);
@@ -3251,7 +5517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expirationDate: expirationDate ? expirationDate.toISOString() : null,
         daysUntilExpiry,
         configFile,
-        valid: issued && daysUntilExpiry > 0
+        valid: issued && (daysUntilExpiry !== null && daysUntilExpiry > 0)
       });
     } catch (error) {
       console.error("Error getting SSL info:", error);
@@ -3461,6 +5727,47 @@ server {
     }
   });
 
+  /**
+   * @swagger
+   * /api/dns/zone:
+   *   get:
+   *     tags:
+   *       - DNS
+   *     summary: Get DNS zone information
+   *     description: Returns information about the configured Cloudflare DNS zone
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: DNS zone information
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: string
+   *                   description: Zone ID
+   *                 name:
+   *                   type: string
+   *                   description: Zone name (domain)
+   *                 status:
+   *                   type: string
+   *                   description: Zone status
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       500:
+   *         description: Failed to get DNS zone
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   // DNS routes
   app.get("/api/dns/zone", authenticateToken, async (req, res) => {
     try {
@@ -3472,12 +5779,73 @@ server {
     }
   });
 
+  /**
+   * @swagger
+   * /api/dns/records:
+   *   get:
+   *     tags:
+   *       - DNS
+   *     summary: List DNS records
+   *     description: Returns a list of DNS records with optional filtering and pagination
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: type
+   *         schema:
+   *           type: string
+   *           enum: [A, AAAA, CNAME, MX, TXT, NS, SRV]
+   *         description: Filter by record type
+   *       - in: query
+   *         name: name
+   *         schema:
+   *           type: string
+   *         description: Filter by record name
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *         description: Page number for pagination
+   *       - in: query
+   *         name: per_page
+   *         schema:
+   *           type: integer
+   *           default: 20
+   *           maximum: 100
+   *         description: Records per page
+   *     responses:
+   *       200:
+   *         description: List of DNS records
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/DNSRecord'
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       500:
+   *         description: Failed to get DNS records
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get("/api/dns/records", authenticateToken, async (req, res) => {
     try {
-      const { type, name } = req.query;
+      const { type, name, page = 1, per_page = 20 } = req.query;
+      // Cloudflare API supports pagination via 'page' and 'per_page' params
       const records = await cloudflareService.listDNSRecords(
         type as string | undefined,
-        name as string | undefined
+        name as string | undefined,
+        Number(page),
+        Number(per_page)
       );
       res.json(records);
     } catch (error) {
@@ -3527,6 +5895,41 @@ server {
   app.delete("/api/dns/records/:id", authenticateToken, async (req, res) => {
     try {
       const recordId = req.params.id;
+      // Buscar registro DNS
+      const dnsRecord = await cloudflareService.getDNSRecord(recordId);
+      if (!dnsRecord) {
+        return res.status(404).json({ message: "Registro DNS não encontrado" });
+      }
+
+      // Buscar hosts Nginx
+      const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
+      let isInUse = false;
+      if (fs.existsSync(hostsDir)) {
+        const files = await fs.promises.readdir(hostsDir);
+        for (const file of files) {
+          if (file.endsWith(".conf")) {
+            const filePath = path.join(hostsDir, file);
+            try {
+              const content = await fs.promises.readFile(filePath, "utf8");
+              // Verifica se o server_name ou subdomínio do host usa o registro DNS
+              if (
+                content.includes(dnsRecord.name) ||
+                content.includes(`${dnsRecord.name}.${process.env.DOMAIN || 'easydev.com.br'}`)
+              ) {
+                isInUse = true;
+                break;
+              }
+            } catch { }
+          }
+        }
+      }
+
+      if (isInUse) {
+        return res.status(409).json({
+          message: `Não é possível deletar o registro DNS '${dnsRecord.name}' pois está em uso por um host Nginx.`
+        });
+      }
+
       await cloudflareService.deleteDNSRecord(recordId);
       res.json({ success: true });
     } catch (error) {
@@ -3949,13 +6352,15 @@ server {
       const freeMem = os.freemem();
       const usedMem = totalMem - freeMem;
 
-      // Get accurate CPU usage, disk usage, Proton Drive usage, Python version and updates
-      const [cpuUsage, diskUsage, protonDriveUsage, pythonInfo, updates] = await Promise.all([
+      // Get accurate CPU usage, disk usage, Proton Drive usage, Python version, updates, hardware info
+      const [cpuUsage, diskUsage, protonDriveUsage, pythonInfo, updates, totalRAM, processor] = await Promise.all([
         getCpuUsage(),
         getDiskUsage(),
         getProtonDriveUsage(),
         getPythonVersion(),
-        checkForUpdates()
+        checkForUpdates(),
+        getTotalRAM(),
+        getProcessorInfo()
       ]);
 
       const systemStatus = {
@@ -3969,6 +6374,7 @@ server {
           used: usedMem,
           free: freeMem,
           usagePercent: Math.round((usedMem / totalMem) * 100),
+          totalRAM: totalRAM, // Novo campo - informação via lshw
         },
         disk: {
           total: diskUsage.total,
@@ -3988,6 +6394,7 @@ server {
         nodeVersion: process.version,
         pythonVersion: pythonInfo.version,
         pythonAvailable: pythonInfo.available,
+        processor: processor, // Novo campo - informação do processador via lshw
         updates: {
           node: updates.node,
           python: updates.python
@@ -4116,6 +6523,9 @@ server {
       const usedMem = memInfo - freeMemInfo;
       const currentRam = ramHistory[ramHistory.length - 1] || 0;
 
+      // Get hardware RAM info via lshw
+      const totalRAM = await getTotalRAM();
+
       // Get min and max values for the chart period
       const minUsage = ramHistory.length > 0 ? Math.min(...ramHistory) : 0;
       const maxUsage = ramHistory.length > 0 ? Math.max(...ramHistory) : 0;
@@ -4137,6 +6547,7 @@ server {
         current: currentRam,
         details: {
           total: formatBytes(memInfo),
+          totalRAM: totalRAM, // ✅ NOVO - Campo para exibição via lshw
           used: formatBytes(usedMem),
           free: formatBytes(freeMemInfo),
           totalBytes: memInfo,
@@ -4202,7 +6613,7 @@ server {
 
   // Get mailserver restart status (must be before /:id route)
   app.get("/api/email-accounts/restart-status", async (req, res) => {
-    res.json({ 
+    res.json({
       isRestarting: isRestartingMailserver,
       message: isRestartingMailserver ? "Mailserver is restarting..." : "Mailserver is ready"
     });
@@ -4225,16 +6636,16 @@ server {
     try {
       const account = await dbStorage.createEmailAccount(req.body);
       await generateMailAccountsFile();
-      
+
       // Start mailserver restart in background
       restartMailserverContainer();
-      
+
       broadcastUpdate("email_account_created", account);
-      res.status(201).json({ 
-        ...account, 
-        restartStatus: { 
-          isRestarting: true, 
-          message: "Email account created. Mailserver is restarting..." 
+      res.status(201).json({
+        ...account,
+        restartStatus: {
+          isRestarting: true,
+          message: "Email account created. Mailserver is restarting..."
         }
       });
     } catch (error) {
@@ -4247,16 +6658,16 @@ server {
       const id = parseInt(req.params.id);
       const account = await dbStorage.updateEmailAccount(id, req.body);
       await generateMailAccountsFile();
-      
+
       // Start mailserver restart in background
       restartMailserverContainer();
-      
+
       broadcastUpdate("email_account_updated", account);
-      res.json({ 
-        ...account, 
-        restartStatus: { 
-          isRestarting: true, 
-          message: "Email account updated. Mailserver is restarting..." 
+      res.json({
+        ...account,
+        restartStatus: {
+          isRestarting: true,
+          message: "Email account updated. Mailserver is restarting..."
         }
       });
     } catch (error) {
@@ -4269,16 +6680,16 @@ server {
       const id = parseInt(req.params.id);
       await dbStorage.deleteEmailAccount(id);
       await generateMailAccountsFile();
-      
+
       // Start mailserver restart in background
       restartMailserverContainer();
-      
+
       broadcastUpdate("email_account_deleted", { id });
-      res.json({ 
+      res.json({
         success: true,
-        restartStatus: { 
-          isRestarting: true, 
-          message: "Email account deleted. Mailserver is restarting..." 
+        restartStatus: {
+          isRestarting: true,
+          message: "Email account deleted. Mailserver is restarting..."
         }
       });
     } catch (error) {
@@ -4379,6 +6790,41 @@ server {
     }
   });
 
+  // Container Logos routes
+  app.get("/api/docker/container-logos", authenticateToken, async (req, res) => {
+    try {
+      const { containerLogos } = await import("../shared/schema");
+      const logos = await db.select().from(containerLogos);
+
+      // Convert to object format for easy frontend consumption
+      const logosMap = logos.reduce((acc, logo) => {
+        acc[logo.containerId] = logo.logoUrl;
+        return acc;
+      }, {} as Record<string, string>);
+
+      res.json(logosMap);
+    } catch (error) {
+      console.error("Error fetching container logos:", error);
+      res.status(500).json({ error: "Failed to fetch container logos" });
+    }
+  });
+
+  app.delete("/api/docker/container-logos/:containerId", authenticateToken, async (req, res) => {
+    try {
+      const { containerId } = req.params;
+      const { containerLogos } = await import("../shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const result = await db.delete(containerLogos)
+        .where(eq(containerLogos.containerId, containerId));
+
+      res.json({ success: true, deletedRows: result.rowCount });
+    } catch (error) {
+      console.error("Error deleting container logo:", error);
+      res.status(500).json({ error: "Failed to delete container logo" });
+    }
+  });
+
   // Docker Containers routes (removed, replaced by real Docker API routes)
   // app.get("/api/docker-containers", authenticateToken, async (req, res) => { ... });
   // app.get("/api/docker-containers/:id", authenticateToken, async (req, res) => { ... });
@@ -4400,12 +6846,14 @@ server {
 
       res.json({
         available: true,
+        status: 'running',  // Adicionar campo status esperado pelo frontend
         version: version || 'unknown',
         method: 'child_process'
       });
     } catch (error) {
       res.json({
         available: false,
+        status: 'stopped',  // Adicionar campo status esperado pelo frontend
         error: error instanceof Error ? error.message : 'Unknown error',
         method: 'child_process'
       });
@@ -4414,6 +6862,39 @@ server {
 
   // Rotas da API Docker real
 
+  /**
+   * @swagger
+   * /api/docker/containers:
+   *   get:
+   *     tags:
+   *       - Docker
+   *     summary: List Docker containers
+   *     description: Returns a list of all Docker containers with their current status
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     responses:
+   *       200:
+   *         description: List of Docker containers
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/DockerContainer'
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       500:
+   *         description: Failed to list containers
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
     try {
       const containers = await listDockerContainers();
@@ -4427,6 +6908,50 @@ server {
     }
   });
 
+  /**
+   * @swagger
+   * /api/docker/containers/{id}/stats:
+   *   get:
+   *     tags:
+   *       - Docker
+   *     summary: Get container statistics
+   *     description: Returns real-time statistics for a specific Docker container
+   *     security:
+   *       - sessionToken: []
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         description: Container ID
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Container statistics
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ContainerStats'
+   *       401:
+   *         description: Unauthorized
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       404:
+   *         description: Container not found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   *       500:
+   *         description: Failed to get container stats
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
   // Container statistics endpoint
   app.get("/api/docker/containers/:id/stats", authenticateToken, async (req, res) => {
     try {
@@ -4650,10 +7175,30 @@ server {
         } else if (data.type === "auth_status_request") {
           // Handle auth status request via WebSocket
           try {
-            const clientInfo = clients.get(ws);
-            const sessionToken = clientInfo?.sessionToken;
+            // Try to get fresh session token from cookies first
+            let sessionToken: string | undefined;
+            const cookies = req.headers.cookie;
+            if (cookies) {
+              const cookieMatch = cookies.match(/sessionToken=([^;]+)/);
+              sessionToken = cookieMatch ? cookieMatch[1] : undefined;
+            }
+            
+            // Fallback to stored client info if no cookie
+            if (!sessionToken) {
+              const clientInfo = clients.get(ws);
+              sessionToken = clientInfo?.sessionToken;
+            }
+            
+            // Update client info with current session token
+            if (sessionToken) {
+              const currentClientInfo = clients.get(ws) || {};
+              clients.set(ws, { ...currentClientInfo, sessionToken });
+            }
+
+            console.log(`[WebSocket Auth Check] Fresh session token from cookies: ${!!sessionToken}`);
 
             if (!sessionToken) {
+              console.log(`[WebSocket Auth Check] No session token found - sending auth_status_response with valid=false`);
               const response = {
                 type: "auth_status_response",
                 data: {
@@ -4669,6 +7214,7 @@ server {
             // Validate session using existing auth logic
             const ipAddress =
               req.ip || req.connection?.remoteAddress || "websocket";
+            console.log(`[WebSocket Auth Check] Validating session for token: ${sessionToken.substring(0, 10)}...`);
             const session = await dbStorage.validateSession(
               sessionToken,
               ipAddress,
@@ -4677,6 +7223,7 @@ server {
             if (session) {
               // Update client info with user data
               clients.set(ws, { sessionToken, user: session.user });
+              console.log(`[WebSocket Auth Check] Session valid for user: ${session.user.username}`);
 
               const response = {
                 type: "auth_status_response",
@@ -4689,6 +7236,7 @@ server {
               };
               ws.send(JSON.stringify(response));
             } else {
+              console.log(`[WebSocket Auth Check] Session validation failed - sending session_expired`);
               const response = {
                 type: "session_expired",
                 data: {
@@ -4783,12 +7331,18 @@ server {
   app.delete("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid client ID" });
+      }
+      
       await dbStorage.deleteClient(id);
       broadcastUpdate("client_deleted", { id });
       broadcastDashboardUpdate(); // Update dashboard counters
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete client" });
+      console.error("Failed to delete client:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete client";
+      res.status(500).json({ message: errorMessage });
     }
   });
 
@@ -5693,11 +8247,743 @@ server {
     }
   });
 
+  // Scheduled Tasks routes
+  app.get("/api/scheduled-tasks", authenticateToken, async (req, res) => {
+    try {
+      const tasks = await dbStorage.getScheduledTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error getting scheduled tasks:", error);
+      res.status(500).json({ message: "Failed to get scheduled tasks" });
+    }
+  });
+
+  app.get("/api/scheduled-tasks/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const task = await dbStorage.getScheduledTask(id);
+      if (!task) {
+        return res.status(404).json({ message: "Scheduled task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Error getting scheduled task:", error);
+      res.status(500).json({ message: "Failed to get scheduled task" });
+    }
+  });
+
+  app.post("/api/scheduled-tasks", authenticateToken, async (req, res) => {
+    try {
+      const taskData = {
+        ...req.body,
+        type: req.body.type || 'user',
+        status: req.body.status || 'active'
+      };
+      const task = await dbStorage.createScheduledTask(taskData);
+
+      // Schedule the task in the internal scheduler
+      if (taskScheduler && task.status === 'active') {
+        taskScheduler.scheduleTask(task);
+      }
+
+      broadcastUpdate("scheduled_task_created", task);
+      res.status(201).json(task);
+    } catch (error) {
+      console.error("Error creating scheduled task:", error);
+      res.status(500).json({ message: "Failed to create scheduled task" });
+    }
+  });
+
+  app.put("/api/scheduled-tasks/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const task = await dbStorage.updateScheduledTask(id, req.body);
+
+      // Update task in the internal scheduler
+      if (taskScheduler) {
+        taskScheduler.updateTask(task);
+      }
+
+      broadcastUpdate("scheduled_task_updated", task);
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating scheduled task:", error);
+      res.status(500).json({ message: "Failed to update scheduled task" });
+    }
+  });
+
+  app.delete("/api/scheduled-tasks/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteScheduledTask(id);
+
+      // Remove task from the internal scheduler
+      if (taskScheduler) {
+        taskScheduler.removeTask(id.toString());
+      }
+
+      broadcastUpdate("scheduled_task_deleted", { id });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting scheduled task:", error);
+      res.status(500).json({ message: "Failed to delete scheduled task" });
+    }
+  });
+
+  app.patch("/api/scheduled-tasks/:id/toggle", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const task = await dbStorage.getScheduledTask(id);
+
+      if (!task) {
+        return res.status(404).json({ message: "Scheduled task not found" });
+      }
+
+      const newStatus = task.status === 'active' ? 'inactive' : 'active';
+      const updatedTask = await dbStorage.updateScheduledTask(id, { status: newStatus });
+
+      // Update task in the internal scheduler
+      if (taskScheduler) {
+        if (newStatus === 'active') {
+          taskScheduler.scheduleTask(updatedTask);
+        } else {
+          taskScheduler.removeTask(id.toString());
+        }
+      }
+
+      broadcastUpdate("scheduled_task_updated", updatedTask);
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error toggling scheduled task:", error);
+      res.status(500).json({ message: "Failed to toggle scheduled task" });
+    }
+  });
+
+  app.post("/api/scheduled-tasks/:id/run", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const task = await dbStorage.getScheduledTask(id);
+
+      if (!task) {
+        return res.status(404).json({ message: "Scheduled task not found" });
+      }
+
+      // Execute task immediately
+      if (taskScheduler) {
+        const result = await taskScheduler.executeTask(task);
+        res.json({
+          message: "Task executed successfully",
+          result,
+          executedAt: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({ message: "Task scheduler not available" });
+      }
+    } catch (error) {
+      console.error("Error running scheduled task:", error);
+      res.status(500).json({ message: "Failed to run scheduled task" });
+    }
+  });
+
+  // Alias for frontend compatibility
+  app.post("/api/scheduled-tasks/:id/execute", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Executing task with ID: ${id}`);
+
+      const task = await dbStorage.getScheduledTask(id);
+
+      if (!task) {
+        console.log(`Task ${id} not found`);
+        return res.status(404).json({ message: "Scheduled task not found" });
+      }
+
+      console.log(`Found task: ${task.name}`);
+
+      // Execute task immediately
+      if (taskScheduler) {
+        console.log(`Executing task through scheduler...`);
+        const result = await taskScheduler.executeTask(task);
+        console.log(`Task execution result:`, result);
+
+        res.json({
+          success: result.success,
+          output: result.output || 'No output',
+          error: result.error || null,
+          executedAt: result.executedAt,
+          duration: result.duration || 0,
+          nextRun: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Default next run in 24h
+        });
+      } else {
+        console.log(`Task scheduler not available`);
+        res.status(500).json({ message: "Task scheduler not available" });
+      }
+    } catch (error) {
+      console.error("Error executing scheduled task:", error);
+      res.status(500).json({ message: "Failed to execute scheduled task", error: (error as Error).message });
+    }
+  });
+
+  // Activity Logs Routes
+  app.get("/api/logs", authenticateToken, async (req, res) => {
+    try {
+      const filters = {
+        page: parseInt(req.query.page as string) || 1,
+        pageSize: parseInt(req.query.pageSize as string) || 25,
+        level: req.query.level as string,
+        category: req.query.category as string,
+        search: req.query.search as string,
+        dateFilter: req.query.dateFilter as string,
+      };
+
+      const result = await ActivityLogger.getLogs(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting logs:", error);
+      res.status(500).json({ error: "Failed to get logs" });
+    }
+  });
+
+  app.get("/api/logs/categories", authenticateToken, async (req, res) => {
+    try {
+      const categories = await ActivityLogger.getCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error getting log categories:", error);
+      res.status(500).json({ error: "Failed to get categories" });
+    }
+  });
+
+  app.post("/api/logs/clear", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const filters = req.body;
+
+      // Log the clear action
+      await ActivityLogger.log({
+        level: 'info',
+        category: 'system',
+        message: `Logs cleared by ${user.email}`,
+        details: { filters },
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        action: 'CLEAR',
+        resource: 'activity_logs',
+      });
+
+      const result = await ActivityLogger.clearLogs(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Error clearing logs:", error);
+      res.status(500).json({ error: "Failed to clear logs" });
+    }
+  });
+
+  app.post("/api/logs/export", authenticateToken, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const filters = req.body;
+
+      const result = await ActivityLogger.getLogs({
+        ...filters,
+        pageSize: 10000, // Export large batch
+      });
+
+      // Log the export action
+      await ActivityLogger.log({
+        level: 'info',
+        category: 'system',
+        message: `Logs exported by ${user.email}`,
+        details: { filters, exportedCount: result.logs.length },
+        userId: user.id,
+        userEmail: user.email,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        action: 'EXPORT',
+        resource: 'activity_logs',
+      });
+
+      // Create CSV
+      const csv = [
+        'Timestamp,Level,Category,Message,User,IP,Action,Resource',
+        ...result.logs.map((log: any) => [
+          log.timestamp.toISOString(),
+          log.level,
+          log.category,
+          `"${log.message.replace(/"/g, '""')}"`,
+          log.userEmail || '',
+          log.ipAddress || '',
+          log.action || '',
+          log.resource || '',
+        ].join(','))
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=activity-logs.csv');
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting logs:", error);
+      res.status(500).json({ error: "Failed to export logs" });
+    }
+  });
+
   // Store broadcast function globally for access from other modules
   (global as any).broadcastUpdate = broadcastUpdate;
 
   // Generate initial mail_accounts.cf file
   generateMailAccountsFile();
+
+  // Evolution API Routes
+  /**
+   * @swagger
+   * /api/evolution/instances:
+   *   get:
+   *     tags:
+   *       - Evolution API
+   *     summary: Listar instâncias Evolution
+   *     description: Retorna a lista de todas as instâncias Evolution API
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: Lista de instâncias Evolution
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   */
+  app.get("/api/evolution/instances", authenticateToken, async (req: any, res: any) => {
+    try {
+      const result = await evolutionService.getAllInstances();
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting Evolution instances:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}:
+   *   get:
+   *     tags:
+   *       - Evolution API
+   *     summary: Obter instância específica
+   *     description: Retorna informações de uma instância específica
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: Dados da instância
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.get("/api/evolution/instance/:instanceName", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.getInstance(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting Evolution instance:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}/status:
+   *   get:
+   *     tags:
+   *       - Evolution API
+   *     summary: Status da instância
+   *     description: Retorna o status de conexão de uma instância
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: Status da instância
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.get("/api/evolution/instance/:instanceName/status", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.getInstanceStatus(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting Evolution instance status:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}/qrcode:
+   *   get:
+   *     tags:
+   *       - Evolution API
+   *     summary: QR Code da instância
+   *     description: Gera QR Code para conexão da instância
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: QR Code gerado
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 qrcode:
+   *                   type: string
+   *                   description: QR Code em base64
+   */
+  app.get("/api/evolution/instance/:instanceName/qrcode", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.connectInstance(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating QR Code:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance:
+   *   post:
+   *     tags:
+   *       - Evolution API
+   *     summary: Criar nova instância
+   *     description: Cria uma nova instância Evolution API
+   *     security:
+   *       - sessionToken: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - instanceName
+   *             properties:
+   *               instanceName:
+   *                 type: string
+   *                 description: Nome da nova instância
+   *               token:
+   *                 type: string
+   *                 description: Token para a instância
+   *               webhook:
+   *                 type: string
+   *                 description: URL do webhook
+   *     responses:
+   *       201:
+   *         description: Instância criada com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.post("/api/evolution/instance", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName, webhook } = req.body;
+      const result = await evolutionService.createInstance(instanceName, { url: webhook, enabled: true, events: [] });
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error creating Evolution instance:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}/restart:
+   *   put:
+   *     tags:
+   *       - Evolution API
+   *     summary: Reiniciar instância
+   *     description: Reinicia uma instância Evolution API
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: Instância reiniciada com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.put("/api/evolution/instance/:instanceName/restart", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.restartInstance(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error restarting Evolution instance:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}/logout:
+   *   delete:
+   *     tags:
+   *       - Evolution API
+   *     summary: Logout da instância
+   *     description: Faz logout de uma instância Evolution API
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: Logout realizado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.delete("/api/evolution/instance/:instanceName/logout", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.logoutInstance(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error logging out Evolution instance:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}:
+   *   delete:
+   *     tags:
+   *       - Evolution API
+   *     summary: Deletar instância
+   *     description: Remove uma instância Evolution API
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: Instância removida com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.delete("/api/evolution/instance/:instanceName", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.deleteInstance(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error deleting Evolution instance:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}/webhook:
+   *   get:
+   *     tags:
+   *       - Evolution API
+   *     summary: Obter webhook da instância
+   *     description: Retorna a configuração do webhook de uma instância
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     responses:
+   *       200:
+   *         description: Configuração do webhook
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.get("/api/evolution/instance/:instanceName/webhook", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const result = await evolutionService.getWebhook(instanceName);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting webhook:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/instance/{instanceName}/webhook:
+   *   post:
+   *     tags:
+   *       - Evolution API
+   *     summary: Configurar webhook da instância
+   *     description: Configura o webhook de uma instância
+   *     security:
+   *       - sessionToken: []
+   *     parameters:
+   *       - in: path
+   *         name: instanceName
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nome da instância
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               url:
+   *                 type: string
+   *                 description: URL do webhook
+   *               events:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Eventos a serem enviados
+   *     responses:
+   *       200:
+   *         description: Webhook configurado com sucesso
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
+  app.post("/api/evolution/instance/:instanceName/webhook", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { instanceName } = req.params;
+      const { url, events } = req.body;
+      const result = await evolutionService.setWebhook(instanceName, { url, enabled: true, events });
+      res.json(result);
+    } catch (error) {
+      console.error("Error setting webhook:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ success: false, error: errMsg });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/evolution/credentials:
+   *   get:
+   *     tags:
+   *       - Evolution API
+   *     summary: Verificar credenciais
+   *     description: Verifica se as credenciais da Evolution API estão configuradas
+   *     security:
+   *       - sessionToken: []
+   *     responses:
+   *       200:
+   *         description: Status das credenciais
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 available:
+   *                   type: boolean
+   *                 credentials:
+   *                   type: object
+   *                 message:
+   *                   type: string
+   */
+  app.get("/api/evolution/credentials", authenticateToken, async (req: any, res: any) => {
+    try {
+      const credentials = {
+        endpoint: process.env.EVOLUTION_ENDPOINT,
+        instance: process.env.EVOLUTION_INSTANCE,
+        apiKey: process.env.EVOLUTION_API_KEY ? '***' : null
+      };
+
+      const hasCredentials = credentials.endpoint && credentials.instance && process.env.EVOLUTION_API_KEY;
+
+      res.json({
+        available: hasCredentials,
+        credentials: hasCredentials ? credentials : null,
+        message: hasCredentials ? 'Evolution API credentials loaded from environment' : 'Some Evolution API credentials are missing in environment variables'
+      });
+    } catch (error) {
+      console.error("Error getting Evolution credentials:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to get Evolution credentials", error: errMsg });
+    }
+  });
 
   return httpServer;
 }
@@ -5714,6 +9000,12 @@ async function getSystemStats() {
     // Get disk usage
     const diskStats = await getSystemDiskUsage();
 
+    // Get total RAM info
+    const totalRAM = await getTotalRAM();
+
+    // Get processor info
+    const processorInfo = await getProcessorInfo();
+
     return {
       cpu: {
         usage: cpuUsage,
@@ -5726,6 +9018,7 @@ async function getSystemStats() {
         usage: memoryStats.percentage,
         used: memoryStats.used,
         total: memoryStats.total,
+        totalRAM: totalRAM, // New field with lshw format
         threshold: {
           warning: memoryStats.percentage >= 80,
           danger: memoryStats.percentage >= 90
@@ -5740,6 +9033,7 @@ async function getSystemStats() {
           danger: diskStats.percentage >= 90
         }
       },
+      processor: processorInfo, // New field with processor info
       timestamp: new Date().toISOString()
     };
   } catch (error) {
@@ -5813,3 +9107,214 @@ async function getSystemDiskUsage(): Promise<{ percentage: number; used: number;
     };
   }
 }
+
+// Function to get total RAM using lshw
+async function getTotalRAM(): Promise<string> {
+  try {
+    const { stdout } = await execAsync("lshw -short | grep 'System Memory' | awk '{print $3}' | sed -s 's/iB/B/g'");
+    const totalRAM = stdout.trim();
+    return totalRAM || 'Unknown';
+  } catch (error) {
+    console.error("Error getting total RAM:", error);
+    // Return fallback using free command
+    try {
+      const { stdout: freeOutput } = await execAsync("free -h | grep '^Mem:' | awk '{print $2}'");
+      return freeOutput.trim() || '8GB'; // Fallback mock
+    } catch (fallbackError) {
+      console.error("Error with fallback RAM command:", fallbackError);
+      return '8GB'; // Final fallback
+    }
+  }
+}
+
+// Function to get processor information using lshw
+async function getProcessorInfo(): Promise<string> {
+  try {
+    const { stdout } = await execAsync("lshw -short | grep 'processor' | awk '{$1=$2=\"\"; print $0}' | head -n1 | awk '{$1=$1; print}'");
+    const processorInfo = stdout.trim();
+    return processorInfo || 'Unknown Processor';
+  } catch (error) {
+    console.error("Error getting processor info:", error);
+    // Return fallback using /proc/cpuinfo
+    try {
+      const { stdout: cpuOutput } = await execAsync("grep 'model name' /proc/cpuinfo | head -n1 | cut -d':' -f2 | awk '{$1=$1; print}'");
+      return cpuOutput.trim() || 'Unknown Processor'; // Fallback
+    } catch (fallbackError) {
+      console.error("Error with fallback CPU command:", fallbackError);
+      return 'Unknown Processor'; // Final fallback
+    }
+  }
+}
+
+// Activity Logs System
+class ActivityLogger {
+  private static db = dbStorage;
+
+  static async log(entry: {
+    level: 'error' | 'warning' | 'info' | 'success' | 'security' | 'system' | 'user' | 'api';
+    category: string;
+    message: string;
+    details?: any;
+    userId?: number;
+    userEmail?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    action?: string;
+    resource?: string;
+    resourceId?: string;
+  }) {
+    try {
+      const result = await (await import("./db")).db
+        .insert((await import('@shared/schema')).activityLogs)
+        .values({
+          ...entry,
+          timestamp: new Date(),
+        })
+        .returning();
+
+      console.log(`[ACTIVITY LOG] ${entry.level.toUpperCase()}: ${entry.message}`);
+      return result[0];
+    } catch (error) {
+      console.error('Failed to log activity:', error);
+    }
+  }
+
+  static async getLogs(filters: {
+    page?: number;
+    pageSize?: number;
+    level?: string;
+    category?: string;
+    search?: string;
+    dateFilter?: string;
+  }) {
+    try {
+      const { db } = await import("./db");
+      const { activityLogs } = await import('@shared/schema');
+      const { and, like, eq, gte, desc } = await import('drizzle-orm');
+
+      const conditions = [];
+
+      if (filters.level && filters.level !== 'all') {
+        conditions.push(eq(activityLogs.level, filters.level));
+      }
+
+      if (filters.category && filters.category !== 'all') {
+        conditions.push(eq(activityLogs.category, filters.category));
+      }
+
+      if (filters.search) {
+        conditions.push(like(activityLogs.message, `%${filters.search}%`));
+      }
+
+      if (filters.dateFilter && filters.dateFilter !== 'all') {
+        const now = new Date();
+        let dateThreshold = new Date();
+
+        switch (filters.dateFilter) {
+          case 'today':
+            dateThreshold.setHours(0, 0, 0, 0);
+            break;
+          case 'week':
+            dateThreshold.setDate(now.getDate() - 7);
+            break;
+          case 'month':
+            dateThreshold.setMonth(now.getMonth() - 1);
+            break;
+        }
+
+        if (filters.dateFilter !== 'all') {
+          conditions.push(gte(activityLogs.timestamp, dateThreshold));
+        }
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      // Get total count
+      const totalResult = await db
+        .select({ count: (await import('drizzle-orm')).count() })
+        .from(activityLogs)
+        .where(whereClause);
+
+      const total = totalResult[0]?.count || 0;
+
+      // Get paginated logs
+      const page = filters.page || 1;
+      const pageSize = filters.pageSize || 25;
+      const offset = (page - 1) * pageSize;
+
+      const logs = await db
+        .select()
+        .from(activityLogs)
+        .where(whereClause)
+        .orderBy(desc(activityLogs.timestamp))
+        .limit(pageSize)
+        .offset(offset);
+
+      // Get stats
+      const statsQuery = await db
+        .select({ level: activityLogs.level, count: (await import('drizzle-orm')).count() })
+        .from(activityLogs)
+        .groupBy(activityLogs.level);
+
+      const stats = statsQuery.reduce((acc, curr) => {
+        acc[curr.level] = curr.count;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return { logs, total, stats };
+    } catch (error) {
+      console.error('Failed to get logs:', error);
+      return { logs: [], total: 0, stats: {} };
+    }
+  }
+
+  static async getCategories() {
+    try {
+      const { db } = await import("./db");
+      const { activityLogs } = await import('@shared/schema');
+      const { sql } = await import('drizzle-orm');
+
+      const result = await db
+        .selectDistinct({ category: activityLogs.category })
+        .from(activityLogs)
+        .orderBy(activityLogs.category);
+
+      return result.map((r: any) => r.category);
+    } catch (error) {
+      console.error('Failed to get categories:', error);
+      return [];
+    }
+  }
+
+  static async clearLogs(filters: { level?: string; category?: string }) {
+    try {
+      const { db } = await import("./db");
+      const { activityLogs } = await import('@shared/schema');
+      const { and, eq } = await import('drizzle-orm');
+
+      const conditions = [];
+
+      if (filters.level && filters.level !== 'all') {
+        conditions.push(eq(activityLogs.level, filters.level));
+      }
+
+      if (filters.category && filters.category !== 'all') {
+        conditions.push(eq(activityLogs.category, filters.category));
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const result = await db
+        .delete(activityLogs)
+        .where(whereClause);
+
+      return { success: true, deletedCount: result.rowCount || 0 };
+    } catch (error) {
+      console.error('Failed to clear logs:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+}
+
+// Helper function to log activities from other parts of the application
+(global as any).logActivity = ActivityLogger.log;

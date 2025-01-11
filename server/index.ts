@@ -2,14 +2,19 @@
 import dotenv from "dotenv";
 import path from "path";
 
-// Load from the docker .env file specifically  
-dotenv.config({ path: '/docker/.env' });
+// Load from the wpanel .env file specifically  
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+// Don't force NODE_ENV - let it be set by the environment or package.json script
+// process.env.NODE_ENV = "production";
 
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { setupSwagger } from "./swagger";
+import MinioService from "./minio";
 
 const app = express();
 app.use(express.json());
@@ -18,6 +23,12 @@ app.use(cookieParser());
 
 // Trust proxy for accurate IP address detection
 app.set("trust proxy", 1);
+
+// Allow all hosts - bypass host validation
+app.use((req, res, next) => {
+  // Remove host validation - allow any host header
+  next();
+});
 
 // Removed global API key authentication to allow web interface access
 // app.use(authenticateApiKey);
@@ -55,6 +66,19 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Initialize MinIO service
+  try {
+    console.log('Initializing MinIO service...');
+    await MinioService.initialize();
+    console.log('MinIO service initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize MinIO service:', error);
+    // Don't stop the server, just log the error
+  }
+
+  // Setup Swagger documentation
+  setupSwagger(app);
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -66,9 +90,12 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  if (process.env.NODE_ENV === "development") {
+    console.log('Starting Vite dev server...');
     await setupVite(app, server);
   } else {
+    console.log('Serving static files from production build...');
     serveStatic(app);
   }
 

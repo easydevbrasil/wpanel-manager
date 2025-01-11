@@ -81,7 +81,7 @@ class CloudflareService {
 
   private initialize() {
     if (this.initialized) return;
-    
+
     this.email = process.env.CLOUDFLARE_EMAIL || '';
     this.apiKey = process.env.CLOUDFLARE_API_KEY || '';
     this.zoneId = process.env.CLOUDFLARE_ZONE_ID || '';
@@ -95,15 +95,15 @@ class CloudflareService {
     if (!this.email || !this.apiKey || !this.zoneId) {
       console.warn('Cloudflare credentials not configured properly');
     }
-    
+
     this.initialized = true;
   }
 
   private async makeRequest<T>(endpoint: string, options: any = {}): Promise<CloudflareResponse<T>> {
     this.initialize(); // Initialize before making any request
-    
+
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const defaultHeaders = {
       'X-Auth-Email': this.email,
       'X-Auth-Key': this.apiKey,
@@ -137,40 +137,42 @@ class CloudflareService {
   // Get zone details
   async getZone(): Promise<CloudflareZone> {
     const response = await this.makeRequest<CloudflareZone>(`/zones/${this.zoneId}`);
-    
+
     if (!response.success) {
       throw new Error(`Failed to get zone: ${response.errors.map(e => e.message).join(', ')}`);
     }
-    
+
     return response.result;
   }
 
   // List DNS records
-  async listDNSRecords(type?: string, name?: string): Promise<CloudflareDNSRecord[]> {
+  async listDNSRecords(type?: string, name?: string, page?: number, per_page?: number): Promise<CloudflareDNSRecord[]> {
     const params = new URLSearchParams();
     if (type) params.append('type', type);
     if (name) params.append('name', name);
-    
+    if (page) params.append('page', String(page));
+    if (per_page) params.append('per_page', String(per_page));
+
     const queryString = params.toString();
     const endpoint = `/zones/${this.zoneId}/dns_records${queryString ? `?${queryString}` : ''}`;
-    
+
     const response = await this.makeRequest<CloudflareDNSRecord[]>(endpoint);
-    
+
     if (!response.success) {
       throw new Error(`Failed to list DNS records: ${response.errors.map(e => e.message).join(', ')}`);
     }
-    
+
     return response.result;
   }
 
   // Get specific DNS record
   async getDNSRecord(recordId: string): Promise<CloudflareDNSRecord> {
     const response = await this.makeRequest<CloudflareDNSRecord>(`/zones/${this.zoneId}/dns_records/${recordId}`);
-    
+
     if (!response.success) {
       throw new Error(`Failed to get DNS record: ${response.errors.map(e => e.message).join(', ')}`);
     }
-    
+
     return response.result;
   }
 
@@ -196,11 +198,11 @@ class CloudflareService {
       method: 'POST',
       body: JSON.stringify(data)
     });
-    
+
     if (!response.success) {
       throw new Error(`Failed to create DNS record: ${response.errors.map(e => e.message).join(', ')}`);
     }
-    
+
     return response.result;
   }
 
@@ -217,11 +219,11 @@ class CloudflareService {
       method: 'PUT',
       body: JSON.stringify(recordData)
     });
-    
+
     if (!response.success) {
       throw new Error(`Failed to update DNS record: ${response.errors.map(e => e.message).join(', ')}`);
     }
-    
+
     return response.result;
   }
 
@@ -230,11 +232,11 @@ class CloudflareService {
     const response = await this.makeRequest<{ id: string }>(`/zones/${this.zoneId}/dns_records/${recordId}`, {
       method: 'DELETE'
     });
-    
+
     if (!response.success) {
       throw new Error(`Failed to delete DNS record: ${response.errors.map(e => e.message).join(', ')}`);
     }
-    
+
     return response.result;
   }
 
@@ -267,7 +269,7 @@ class CloudflareService {
   }> {
     const allRecords: CloudflareDNSRecord[] = [];
     const byType: Record<string, number> = {};
-    
+
     for (const type of types) {
       try {
         const records = await this.listDNSRecords(type);
@@ -278,7 +280,7 @@ class CloudflareService {
         byType[type] = 0;
       }
     }
-    
+
     return {
       total: allRecords.length,
       byType,

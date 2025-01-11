@@ -92,6 +92,8 @@ export const clients = pgTable("clients", {
   company: text("company"),
   position: text("position"),
   image: text("image"),
+  planId: integer("plan_id").references(() => plans.id), // Reference to the plan
+  discountPlanId: integer("discount_plan_id").references(() => clientDiscountPlans.id), // Reference to discount plan
   status: text("status").notNull().default("active"), // active, inactive, pending
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
@@ -816,6 +818,195 @@ export const insertServiceSchema = createInsertSchema(services).omit({
   updatedAt: true,
 });
 
+// Container Logos Table
+export const containerLogos = pgTable("container_logos", {
+  id: serial("id").primaryKey(),
+  containerId: text("container_id").notNull().unique(), // Docker container ID
+  logoUrl: text("logo_url").notNull(), // URL/path to the logo image
+  originalName: text("original_name"), // Original container name for reference
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Activity Logs Table
+export const activityLogs = pgTable("activity_logs", {
+  id: serial("id").primaryKey(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  level: text("level").notNull(), // error, warning, info, success, security, system, user, api
+  category: text("category").notNull(), // authentication, database, docker, etc
+  message: text("message").notNull(),
+  details: jsonb("details"), // Additional structured data
+  userId: integer("user_id"), // Foreign key to users (optional)
+  userEmail: text("user_email"), // Cached user email for historical purposes
+  ipAddress: text("ip_address"), // Client IP
+  userAgent: text("user_agent"), // Client user agent
+  action: text("action"), // Action performed (CREATE, UPDATE, DELETE, etc)
+  resource: text("resource"), // Resource affected (user, product, etc)
+  resourceId: text("resource_id"), // ID of affected resource
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
+  id: true,
+  createdAt: true,
+  timestamp: true,
+});
+
+export const insertContainerLogosSchema = createInsertSchema(containerLogos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Settings table for storing service configurations
+export const settings = pgTable("settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(), // e.g., 'asaas_config', 'cloudflare_config', 'evolution_config'
+  value: jsonb("value").notNull(), // JSON object with the configuration
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSettingsSchema = createInsertSchema(settings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Plans table for subscription plans
+export const plans = pgTable("plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // Carbon, Bronze, Gold, Platinum, etc.
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  currency: text("currency").notNull().default("BRL"),
+  billingPeriod: text("billing_period").notNull().default("monthly"), // monthly, quarterly, annually, custom
+  features: jsonb("features"), // JSON array of features included in the plan
+  limitations: jsonb("limitations"), // JSON object with plan limitations (storage, users, etc.)
+  color: text("color").notNull().default("#6b7280"), // Hex color for the plan gradient
+  gradient: text("gradient").notNull().default("linear-gradient(135deg, #6b7280 0%, #4b5563 100%)"), // CSS gradient
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isDefault: boolean("is_default").notNull().default(false), // Only one plan should be default
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payment method discounts for plans
+export const planPaymentDiscounts = pgTable("plan_payment_discounts", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
+  paymentMethod: text("payment_method").notNull(), // PIX, cartao_credito, cartao_debito, boleto, dinheiro
+  discountType: text("discount_type").notNull().default("percentage"), // percentage, fixed
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Subscription periods discounts (for longer commitments)
+export const planSubscriptionDiscounts = pgTable("plan_subscription_discounts", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
+  subscriptionPeriod: text("subscription_period").notNull(), // 3_months, 6_months, 12_months, 24_months
+  discountType: text("discount_type").notNull().default("percentage"), // percentage, fixed
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Plan resources table
+export const planResources = pgTable("plan_resources", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  value: text("value").notNull(), // Could be boolean (true/false), numeric (GB, users), or text
+  image: text("image"), // URL or path to resource icon/image
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Junction table for plan-resource relationships
+export const planResourceAssignments = pgTable("plan_resource_assignments", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
+  resourceId: integer("resource_id").notNull().references(() => planResources.id, { onDelete: "cascade" }),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  customValue: text("custom_value"), // Override the default resource value for this plan
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Client discount plans (Carbon, Bronze, Gold, Platinum, Diamond)
+export const clientDiscountPlans = pgTable("client_discount_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // Carbon, Bronze, Gold, Platinum, Diamond
+  description: text("description"),
+  gradient: text("gradient").notNull(), // CSS gradient for the plan color
+  isActive: boolean("is_active").notNull().default(true),
+  order: integer("order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Discount rules for each plan and payment method
+export const clientDiscountRules = pgTable("client_discount_rules", {
+  id: serial("id").primaryKey(),
+  discountPlanId: integer("discount_plan_id").notNull().references(() => clientDiscountPlans.id, { onDelete: "cascade" }),
+  paymentMethod: text("payment_method").notNull(), // cash, credit, debit, pix, etc.
+  discountType: text("discount_type").notNull().default("percentage"), // percentage or fixed
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(), // percentage (0-100) or fixed amount in cents
+  minOrderValue: decimal("min_order_value", { precision: 10, scale: 2 }), // minimum order value to apply discount
+  maxDiscountAmount: decimal("max_discount_amount", { precision: 10, scale: 2 }), // maximum discount amount when using percentage
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPlansSchema = createInsertSchema(plans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlanPaymentDiscountsSchema = createInsertSchema(planPaymentDiscounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlanSubscriptionDiscountsSchema = createInsertSchema(planSubscriptionDiscounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlanResourcesSchema = createInsertSchema(planResources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlanResourceAssignmentsSchema = createInsertSchema(planResourceAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientDiscountPlansSchema = createInsertSchema(clientDiscountPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientDiscountRulesSchema = createInsertSchema(clientDiscountRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type Service = typeof services.$inferSelect;
 
@@ -833,5 +1024,35 @@ export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 
 export type ExchangeRate = typeof exchangeRates.$inferSelect;
 export type InsertExchangeRate = z.infer<typeof insertExchangeRateSchema>;
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+
+export type ContainerLogo = typeof containerLogos.$inferSelect;
+export type InsertContainerLogo = z.infer<typeof insertContainerLogosSchema>;
+
+export type Setting = typeof settings.$inferSelect;
+export type InsertSetting = z.infer<typeof insertSettingsSchema>;
+
+export type Plan = typeof plans.$inferSelect;
+export type InsertPlan = z.infer<typeof insertPlansSchema>;
+
+export type PlanPaymentDiscount = typeof planPaymentDiscounts.$inferSelect;
+export type InsertPlanPaymentDiscount = z.infer<typeof insertPlanPaymentDiscountsSchema>;
+
+export type PlanSubscriptionDiscount = typeof planSubscriptionDiscounts.$inferSelect;
+export type InsertPlanSubscriptionDiscount = z.infer<typeof insertPlanSubscriptionDiscountsSchema>;
+
+export type PlanResource = typeof planResources.$inferSelect;
+export type InsertPlanResource = z.infer<typeof insertPlanResourcesSchema>;
+
+export type PlanResourceAssignment = typeof planResourceAssignments.$inferSelect;
+export type InsertPlanResourceAssignment = z.infer<typeof insertPlanResourceAssignmentsSchema>;
+
+export type ClientDiscountPlan = typeof clientDiscountPlans.$inferSelect;
+export type InsertClientDiscountPlan = z.infer<typeof insertClientDiscountPlansSchema>;
+
+export type ClientDiscountRule = typeof clientDiscountRules.$inferSelect;
+export type InsertClientDiscountRule = z.infer<typeof insertClientDiscountRulesSchema>;
 
 // Auth types will be added later when tables are properly defined
