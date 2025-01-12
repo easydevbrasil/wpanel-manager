@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
-import { useContainerStats, generateHistoricalData, StatsDataPoint } from "@/hooks/useContainerStats";
+import { useContainerStats, generateHistoricalData, StatsDataPoint, ContainerStats } from "@/hooks/useContainerStats";
 
 // Docker icon component usando a imagem fornecida
 const DockerIcon = ({ className = "w-6 h-6" }) => (
@@ -187,17 +187,17 @@ const ContainerStatsDisplay = ({ container }: { container: DockerApiContainer })
 
   // Update historical data when new stats arrive
   useEffect(() => {
-    if (stats && !stats.mock) {
-      setHistoricalData(prev => generateHistoricalData(stats, prev));
+    if (stats && 'cpu' in stats && !('mock' in stats && stats.mock)) {
+      setHistoricalData(prev => generateHistoricalData(stats as ContainerStats, prev));
     }
   }, [stats]);
 
   // Fallback to mock data if real stats fail or for non-running containers
-  const useMockData = !stats || stats.mock || isError || container.State !== "running";
+  const useMockData = !stats || ('mock' in stats && stats.mock) || isError || container.State !== "running";
 
   let displayData = historicalData;
-  let currentCpu = stats?.cpu || 0;
-  let currentMemory = stats?.memory || 0;
+  let currentCpu = (stats && 'cpu' in stats) ? stats.cpu : 0;
+  let currentMemory = (stats && 'memory' in stats) ? stats.memory : 0;
 
   if (useMockData || displayData.length === 0) {
     // Generate mock data for display
@@ -216,7 +216,7 @@ const ContainerStatsDisplay = ({ container }: { container: DockerApiContainer })
     currentMemory = displayData[displayData.length - 1]?.memory || 0;
   }
 
-  const isRealData = !useMockData && stats && !stats.mock && !isError;
+  const isRealData = !useMockData && stats && 'cpu' in stats && !('mock' in stats && stats.mock) && !isError;
 
   return (
     <div className="space-y-3">
@@ -297,12 +297,24 @@ const getStatusText = (state: string) => {
 export default function DockerContainers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [containerLogos, setContainerLogos] = useState<Record<string, string>>({});
+  
+  // Load container logos from database
+  const { data: containerLogos = {} } = useQuery<Record<string, string>>({
+    queryKey: ["/api/docker/container-logos"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   const handleLogoUpload = async (containerId: string, file: File) => {
     try {
       const formData = new FormData();
       formData.append('image', file);
+      formData.append('containerId', containerId);
+      
+      // Try to get container name for better reference
+      const container = allContainers.find(c => c.Id === containerId);
+      if (container) {
+        formData.append('containerName', getContainerName(container));
+      }
 
       const response = await fetch('/api/upload/container-logo', {
         method: 'POST',
@@ -310,11 +322,8 @@ export default function DockerContainers() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setContainerLogos(prev => ({
-          ...prev,
-          [containerId]: result.url
-        }));
+        // Refetch container logos to update UI
+        queryClient.invalidateQueries({ queryKey: ["/api/docker/container-logos"] });
         toast({
           title: "✅ Logo atualizado",
           description: "Logo do container foi atualizado com sucesso!",

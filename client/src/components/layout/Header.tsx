@@ -249,7 +249,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             </Button>
 
             <Link href="/">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 p-4">
                 <div className="relative group cursor-pointer">
                   <div className="bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl border border-white/30 group-hover:scale-105 transition-all duration-300">
                     <Shield className="w-8 h-8 text-white drop-shadow-lg" />

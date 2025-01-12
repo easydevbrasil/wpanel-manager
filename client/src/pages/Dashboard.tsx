@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,6 +47,23 @@ import {
 } from 'recharts';
 import type { DashboardStats } from "@shared/schema";
 
+
+interface NginxStatus {
+  activeHosts: number;
+  status: string;
+}
+
+interface FirewallStats {
+  activeRules: number;
+  total_rules: number;
+}
+
+interface DockerStatus {
+  status: 'running' | 'stopped';
+  containers: number;
+}
+
+
 interface SystemStatus {
   cpu: {
     usage: number;
@@ -58,6 +75,7 @@ interface SystemStatus {
     used: number;
     free: number;
     usagePercent: number;
+    totalRAM?: string; // Novo campo para exibição via lshw
   };
   disk: {
     total: number;
@@ -71,6 +89,7 @@ interface SystemStatus {
     free: number;
     usagePercent: number;
   };
+  processor?: string; // Novo campo para informação do processador
   uptime: number;
   platform: string;
   arch: string;
@@ -105,6 +124,7 @@ interface ChartData {
     architecture?: string;
     threads?: number;
     total?: string;
+    totalRAM?: string; // ✅ NOVO - Campo para exibição via lshw
     used?: string;
     free?: string;
     totalBytes?: number;
@@ -239,39 +259,151 @@ export default function Dashboard() {
     updateType: 'all' as 'node' | 'python' | 'all'
   });
 
+  const queryClient = useQueryClient();
+
   const { data: statsData } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Fetch real system status from API (CPU, RAM, Disk)
   const { data: systemStatus, isLoading: isLoadingSystemStatus } = useQuery<SystemStatus>({
     queryKey: ["/api/system/status"],
-    refetchInterval: false, // Disable for testing
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   // Fetch Proton Drive status separately
   const { data: protonStatus } = useQuery({
     queryKey: ["/api/proton/status"],
-    refetchInterval: false, // Disable for testing
+    refetchInterval: 60000, // Refetch every 60 seconds
   });
 
   // Fetch CPU chart data
   const { data: cpuChartData } = useQuery<ChartData>({
     queryKey: ["/api/charts/cpu"],
-    refetchInterval: false, // Disable for testing
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time
   });
 
   // Fetch RAM chart data
   const { data: ramChartData } = useQuery<ChartData>({
     queryKey: ["/api/charts/ram"],
-    refetchInterval: false, // Disable for testing
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time
   });
 
   // Fetch network chart data
   const { data: networkChartData } = useQuery<NetworkChartData>({
     queryKey: ["/api/charts/network"],
-    refetchInterval: false, // Disable for testing
+    refetchInterval: 2000, // Refetch every 2 seconds for real-time
   });
+
+  // WebSocket connection for real-time notifications and data updates
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    const connect = () => {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = window.location.host;
+      const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+
+      console.log('Connecting to WebSocket:', wsUrl);
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('Dashboard WebSocket connected');
+        reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+
+        // Send ping to keep connection alive
+        const pingInterval = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          } else {
+            clearInterval(pingInterval);
+          }
+        }, 30000); // Ping every 30 seconds
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received WebSocket message:', data);
+
+          // Handle connection confirmation and pong responses
+          if (data.type === 'connection' || data.type === 'pong') {
+            return;
+          }
+
+          // Handle different types of updates
+          switch (data.type) {
+            case 'notification_update':
+              // Invalidate and refetch dashboard stats
+              queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+              break;
+
+            case 'system_update':
+              // Invalidate system status queries
+              queryClient.invalidateQueries({ queryKey: ["/api/system/status"] });
+              break;
+
+            case 'chart_update':
+              // Invalidate chart data queries
+              queryClient.invalidateQueries({ queryKey: ["/api/charts/cpu"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/charts/ram"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/charts/network"] });
+              break;
+
+            case 'data_update':
+              // Invalidate all dashboard data
+              queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/system/status"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/proton/status"] });
+              break;
+
+            default:
+              console.log('Unknown WebSocket message type:', data.type);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log('Dashboard WebSocket disconnected:', event.code, event.reason);
+
+        // Attempt to reconnect if not a clean close and haven't exceeded max attempts
+        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff, max 30s
+          console.log(`Attempting to reconnect WebSocket in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+
+          reconnectTimeout = setTimeout(() => {
+            reconnectAttempts++;
+            connect();
+          }, delay);
+        } else if (reconnectAttempts >= maxReconnectAttempts) {
+          console.error('Max reconnection attempts reached. WebSocket will not reconnect.');
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('Dashboard WebSocket error:', error);
+      };
+    };
+
+    // Initial connection
+    connect();
+
+    // Cleanup function
+    return () => {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close(1000, 'Component unmounting');
+      }
+    };
+  }, [queryClient]); // Add queryClient as dependency
 
   // Merge system status with Proton Drive data
   const mergedSystemStatus = systemStatus ? {
@@ -325,51 +457,34 @@ export default function Dashboard() {
     },
   ];
 
-  const recentProjects = [
-    {
-      name: "Project Alpha",
-      status: "Active",
-      statusColor: "bg-green-100 text-green-700",
-      avatar: "P",
-      avatarBg: "bg-blue-500",
-      lastUpdate: "2 hours ago",
-    },
-    {
-      name: "Design System",
-      status: "In Review",
-      statusColor: "bg-yellow-100 text-yellow-700",
-      avatar: "D",
-      avatarBg: "bg-purple-500",
-      lastUpdate: "1 day ago",
-    },
-  ];
+  // Fetch additional monitoring stats
+  const { data: dockerStatus } = useQuery<DockerStatus>({
+    queryKey: ["/api/docker/status"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
-  const teamActivity = [
-    {
-      name: "Sarah Chen",
-      action: "completed the wireframes",
-      time: "2 hours ago",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?ixlib=rb-4.0.3&w=40&h=40&fit=crop&crop=face",
-    },
-    {
-      name: "Mike Rodriguez",
-      action: "pushed new commits",
-      time: "4 hours ago",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&w=40&h=40&fit=crop&crop=face",
-    },
-  ];
+  const { data: containersList } = useQuery({
+    queryKey: ["/api/docker/containers"],
+    refetchInterval: 10000, // Refetch every 10 seconds
+  });
+
+  const { data: nginxStatus } = useQuery<NginxStatus>({
+    queryKey: ["/api/nginx/hosts/status"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  const { data: firewallStats } = useQuery<FirewallStats>({
+    queryKey: ["/api/firewall/stats"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  const { data: servicesList } = useQuery({
+    queryKey: ["/api/services"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
   // Obter informações do sistema operacional
   const osInfo = mergedSystemStatus ? getOSInfo(mergedSystemStatus.platform) : null;
-
-  // Debug: Log the platform and osInfo
-  useEffect(() => {
-    if (mergedSystemStatus) {
-      console.log('Platform from API:', mergedSystemStatus.platform);
-      console.log('OS Info:', osInfo);
-      console.log('SVG Logo URL:', osInfo?.logo);
-    }
-  }, [mergedSystemStatus, osInfo]);
 
   return (
     <div className="w-full">
@@ -430,7 +545,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Informações do sistema em grid */}
+            {/* Informações do sistema em grid (apenas uptime) */}
             <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
               {mergedSystemStatus ? (
                 <>
@@ -438,110 +553,13 @@ export default function Dashboard() {
                     <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Uptime</p>
                     <p className="text-lg font-bold text-foreground">{formatUptime(mergedSystemStatus.uptime)}</p>
                   </div>
-                  <div className="text-center lg:text-left">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Node.js</p>
-                      {mergedSystemStatus.updates.node && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-xs px-2"
-                          onClick={() => setTerminalModal({
-                            open: true,
-                            title: "Update Node.js",
-                            updateType: 'node'
-                          })}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Update
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-bold text-foreground">{mergedSystemStatus.nodeVersion}</p>
-                      {mergedSystemStatus.updates.node ? (
-                        <AlertTriangle className="h-4 w-4 text-orange-500" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-center lg:text-left">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Python</p>
-                      {mergedSystemStatus.pythonAvailable && mergedSystemStatus.updates.python && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-xs px-2"
-                          onClick={() => setTerminalModal({
-                            open: true,
-                            title: "Update Python",
-                            updateType: 'python'
-                          })}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Update
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-bold text-foreground">
-                        {mergedSystemStatus.pythonAvailable ? mergedSystemStatus.pythonVersion : 'Not installed'}
-                      </p>
-                      {mergedSystemStatus.pythonAvailable ? (
-                        mergedSystemStatus.updates.python ? (
-                          <AlertTriangle className="h-4 w-4 text-orange-500" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        )
-                      ) : (
-                        <div className="w-4 h-4" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-center lg:text-left">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">All Updates</p>
-                      {(mergedSystemStatus.updates.node || mergedSystemStatus.updates.python) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-xs px-2"
-                          onClick={() => setTerminalModal({
-                            open: true,
-                            title: "Update All Packages",
-                            updateType: 'all'
-                          })}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Update All
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {(mergedSystemStatus.updates.node || mergedSystemStatus.updates.python) ? (
-                        <>
-                          <p className="text-lg font-bold text-orange-600">Updates Available</p>
-                          <AlertTriangle className="h-4 w-4 text-orange-500" />
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-lg font-bold text-green-600">Up to Date</p>
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        </>
-                      )}
-                    </div>
-                  </div>
                 </>
               ) : (
                 <>
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="text-center lg:text-left">
-                      <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded animate-pulse mb-1"></div>
-                      <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
-                    </div>
-                  ))}
+                  <div className="text-center lg:text-left">
+                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded animate-pulse mb-1"></div>
+                    <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                  </div>
                 </>
               )}
             </div>
@@ -557,7 +575,9 @@ export default function Dashboard() {
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">RAM Total</p>
-                      <p className="text-lg font-bold text-foreground">{formatBytes(mergedSystemStatus.memory.total)}</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {mergedSystemStatus.memory.totalRAM || formatBytes(mergedSystemStatus.memory.total)}
+                      </p>
                     </div>
                   </>
                 ) : (
@@ -644,7 +664,7 @@ export default function Dashboard() {
                 </div>
                 <SystemGauge usage={Math.round(mergedSystemStatus.cpu.usage)} color="#3b82f6" />
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
-                  {mergedSystemStatus.cpu.model.substring(0, 30)}...
+                  {(mergedSystemStatus.processor || mergedSystemStatus.cpu.model).substring(0, 30)}...
                 </p>
               </CardContent>
             </Card>
@@ -658,7 +678,7 @@ export default function Dashboard() {
                       Memória RAM
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {formatBytes(mergedSystemStatus.memory.total)}
+                      {mergedSystemStatus.memory.totalRAM || formatBytes(mergedSystemStatus.memory.total)}
                     </p>
                   </div>
                   <div className="bg-green-100 dark:bg-green-900 p-2 md:p-3 rounded-lg">
@@ -669,7 +689,7 @@ export default function Dashboard() {
                 <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
                   <span>{formatBytes(mergedSystemStatus.memory.used)}</span>
                   <span className="mx-1">/</span>
-                  <span>{formatBytes(mergedSystemStatus.memory.total)}</span>
+                  <span>{mergedSystemStatus.memory.totalRAM || formatBytes(mergedSystemStatus.memory.total)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -900,7 +920,7 @@ export default function Dashboard() {
                     <div>Min: {ramChartData.details.minUsage}%</div>
                     <div>Max: {ramChartData.details.maxUsage}%</div>
                     <div>Free: {ramChartData.details.free}</div>
-                    <div>Total: {ramChartData.details.total}</div>
+                    <div>Total: {ramChartData.details.totalRAM || ramChartData.details.total}</div>
                   </div>
                 )}
               </CardContent>
@@ -1106,70 +1126,275 @@ export default function Dashboard() {
 
       {/* Content Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Projects */}
+        {/* Docker Containers Status */}
         <Card className="bg-card shadow-sm border-border">
           <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-            <CardTitle className="text-lg font-semibold text-foreground">
-              Recent Projects
+            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <img src="/uploads/docker-logo.png" alt="Docker" className="w-5 h-5" />
+              Docker Containers
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {recentProjects.map((project, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-muted rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 ${project.avatarBg} rounded-lg flex items-center justify-center`}>
-                      <span className="text-white font-medium">
-                        {project.avatar}
-                      </span>
+              {containersList && Array.isArray(containersList) ? (
+                containersList.slice(0, 5).map((container: any, index: number) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-muted rounded-lg"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 ${container.State === 'running' ? 'bg-green-500' :
+                          container.State === 'paused' ? 'bg-yellow-500' : 'bg-red-500'
+                        } rounded-lg flex items-center justify-center`}>
+                        <Monitor className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-foreground">
+                          {container.Names?.[0]?.replace('/', '') || container.Id?.substring(0, 12)}
+                        </h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {container.Image}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-foreground">
-                        {project.name}
-                      </h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Updated {project.lastUpdate}
-                      </p>
-                    </div>
+                    <Badge
+                      className={`${container.State === 'running' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                          container.State === 'paused' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                        } font-medium`}
+                    >
+                      {container.State}
+                    </Badge>
                   </div>
-                  <Badge className={`${project.statusColor} dark:bg-green-900 dark:text-green-300 font-medium`}>
-                    {project.status}
-                  </Badge>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <Monitor className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Docker não disponível ou sem containers</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Team Activity */}
+        {/* System Services & Monitoring */}
         <Card className="bg-card shadow-sm border-border">
           <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-            <CardTitle className="text-lg font-semibold text-foreground">
-              Team Activity
+            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Server className="w-5 h-5 text-green-600" />
+              Monitoramento do Sistema
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {teamActivity.map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={activity.avatar} alt={activity.name} />
-                    <AvatarFallback className="bg-muted text-muted-foreground">
-                      {activity.name.split(" ").map(n => n[0]).join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="text-sm text-foreground">
-                      <span className="font-medium">{activity.name}</span>{" "}
-                      {activity.action}
+              {/* Nginx Status */}
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <Server className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">Nginx</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {nginxStatus?.activeHosts || 0} hosts ativos
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
                   </div>
                 </div>
-              ))}
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 font-medium">
+                  Online
+                </Badge>
+              </div>
+
+              {/* Firewall Status */}
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">Firewall</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {firewallStats?.activeRules || 0} regras ativas
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 font-medium">
+                  Ativo
+                </Badge>
+              </div>
+
+              {/* System Services */}
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <Database className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">Serviços</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {Array.isArray(servicesList) ? servicesList.length : 0} serviços cadastrados
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium">
+                  Gerenciado
+                </Badge>
+              </div>
+
+              {/* Docker Status */}
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center">
+                    <Monitor className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">Docker</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {dockerStatus?.status === 'running' ? 'Daemon ativo' : 'Não disponível'}
+                    </p>
+                  </div>
+                </div>
+                <Badge className={`${dockerStatus?.status === 'running' ?
+                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                    'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                  } font-medium`}>
+                  {dockerStatus?.status === 'running' ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Monitoring Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        {/* Network Statistics */}
+        <Card className="bg-card shadow-sm border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Wifi className="w-4 h-4 text-purple-600" />
+              Estatísticas de Rede
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Download Total</span>
+                <span className="text-sm font-medium">
+                  {networkChartData?.totals?.rxTotal ? formatNetworkBytes(networkChartData.totals.rxTotal) : '0 KB'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Upload Total</span>
+                <span className="text-sm font-medium">
+                  {networkChartData?.totals?.txTotal ? formatNetworkBytes(networkChartData.totals.txTotal) : '0 KB'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Velocidade RX</span>
+                <span className="text-sm font-medium text-purple-600">
+                  {networkChartData?.current?.rx || 0} KB/s
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Velocidade TX</span>
+                <span className="text-sm font-medium text-orange-600">
+                  {networkChartData?.current?.tx || 0} KB/s
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* System Resources Summary */}
+        <Card className="bg-card shadow-sm border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-600" />
+              Resumo de Recursos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">CPU Atual</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${(cpuChartData?.current || 0) > 80 ? 'bg-red-500' :
+                      (cpuChartData?.current || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}></div>
+                  <span className="text-sm font-medium">
+                    {cpuChartData?.current?.toFixed(1) || 0}%
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">RAM Atual</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${(ramChartData?.current || 0) > 80 ? 'bg-red-500' :
+                      (ramChartData?.current || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}></div>
+                  <span className="text-sm font-medium">
+                    {ramChartData?.current?.toFixed(1) || 0}%
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Uptime</span>
+                <span className="text-sm font-medium text-green-600">
+                  {mergedSystemStatus ? formatUptime(mergedSystemStatus.uptime) : 'N/A'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Plataforma</span>
+                <span className="text-sm font-medium">
+                  {osInfo?.name || 'Linux'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Service Status Summary */}
+        <Card className="bg-card shadow-sm border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              Status dos Serviços
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Docker</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${dockerStatus?.status === 'running' ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
+                  <span className="text-sm font-medium">
+                    {dockerStatus?.status === 'running' ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Containers</span>
+                <span className="text-sm font-medium">
+                  {Array.isArray(containersList) ? containersList.length : 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Nginx Hosts</span>
+                <span className="text-sm font-medium">
+                  {nginxStatus?.activeHosts || 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Firewall</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm font-medium">
+                    {firewallStats?.total_rules || 0} regras
+                  </span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

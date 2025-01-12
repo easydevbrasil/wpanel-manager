@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RefreshCw, Server, Plus, Edit, Trash2, Globe, ExternalLink, AlertCircle, CheckCircle, FileText, Save, RotateCcw, Moon, Sun, Shield, Lock, Calendar, Activity } from "lucide-react";
+import { RefreshCw, Server, Plus, Edit, Trash2, Globe, ExternalLink, AlertCircle, CheckCircle, FileText, Save, RotateCcw, Moon, Sun, Shield, Lock, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // import Editor from '@monaco-editor/react';
 // import { useColorTheme } from "@/hooks/useColorTheme";
@@ -27,15 +27,6 @@ interface NginxHost {
   port: number;
   createdAt: string;
   modifiedAt: string;
-}
-
-interface HostStatus {
-  id: string;
-  filename: string;
-  port: number | null;
-  status: 'online' | 'offline' | 'error';
-  lastChecked: string;
-  error?: string;
 }
 
 const hostSchema = z.object({
@@ -93,12 +84,6 @@ export default function NginxHosts() {
   // Fetch nginx hosts
   const { data: hosts = [], isLoading, refetch } = useQuery<NginxHost[]>({
     queryKey: ["/api/nginx/hosts"],
-  });
-
-  // Fetch hosts status
-  const { data: hostsStatus = [], isLoading: statusLoading, refetch: refetchStatus } = useQuery<HostStatus[]>({
-    queryKey: ["/api/nginx/hosts/status"],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Query para buscar detalhes específicos do host quando editando
@@ -549,54 +534,6 @@ export default function NginxHosts() {
     setIsDialogOpen(true);
   };
 
-  // Helper function to get host status
-  const getHostStatus = (hostId: string): HostStatus | null => {
-    return hostsStatus.find(status => status.id === hostId) || null;
-  };
-
-  // Helper function to get status badge variant and text with colored icons
-  const getStatusDisplay = (status: HostStatus | null) => {
-    if (!status) {
-      return { 
-        icon: <AlertCircle className="w-4 h-4 text-gray-500" />, 
-        text: 'Verificando...', 
-        bgColor: 'bg-gray-50', 
-        textColor: 'text-gray-700' 
-      };
-    }
-
-    switch (status.status) {
-      case 'online':
-        return { 
-          icon: <CheckCircle className="w-4 h-4 text-green-500" />, 
-          text: 'HTTP 200 OK', 
-          bgColor: 'bg-green-50', 
-          textColor: 'text-green-700' 
-        };
-      case 'offline':
-        return { 
-          icon: <AlertCircle className="w-4 h-4 text-red-500" />, 
-          text: 'Inacessível', 
-          bgColor: 'bg-red-50', 
-          textColor: 'text-red-700' 
-        };
-      case 'error':
-        return { 
-          icon: <AlertCircle className="w-4 h-4 text-orange-500" />, 
-          text: 'Erro HTTP', 
-          bgColor: 'bg-orange-50', 
-          textColor: 'text-orange-700' 
-        };
-      default:
-        return { 
-          icon: <AlertCircle className="w-4 h-4 text-gray-500" />, 
-          text: 'Status desconhecido', 
-          bgColor: 'bg-gray-50', 
-          textColor: 'text-gray-700' 
-        };
-    }
-  };
-
   const getStatusColor = (port: number) => {
     // Simple check - ports commonly used for different services
     if (port >= 3000 && port <= 3999) return "bg-blue-100 text-blue-800";
@@ -608,29 +545,9 @@ export default function NginxHosts() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Server className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Gerenciamento de Hosts Nginx</h1>
-          <div className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            Auto-verificação HTTP
-          </div>
-          {/* Status summary */}
-          {hostsStatus.length > 0 && (
-            <div className="flex items-center gap-2 ml-4">
-              <Badge variant="default" className="flex items-center gap-1">
-                🟢 {hostsStatus.filter(s => s.status === 'online').length}
-              </Badge>
-              <Badge variant="destructive" className="flex items-center gap-1">
-                🔴 {hostsStatus.filter(s => s.status === 'offline').length}
-              </Badge>
-              {hostsStatus.filter(s => s.status === 'error').length > 0 && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  ⚠️ {hostsStatus.filter(s => s.status === 'error').length}
-                </Badge>
-              )}
-            </div>
-          )}
         </div>
         <div className="flex gap-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1309,6 +1226,15 @@ export default function NginxHosts() {
               )}
             </DialogContent>
           </Dialog>
+          <Button
+            onClick={() => refetch()}
+            disabled={isLoading}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
         </div>
       </div>
 
@@ -1340,20 +1266,6 @@ export default function NginxHosts() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        {(() => {
-                          const status = getHostStatus(host.id);
-                          const statusDisplay = getStatusDisplay(status);
-                          return (
-                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusDisplay.bgColor} ${statusDisplay.textColor} text-sm font-medium`}>
-                              {statusDisplay.icon}
-                              <span>{statusDisplay.text}</span>
-                              {status?.port && (
-                                <span className="ml-1 text-xs opacity-75">:{status.port}</span>
-                              )}
-                            </div>
-                          );
-                        })()}
-
                         <Badge className={`font-mono text-xs ${getStatusColor(host.port)}`}>
                           Porta: {host.port}
                         </Badge>
