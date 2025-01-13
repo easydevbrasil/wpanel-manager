@@ -1,0 +1,112 @@
+{
+  "name": "wPanel - Gerenciamento de Servidor",
+  "short_name": "wPanel",
+  "description": "Sistema completo de gerenciamento de servidor com Docker, DNS, Nginx e muito mais",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#4f46e5",
+  "background_color": "#1e1b4b",
+  "categories": ["productivity", "utilities", "business"],
+  "lang": "pt-BR",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "wPanel Dashboard em modo paisagem"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "wPanel Mobile otimizado para landscape"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Acesso rápido ao dashboard principal",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/shortcut-dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Docker",
+      "short_name": "Docker",
+      "description": "Gerenciar containers Docker",
+      "url": "/docker-containers",
+      "icons": [
+        {
+          "src": "/shortcut-docker.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "DNS",
+      "short_name": "DNS",
+      "description": "Configurar registros DNS",
+      "url": "/dns",
+      "icons": [
+        {
+          "src": "/shortcut-dns.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Nginx",
+      "short_name": "Nginx",
+      "description": "Gerenciar hosts Nginx",
+      "url": "/nginx-hosts",
+      "icons": [
+        {
+          "src": "/shortcut-nginx.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}

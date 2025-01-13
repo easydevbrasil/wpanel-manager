@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4f46e5">
+  <title>wPanel - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .offline-container {
+      max-width: 400px;
+      padding: 40px 30px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 30px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      background: linear-gradient(45deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+
+    .retry-btn {
+      background: linear-gradient(45deg, #4f46e5, #7c3aed);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+      margin-right: 10px;
+    }
+
+    .retry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+    }
+
+    .home-btn {
+      background: transparent;
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      padding: 10px 25px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .home-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .connection-status {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .online {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .offline {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    @media (max-width: 480px) {
+      .offline-container {
+        padding: 30px 20px;
+        margin: 10px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .retry-btn, .home-btn {
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="icon">
+      📡
+    </div>
+    
+    <h1>wPanel Offline</h1>
+    
+    <p>
+      Você está sem conexão com a internet. 
+      Verifique sua rede e tente novamente.
+    </p>
+    
+    <button class="retry-btn" onclick="window.location.reload()">
+      Tentar Novamente
+    </button>
+    
+    <button class="home-btn" onclick="window.location.href = '/'">
+      Página Inicial
+    </button>
+    
+    <div class="connection-status offline" id="status">
+      ⚡ Sem conexão
+    </div>
+  </div>
+
+  <script>
+    // Monitor connection status
+    function updateConnectionStatus() {
+      const status = document.getElementById('status');
+      if (navigator.onLine) {
+        status.textContent = '✅ Conectado';
+        status.className = 'connection-status online';
+        
+        // Auto-reload when connection is restored
+        setTimeout(() => {
+          if (navigator.onLine) {
+            window.location.reload();
+          }
+        }, 1000);
+      } else {
+        status.textContent = '⚡ Sem conexão';
+        status.className = 'connection-status offline';
+      }
+    }
+
+    // Listen for connection changes
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    
+    // Check connection status periodically
+    setInterval(updateConnectionStatus, 5000);
+    updateConnectionStatus();
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        window.location.reload();
+      } else if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        window.location.href = '/';
+      }
+    });
+
+    // Register service worker if available
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'CACHE_UPDATED') {
+          // Show update available notification
+          const updateNotice = document.createElement('div');
+          updateNotice.innerHTML = `
+            <div style="position: fixed; top: 20px; right: 20px; background: rgba(34, 197, 94, 0.9); color: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000;">
+              ✅ Atualização disponível! 
+              <button onclick="window.location.reload()" style="background: none; border: 1px solid white; color: white; padding: 5px 10px; border-radius: 5px; margin-left: 10px; cursor: pointer;">
+                Recarregar
+              </button>
+            </div>
+          `;
+          document.body.appendChild(updateNotice);
+          
+          setTimeout(() => {
+            updateNotice.remove();
+          }, 10000);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
