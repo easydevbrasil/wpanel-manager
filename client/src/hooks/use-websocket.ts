@@ -62,30 +62,63 @@ export function useWebSocket() {
 
           // Handle different message types and invalidate queries
           switch (message.type) {
+            // Client operations
             case 'client_created':
+            case 'client_updated':
+            case 'client_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
               break;
+            
+            // Product operations
             case 'product_created':
+            case 'product_updated':
+            case 'product_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/products'] });
               break;
+            
+            // Supplier operations
+            case 'supplier_created':
+            case 'supplier_updated':
+            case 'supplier_deleted':
+              queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+              break;
+            
+            // Sales operations
             case 'sale_created':
+            case 'sale_updated':
+            case 'sale_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/sales'] });
+              // Also invalidate sale items
+              if (message.data && message.data.id) {
+                queryClient.invalidateQueries({ 
+                  queryKey: ['/api/sales', message.data.id, 'items'] 
+                });
+              }
               break;
+            
+            // Support ticket operations
             case 'ticket_created':
+            case 'ticket_updated':
+            case 'ticket_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/support/tickets'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/support/categories'] });
               break;
+            
             case 'ticket_message_created':
               queryClient.invalidateQueries({ 
                 queryKey: ['/api/support/tickets', message.data.ticketId, 'messages'] 
               });
               queryClient.invalidateQueries({ queryKey: ['/api/support/tickets'] });
               break;
+            
+            // System messages
             case 'connection':
               console.log('WebSocket connection confirmed');
               break;
             case 'pong':
               // Keep-alive response
               break;
+            
             default:
               console.log('Unknown WebSocket message type:', message.type);
           }

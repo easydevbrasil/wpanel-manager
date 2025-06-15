@@ -178,14 +178,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   private async initializeData() {
-    // Check if data already exists, if not create sample data
+    // Database initialization - all data is now stored in PostgreSQL
     try {
       const existingUsers = await db.select().from(users).limit(1);
       if (existingUsers.length === 0) {
         await this.createSampleData();
+        console.log("Database initialized with sample data");
+      } else {
+        console.log("Database already populated");
       }
     } catch (error) {
-      console.log("Database not ready yet, will initialize on first request");
+      console.log("Database connection pending...");
     }
   }
 

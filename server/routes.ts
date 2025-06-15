@@ -758,9 +758,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
-  // Override some API endpoints to broadcast updates
+  // Override API endpoints to broadcast real-time updates
   
-  // Override client creation to broadcast updates
+  // Clients - broadcast on all operations
   app.post("/api/clients", async (req, res) => {
     try {
       const client = await storage.createClient(req.body);
@@ -771,7 +771,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Override product creation to broadcast updates
+  app.put("/api/clients/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const client = await storage.updateClient(id, req.body);
+      broadcastUpdate('client_updated', client);
+      res.json(client);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update client" });
+    }
+  });
+
+  app.delete("/api/clients/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteClient(id);
+      broadcastUpdate('client_deleted', { id });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete client" });
+    }
+  });
+
+  // Products - broadcast on all operations
   app.post("/api/products", async (req, res) => {
     try {
       const product = await storage.createProduct(req.body);
@@ -782,7 +804,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Override sale creation to broadcast updates
+  app.put("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const product = await storage.updateProduct(id, req.body);
+      broadcastUpdate('product_updated', product);
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProduct(id);
+      broadcastUpdate('product_deleted', { id });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
+  // Suppliers - broadcast on all operations
+  app.post("/api/suppliers", async (req, res) => {
+    try {
+      const supplier = await storage.createSupplier(req.body);
+      broadcastUpdate('supplier_created', supplier);
+      res.status(201).json(supplier);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create supplier" });
+    }
+  });
+
+  app.put("/api/suppliers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const supplier = await storage.updateSupplier(id, req.body);
+      broadcastUpdate('supplier_updated', supplier);
+      res.json(supplier);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update supplier" });
+    }
+  });
+
+  app.delete("/api/suppliers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSupplier(id);
+      broadcastUpdate('supplier_deleted', { id });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete supplier" });
+    }
+  });
+
+  // Sales - broadcast on all operations
   app.post("/api/sales", async (req, res) => {
     try {
       const sale = await storage.createSale(req.body);
@@ -793,7 +870,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Override support ticket creation to broadcast updates
+  app.put("/api/sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const sale = await storage.updateSale(id, req.body);
+      broadcastUpdate('sale_updated', sale);
+      res.json(sale);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update sale" });
+    }
+  });
+
+  app.delete("/api/sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSale(id);
+      broadcastUpdate('sale_deleted', { id });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete sale" });
+    }
+  });
+
+  // Support Tickets - broadcast on all operations
   app.post("/api/support/tickets", async (req, res) => {
     try {
       const ticket = await storage.createSupportTicket(req.body);
@@ -804,7 +903,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Override support ticket message creation to broadcast updates
+  app.put("/api/support/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ticket = await storage.updateSupportTicket(id, req.body);
+      broadcastUpdate('ticket_updated', ticket);
+      res.json(ticket);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update support ticket" });
+    }
+  });
+
+  app.delete("/api/support/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSupportTicket(id);
+      broadcastUpdate('ticket_deleted', { id });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete support ticket" });
+    }
+  });
+
+  // Support Ticket Messages - broadcast on all operations
   app.post("/api/support/tickets/:id/messages", async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
