@@ -696,15 +696,15 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                 {/* Produtos Vendidos */}
                 <div>
                   <p className="text-sm font-medium mb-3">Produtos Vendidos</p>
-                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
                     {getSaleProducts(sale.id).map((item: any) => {
                       const unitPrice = item.unitPrice ? Number(item.unitPrice) : 0;
                       const itemTotal = unitPrice * item.quantity;
                       
                       return (
-                        <div key={item.id} className="border rounded-lg p-3 bg-muted/20">
-                          <div className="flex items-start space-x-3">
-                            <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                        <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
                               {item.product.image ? (
                                 <img 
                                   src={item.product.image} 
@@ -713,29 +713,21 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                  <Package2 className="h-4 w-4 text-gray-400" />
+                                  <Package2 className="h-3 w-3 text-gray-400" />
                                 </div>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-start mb-1">
-                                <p className="font-medium text-sm truncate pr-2">{item.product.name}</p>
-                                <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                  {formatCurrency(itemTotal.toString())}
-                                </p>
-                              </div>
+                            <div>
+                              <p className="text-sm font-medium">
+                                {item.quantity}x {item.product.name}
+                              </p>
                               {item.product.sku && (
-                                <p className="text-xs text-muted-foreground mb-1">SKU: {item.product.sku}</p>
+                                <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
                               )}
-                              <div className="flex justify-between items-center text-xs">
-                                <span className="text-muted-foreground">
-                                  Qtd: <span className="font-medium">{item.quantity}</span>
-                                </span>
-                                <span className="text-muted-foreground">
-                                  Preço: <span className="font-medium">{formatCurrency(unitPrice.toString())}</span>
-                                </span>
-                              </div>
                             </div>
+                          </div>
+                          <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                            {formatCurrency(itemTotal.toString())}
                           </div>
                         </div>
                       );
