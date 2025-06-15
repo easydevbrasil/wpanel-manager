@@ -32,6 +32,8 @@ import {
   Sun,
   Moon,
   SidebarIcon,
+  Package,
+  Truck,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -48,6 +50,8 @@ const iconMap = {
   Folder,
   User,
   Copy,
+  Package,
+  Truck,
   Sliders,
   Shield,
   Bell,
