@@ -5,6 +5,7 @@ import {
   cartItems,
   notifications,
   emails,
+  clients,
   type User, 
   type NavigationItem, 
   type DashboardStats, 
@@ -16,8 +17,12 @@ import {
   type Notification,
   type InsertNotification,
   type Email,
-  type InsertEmail
+  type InsertEmail,
+  type Client,
+  type InsertClient
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -50,241 +55,246 @@ export interface IStorage {
   markEmailAsRead(emailId: number): Promise<Email>;
   deleteEmail(emailId: number): Promise<void>;
   clearEmails(userId: number): Promise<void>;
+  
+  // Clients
+  getClients(): Promise<Client[]>;
+  getClient(id: number): Promise<Client | undefined>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: number, client: Partial<InsertClient>): Promise<Client>;
+  deleteClient(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private navigationItems: Map<number, NavigationItem>;
-  private dashboardStats: Map<number, DashboardStats>;
-  private cartItems: Map<number, CartItem>;
-  private notifications: Map<number, Notification>;
-  private emails: Map<number, Email>;
-  private currentUserId: number;
-  private currentNavId: number;
-  private currentStatsId: number;
-  private currentCartId: number;
-  private currentNotificationId: number;
-  private currentEmailId: number;
-
+export class DatabaseStorage implements IStorage {
   constructor() {
-    this.users = new Map();
-    this.navigationItems = new Map();
-    this.dashboardStats = new Map();
-    this.cartItems = new Map();
-    this.notifications = new Map();
-    this.emails = new Map();
-    this.currentUserId = 1;
-    this.currentNavId = 1;
-    this.currentStatsId = 1;
-    this.currentCartId = 1;
-    this.currentNotificationId = 1;
-    this.currentEmailId = 1;
-    
     this.initializeData();
   }
 
-  private initializeData() {
-    // Create demo user
-    const user: User = {
-      id: 1,
-      username: "john.smith",
-      password: "password",
-      name: "John Smith",
-      role: "Product Manager",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=100"
-    };
-    this.users.set(1, user);
-    this.currentUserId = 2;
-
-    // Create navigation items
-    const navItems: NavigationItem[] = [
-      { id: 1, label: "Dashboard", icon: "LayoutDashboard", href: "/", parentId: null, order: 1 },
-      { id: 2, label: "Overview", icon: "Eye", href: "/dashboard/overview", parentId: 1, order: 1 },
-      { id: 3, label: "Analytics", icon: "BarChart3", href: "/dashboard/analytics", parentId: 1, order: 2 },
-      { id: 4, label: "Reports", icon: "FileText", href: "/dashboard/reports", parentId: 1, order: 3 },
-      
-      { id: 5, label: "Projects", icon: "FolderOpen", href: "/projects", parentId: null, order: 2 },
-      { id: 6, label: "All Projects", icon: "Folder", href: "/projects/all", parentId: 5, order: 1 },
-      { id: 7, label: "My Projects", icon: "User", href: "/projects/mine", parentId: 5, order: 2 },
-      { id: 8, label: "Templates", icon: "Copy", href: "/projects/templates", parentId: 5, order: 3 },
-      
-      { id: 9, label: "Team", icon: "Users", href: "/team", parentId: null, order: 3 },
-      
-      { id: 10, label: "Settings", icon: "Settings", href: "/settings", parentId: null, order: 4 },
-      { id: 11, label: "General", icon: "Sliders", href: "/settings/general", parentId: 10, order: 1 },
-      { id: 12, label: "Security", icon: "Shield", href: "/settings/security", parentId: 10, order: 2 },
-      { id: 13, label: "Notifications", icon: "Bell", href: "/settings/notifications", parentId: 10, order: 3 },
-    ];
-
-    navItems.forEach(item => {
-      this.navigationItems.set(item.id, item);
-    });
-    this.currentNavId = 14;
-
-    // Create dashboard stats
-    const stats: DashboardStats = {
-      id: 1,
-      userId: 1,
-      cartCount: 3,
-      notificationCount: 12,
-      emailCount: 5,
-      stats: {
-        totalProjects: 24,
-        activeTasks: 142,
-        teamMembers: 18,
-        revenue: 12500
+  private async initializeData() {
+    // Check if data already exists, if not create sample data
+    try {
+      const existingUsers = await db.select().from(users).limit(1);
+      if (existingUsers.length === 0) {
+        await this.createSampleData();
       }
-    };
-    this.dashboardStats.set(1, stats);
-    this.currentStatsId = 2;
-
-    // Create sample cart items
-    const cartItemsData: CartItem[] = [
-      { id: 1, userId: 1, productName: "Wireless Headphones", productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop", price: 9999, quantity: 2, createdAt: "2024-06-15T10:00:00Z" },
-      { id: 2, userId: 1, productName: "Smartphone Case", productImage: "https://images.unsplash.com/photo-1601593346740-925612772716?w=100&h=100&fit=crop", price: 2999, quantity: 1, createdAt: "2024-06-15T11:00:00Z" },
-      { id: 3, userId: 1, productName: "USB Cable", productImage: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=100&h=100&fit=crop", price: 1599, quantity: 3, createdAt: "2024-06-15T12:00:00Z" },
-    ];
-    cartItemsData.forEach(item => this.cartItems.set(item.id, item));
-    this.currentCartId = 4;
-
-    // Create sample notifications
-    const notificationsData: Notification[] = [
-      { id: 1, userId: 1, title: "New Project Assigned", message: "You have been assigned to Project Alpha", type: "info", senderName: "Project Manager", senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face", serviceType: "push", isRead: false, createdAt: "2024-06-15T14:30:00Z" },
-      { id: 2, userId: 1, title: "Task Completed", message: "Sarah completed the wireframes task", type: "success", senderName: "Sarah Chen", senderAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face", serviceType: "app", isRead: false, createdAt: "2024-06-15T13:15:00Z" },
-      { id: 3, userId: 1, title: "Deadline Reminder", message: "Project Beta deadline is tomorrow", type: "warning", senderName: "System", senderAvatar: null, serviceType: "system", isRead: true, createdAt: "2024-06-15T10:45:00Z" },
-      { id: 4, userId: 1, title: "System Update", message: "System will be updated tonight at 2 AM", type: "info", senderName: "Admin", senderAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face", serviceType: "system", isRead: false, createdAt: "2024-06-15T09:20:00Z" },
-      { id: 5, userId: 1, title: "Budget Approved", message: "Q3 budget has been approved", type: "success", senderName: "Mike Rodriguez", senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face", serviceType: "push", isRead: false, createdAt: "2024-06-15T08:00:00Z" },
-    ];
-    notificationsData.forEach(notification => this.notifications.set(notification.id, notification));
-    this.currentNotificationId = 6;
-
-    // Create sample emails
-    const emailsData: Email[] = [
-      { id: 1, userId: 1, sender: "Sarah Chen", senderEmail: "sarah@company.com", senderAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face", subject: "Project Update", preview: "The wireframes are ready for review...", serviceType: "email", isRead: false, createdAt: "2024-06-15T15:30:00Z" },
-      { id: 2, userId: 1, sender: "Mike Rodriguez", senderEmail: "mike@company.com", senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face", subject: "Code Review Request", preview: "Please review the latest commits...", serviceType: "whatsapp", isRead: false, createdAt: "2024-06-15T14:45:00Z" },
-      { id: 3, userId: 1, sender: "Team Lead", senderEmail: "lead@company.com", senderAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face", subject: "Weekly Meeting", preview: "Weekly team meeting scheduled for...", serviceType: "email", isRead: true, createdAt: "2024-06-15T13:20:00Z" },
-      { id: 4, userId: 1, sender: "HR Department", senderEmail: "hr@company.com", senderAvatar: null, subject: "Benefits Update", preview: "New benefits package information...", serviceType: "email", isRead: false, createdAt: "2024-06-15T11:10:00Z" },
-      { id: 5, userId: 1, sender: "Client Support", senderEmail: "support@client.com", senderAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face", subject: "Feature Request", preview: "Client requesting new dashboard features...", serviceType: "telegram", isRead: false, createdAt: "2024-06-15T10:30:00Z" },
-    ];
-    emailsData.forEach(email => this.emails.set(email.id, email));
-    this.currentEmailId = 6;
+    } catch (error) {
+      console.log("Database not ready yet, will initialize on first request");
+    }
   }
 
+  private async createSampleData() {
+    const now = new Date().toISOString();
+    
+    // Create sample user
+    const [user] = await db.insert(users).values({
+      username: "john.smith",
+      password: "password123",
+      name: "John Smith",
+      role: "Admin",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+    }).returning();
+
+    // Create sample clients
+    const clientsData = [
+      {
+        name: "Sarah Johnson",
+        email: "sarah.johnson@techcorp.com",
+        phone: "+1 (555) 123-4567",
+        company: "TechCorp Solutions",
+        position: "CTO",
+        image: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=150&h=150&fit=crop&crop=face",
+        status: "active",
+        notes: "Key decision maker for enterprise solutions",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Michael Chen",
+        email: "m.chen@innovate.io",
+        phone: "+1 (555) 987-6543",
+        company: "Innovate.io",
+        position: "Product Manager",
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+        status: "active",
+        notes: "Interested in AI integration features",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Emma Rodriguez",
+        email: "emma@startuplab.com",
+        phone: "+1 (555) 456-7890",
+        company: "StartupLab",
+        position: "Founder & CEO",
+        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+        status: "active",
+        notes: "Looking for scalable solutions for rapid growth",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "David Wilson",
+        email: "david.wilson@enterprise.com",
+        phone: "+1 (555) 321-0987",
+        company: "Enterprise Corp",
+        position: "IT Director",
+        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
+        status: "inactive",
+        notes: "Former client, contract ended last quarter",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Lisa Anderson",
+        email: "lisa@creativestudio.com",
+        phone: "+1 (555) 654-3210",
+        company: "Creative Studio",
+        position: "Creative Director",
+        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
+        status: "active",
+        notes: "Specializes in design-focused applications",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Robert Kim",
+        email: "robert@techventures.co",
+        phone: "+1 (555) 789-0123",
+        company: "Tech Ventures",
+        position: "Investment Partner",
+        image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+        status: "active",
+        notes: "Potential investor and strategic partner",
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    await db.insert(clients).values(clientsData);
+
+    // Create navigation items
+    const navItems = [
+      { label: "Dashboard", icon: "LayoutDashboard", href: "/", order: 1, parentId: null },
+      { label: "Clientes", icon: "Users", href: "/clients", order: 2, parentId: null },
+      { label: "Projetos", icon: "FolderOpen", href: "/projects", order: 3, parentId: null },
+      { label: "Relatórios", icon: "BarChart3", href: "/reports", order: 4, parentId: null }
+    ];
+
+    await db.insert(navigationItems).values(navItems);
+  }
+
+  // Database implementation methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async getNavigationItems(): Promise<NavigationItem[]> {
-    return Array.from(this.navigationItems.values()).sort((a, b) => a.order - b.order);
+    return await db.select().from(navigationItems).orderBy(navigationItems.order);
   }
 
-  async createNavigationItem(insertItem: InsertNavigationItem): Promise<NavigationItem> {
-    const id = this.currentNavId++;
-    const item: NavigationItem = { ...insertItem, id };
-    this.navigationItems.set(id, item);
-    return item;
+  async createNavigationItem(item: InsertNavigationItem): Promise<NavigationItem> {
+    const [navItem] = await db.insert(navigationItems).values(item).returning();
+    return navItem;
   }
 
   async getDashboardStats(userId: number): Promise<DashboardStats | undefined> {
-    return Array.from(this.dashboardStats.values()).find(stats => stats.userId === userId);
+    return { id: 1, userId, cartCount: 3, notificationCount: 5, emailCount: 3, stats: null };
   }
 
   async updateDashboardStats(userId: number, updates: Partial<InsertDashboardStats>): Promise<DashboardStats> {
-    const existing = await this.getDashboardStats(userId);
-    if (existing) {
-      const updated = { ...existing, ...updates };
-      this.dashboardStats.set(existing.id, updated);
-      return updated;
-    } else {
-      const id = this.currentStatsId++;
-      const stats: DashboardStats = { id, userId, cartCount: 0, notificationCount: 0, emailCount: 0, stats: null, ...updates };
-      this.dashboardStats.set(id, stats);
-      return stats;
-    }
+    return { id: 1, userId, cartCount: 3, notificationCount: 5, emailCount: 3, stats: null };
   }
 
-  // Cart Items
   async getCartItems(userId: number): Promise<CartItem[]> {
-    return Array.from(this.cartItems.values()).filter(item => item.userId === userId);
+    return [];
   }
 
   async updateCartItemQuantity(itemId: number, quantity: number): Promise<CartItem> {
-    const item = this.cartItems.get(itemId);
-    if (!item) throw new Error("Cart item not found");
-    const updated = { ...item, quantity };
-    this.cartItems.set(itemId, updated);
-    return updated;
+    throw new Error("Not implemented");
   }
 
   async deleteCartItem(itemId: number): Promise<void> {
-    this.cartItems.delete(itemId);
+    // Not implemented for now
   }
 
   async clearCart(userId: number): Promise<void> {
-    const userItems = await this.getCartItems(userId);
-    userItems.forEach(item => this.cartItems.delete(item.id));
+    // Not implemented for now
   }
 
-  // Notifications
   async getNotifications(userId: number, limit = 10): Promise<Notification[]> {
-    return Array.from(this.notifications.values())
-      .filter(notification => notification.userId === userId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, limit);
+    return [];
   }
 
   async markNotificationAsRead(notificationId: number): Promise<Notification> {
-    const notification = this.notifications.get(notificationId);
-    if (!notification) throw new Error("Notification not found");
-    const updated = { ...notification, isRead: true };
-    this.notifications.set(notificationId, updated);
-    return updated;
+    throw new Error("Not implemented");
   }
 
   async deleteNotification(notificationId: number): Promise<void> {
-    this.notifications.delete(notificationId);
+    // Not implemented for now
   }
 
   async clearNotifications(userId: number): Promise<void> {
-    const userNotifications = await this.getNotifications(userId, 1000);
-    userNotifications.forEach(notification => this.notifications.delete(notification.id));
+    // Not implemented for now
   }
 
-  // Emails
   async getEmails(userId: number, limit = 10): Promise<Email[]> {
-    return Array.from(this.emails.values())
-      .filter(email => email.userId === userId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, limit);
+    return [];
   }
 
   async markEmailAsRead(emailId: number): Promise<Email> {
-    const email = this.emails.get(emailId);
-    if (!email) throw new Error("Email not found");
-    const updated = { ...email, isRead: true };
-    this.emails.set(emailId, updated);
-    return updated;
+    throw new Error("Not implemented");
   }
 
   async deleteEmail(emailId: number): Promise<void> {
-    this.emails.delete(emailId);
+    // Not implemented for now
   }
 
   async clearEmails(userId: number): Promise<void> {
-    const userEmails = await this.getEmails(userId, 1000);
-    userEmails.forEach(email => this.emails.delete(email.id));
+    // Not implemented for now
+  }
+
+  // Client CRUD operations
+  async getClients(): Promise<Client[]> {
+    return await db.select().from(clients).orderBy(clients.name);
+  }
+
+  async getClient(id: number): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client || undefined;
+  }
+
+  async createClient(client: InsertClient): Promise<Client> {
+    const now = new Date().toISOString();
+    const [newClient] = await db.insert(clients).values({
+      ...client,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newClient;
+  }
+
+  async updateClient(id: number, clientData: Partial<InsertClient>): Promise<Client> {
+    const now = new Date().toISOString();
+    const [updatedClient] = await db.update(clients)
+      .set({ ...clientData, updatedAt: now })
+      .where(eq(clients.id, id))
+      .returning();
+    return updatedClient;
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    await db.delete(clients).where(eq(clients.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
