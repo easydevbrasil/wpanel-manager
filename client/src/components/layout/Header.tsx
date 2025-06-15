@@ -240,9 +240,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 {actualTheme === "dark" ? (
-                  <Moon className="w-5 h-5" />
+                  <Moon className="w-6 h-6" />
                 ) : (
-                  <Sun className="w-5 h-5" />
+                  <Sun className="w-6 h-6" />
                 )}
               </Button>
             </DropdownMenuTrigger>
@@ -272,7 +272,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   size="sm"
                   className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <ShoppingCart className="w-5 h-5" />
+                  <ShoppingCart className="w-6 h-6" />
                   {stats?.cartCount && stats.cartCount > 0 && (
                     <Badge
                       variant="destructive"
@@ -381,7 +381,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   size="sm"
                   className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-6 h-6" />
                   {stats?.notificationCount && stats.notificationCount > 0 && (
                     <Badge
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-blue-500 hover:bg-blue-600"
@@ -498,7 +498,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   size="sm"
                   className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <Mail className="w-5 h-5" />
+                  <Mail className="w-6 h-6" />
                   {stats?.emailCount && stats.emailCount > 0 && (
                     <Badge
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-green-500 hover:bg-green-600"
