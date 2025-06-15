@@ -658,73 +658,67 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{getClientName(sale.clientId)}</p>
-                    <p className="text-xs text-muted-foreground">Cliente</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Informações da Venda */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{getClientName(sale.clientId)}</p>
+                      <p className="text-xs text-muted-foreground">Cliente</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{formatDate(sale.saleDate)}</p>
+                      <p className="text-xs text-muted-foreground">Data da Venda</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{formatCurrency(sale.total)}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Package2 className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {sale.paymentMethod ? sale.paymentMethod.toUpperCase() : "Não informado"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Pagamento</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{formatDate(sale.saleDate)}</p>
-                    <p className="text-xs text-muted-foreground">Data da Venda</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{formatCurrency(sale.total)}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Package2 className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">
-                      {sale.paymentMethod ? sale.paymentMethod.toUpperCase() : "Não informado"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Pagamento</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Produtos da Venda */}
-              <Separator className="my-3" />
-              <div>
-                <p className="text-sm font-medium mb-3">Produtos</p>
-                <div className="space-y-2">
-                  {getSaleProducts(sale.id).map((item: any) => (
-                    <div key={item.id} className="flex items-center space-x-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
-                        {item.product.image ? (
-                          <img 
-                            src={item.product.image} 
-                            alt={item.product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            <Package2 className="h-5 w-5 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.product.name}</p>
-                        <p className="text-xs text-muted-foreground">{item.product.sku}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <p className="text-xs text-muted-foreground">
-                            {item.quantity}x {formatCurrency(item.unitPrice || "0")}
-                          </p>
-                          <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                            = {formatCurrency(((Number(item.unitPrice) || 0) * item.quantity).toString())}
-                          </p>
+                
+                {/* Produtos Vendidos */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Produtos Vendidos</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {getSaleProducts(sale.id).map((item: any) => (
+                      <div key={item.id} className="flex items-center space-x-2 text-xs">
+                        <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                          {item.product.image ? (
+                            <img 
+                              src={item.product.image} 
+                              alt={item.product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                              <Package2 className="h-3 w-3 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{item.product.name}</p>
+                          <p className="text-muted-foreground">Qtd: {item.quantity}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
               
