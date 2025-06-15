@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWebSocket, type WebSocketStatus } from '@/hooks/use-websocket';
 import { Zap, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,10 +30,39 @@ const statusConfig = {
   }
 };
 
+function formatDuration(startTime: Date): string {
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+  
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s`;
+  return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+}
+
+function truncateText(text: string, maxLength: number = 30): string {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
 export function WebSocketIndicator() {
   const [showDetails, setShowDetails] = useState(false);
-  const { status, connect, lastMessage, isConnected } = useWebSocket();
+  const [connectionTime, setConnectionTime] = useState<string>('');
+  const { status, connect, lastMessage, connectedAt, isConnected } = useWebSocket();
   const config = statusConfig[status];
+
+  // Update connection time every second
+  useEffect(() => {
+    if (!connectedAt || !isConnected) {
+      setConnectionTime('');
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setConnectionTime(formatDuration(connectedAt));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [connectedAt, isConnected]);
 
   const toggleDetails = () => {
     setShowDetails(!showDetails);
@@ -55,31 +84,49 @@ export function WebSocketIndicator() {
           </div>
           
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Status:</span>
-              <span className={cn("font-medium", config.textColor)}>{config.label}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">Status:</span>
+              <span className={cn("font-medium text-right", config.textColor)}>{config.label}</span>
             </div>
             
-            <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Conectado:</span>
-              <span className="font-medium">{isConnected ? 'Sim' : 'Não'}</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">Conectado:</span>
+              <span className="font-medium text-right">{isConnected ? 'Sim' : 'Não'}</span>
             </div>
             
-            <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">URL:</span>
-              <span className="font-mono text-xs">
-                {window.location.protocol === "https:" ? "wss:" : "ws:"}//{window.location.host}/ws
+            {connectionTime && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">Tempo:</span>
+                <span className="font-medium text-right">{connectionTime}</span>
+              </div>
+            )}
+            
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 dark:text-gray-400 flex-shrink-0">URL:</span>
+              <span className="font-mono text-xs text-right break-all">
+                {truncateText(`${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`, 25)}
               </span>
             </div>
             
             {lastMessage && (
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                <div className="text-gray-600 dark:text-gray-400 mb-1">Última mensagem:</div>
-                <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded">
-                  <div><strong>Tipo:</strong> {lastMessage.type}</div>
-                  <div><strong>Hora:</strong> {new Date(lastMessage.timestamp).toLocaleTimeString()}</div>
+                <div className="text-gray-600 dark:text-gray-400 mb-2">Última mensagem:</div>
+                <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded space-y-1">
+                  <div className="flex justify-between">
+                    <strong>Tipo:</strong> 
+                    <span className="text-right">{truncateText(lastMessage.type, 15)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <strong>Hora:</strong> 
+                    <span className="text-right">{new Date(lastMessage.timestamp).toLocaleTimeString()}</span>
+                  </div>
                   {lastMessage.data && (
-                    <div><strong>Dados:</strong> {JSON.stringify(lastMessage.data, null, 2).substring(0, 100)}...</div>
+                    <div>
+                      <strong>Dados:</strong>
+                      <div className="mt-1 p-1 bg-gray-200 dark:bg-gray-600 rounded text-xs break-all">
+                        {truncateText(JSON.stringify(lastMessage.data), 80)}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -100,29 +147,12 @@ export function WebSocketIndicator() {
       {/* Main Indicator */}
       <button
         onClick={toggleDetails}
-        className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
       >
-        {/* Status Indicator Dot */}
-        <div className="relative">
-          <div 
-            className={cn(
-              "w-2 h-2 rounded-full",
-              config.color
-            )}
-          />
-          {status === 'connected' && (
-            <div className={cn(
-              "absolute inset-0 w-2 h-2 rounded-full animate-ping",
-              config.color,
-              "opacity-75"
-            )} />
-          )}
-        </div>
-
         {/* Bolt Icon */}
         <Zap 
           className={cn(
-            "w-4 h-4",
+            "w-5 h-5",
             config.textColor,
             config.animate && "animate-pulse"
           )} 

@@ -149,6 +149,10 @@ Changelog:
 - June 15, 2025. Created comprehensive ticket management with categories, priorities, status tracking, and message threading
 - June 15, 2025. Added support navigation item and 5 sample tickets with realistic data including client associations and message history
 - June 15, 2025. Built ticket detail view with expandable information, Chatwoot integration links, and message management interface
+- June 15, 2025. Implemented complete WebSocket real-time system for all data updates (clients, products, sales, support tickets)
+- June 15, 2025. Created minimalist WebSocket indicator with bolt icon in bottom-right corner showing connection status via colors
+- June 15, 2025. Added expandable connection details panel with technical information, last message data, and reconnection capabilities
+- June 15, 2025. All CRUD operations now broadcast real-time updates to connected clients with automatic cache invalidation
 ```
 
 ## User Preferences

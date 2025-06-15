@@ -12,6 +12,7 @@ interface WebSocketMessage {
 export function useWebSocket() {
   const [status, setStatus] = useState<WebSocketStatus>('disconnected');
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
+  const [connectedAt, setConnectedAt] = useState<Date | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
@@ -29,6 +30,7 @@ export function useWebSocket() {
       ws.onopen = () => {
         console.log('WebSocket connected');
         setStatus('connected');
+        setConnectedAt(new Date());
         
         // Send ping to keep connection alive
         const pingInterval = setInterval(() => {
@@ -82,6 +84,7 @@ export function useWebSocket() {
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         setStatus('disconnected');
+        setConnectedAt(null);
         wsRef.current = null;
         
         // Auto-reconnect after 3 seconds
@@ -139,6 +142,7 @@ export function useWebSocket() {
   return {
     status,
     lastMessage,
+    connectedAt,
     connect,
     disconnect,
     sendMessage,
