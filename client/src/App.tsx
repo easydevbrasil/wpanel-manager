@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Products from "@/pages/Products";
 import Suppliers from "@/pages/Suppliers";
+import Sales from "@/pages/Sales";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
         <Route path="/clients" component={Clients} />
         <Route path="/products" component={Products} />
         <Route path="/suppliers" component={Suppliers} />
+        <Route path="/sales" component={Sales} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>
