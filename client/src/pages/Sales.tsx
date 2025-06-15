@@ -620,11 +620,11 @@ export default function Sales() {
               {/* Produtos da Venda */}
               <Separator className="my-3" />
               <div>
-                <p className="text-sm font-medium mb-2">Produtos</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-sm font-medium mb-3">Produtos</p>
+                <div className="space-y-2">
                   {getSaleProducts(sale.id).map((item: any) => (
-                    <div key={item.id} className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
-                      <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
+                    <div key={item.id} className="flex items-center space-x-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0">
                         {item.product.image ? (
                           <img 
                             src={item.product.image} 
@@ -633,14 +633,16 @@ export default function Sales() {
                           />
                         ) : (
                           <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            <Package2 className="h-4 w-4 text-gray-400" />
+                            <Package2 className="h-5 w-5 text-gray-400" />
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{item.product.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">{item.product.sku}</p>
-                        <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Qtd: {item.quantity}</p>
                       </div>
                     </div>
                   ))}
