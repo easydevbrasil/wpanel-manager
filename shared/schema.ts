@@ -168,6 +168,38 @@ export const suppliers = pgTable("suppliers", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const sales = pgTable("sales", {
+  id: serial("id").primaryKey(),
+  saleNumber: text("sale_number").notNull().unique(),
+  clientId: integer("client_id").references(() => clients.id),
+  userId: integer("user_id").references(() => users.id),
+  saleDate: text("sale_date").notNull(),
+  status: text("status").default("pendente"), // pendente, confirmada, enviada, entregue, cancelada
+  paymentMethod: text("payment_method"), // dinheiro, cartao, pix, boleto, credito
+  paymentStatus: text("payment_status").default("pendente"), // pendente, pago, atrasado
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).default("0.00"),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default("0.00"),
+  tax: decimal("tax", { precision: 10, scale: 2 }).default("0.00"),
+  shipping: decimal("shipping", { precision: 10, scale: 2 }).default("0.00"),
+  total: decimal("total", { precision: 10, scale: 2 }).default("0.00"),
+  notes: text("notes"),
+  deliveryAddress: text("delivery_address"),
+  deliveryDate: text("delivery_date"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const saleItems = pgTable("sale_items", {
+  id: serial("id").primaryKey(),
+  saleId: integer("sale_id").references(() => sales.id),
+  productId: integer("product_id").references(() => products.id),
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default("0.00"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -228,6 +260,17 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
   updatedAt: true,
 });
 
+export const insertSaleSchema = createInsertSchema(sales).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSaleItemSchema = createInsertSchema(saleItems).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
@@ -252,3 +295,7 @@ export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type Sale = typeof sales.$inferSelect;
+export type InsertSale = z.infer<typeof insertSaleSchema>;
+export type SaleItem = typeof saleItems.$inferSelect;
+export type InsertSaleItem = z.infer<typeof insertSaleItemSchema>;
