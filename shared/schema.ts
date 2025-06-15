@@ -137,6 +137,37 @@ export const products = pgTable("products", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  companyName: text("company_name"),
+  email: text("email"),
+  phone: text("phone"),
+  whatsapp: text("whatsapp"),
+  website: text("website"),
+  cnpj: text("cnpj"),
+  cpf: text("cpf"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  country: text("country").default("Brasil"),
+  contactPerson: text("contact_person"),
+  contactRole: text("contact_role"),
+  paymentTerms: text("payment_terms"),
+  deliveryTime: text("delivery_time"),
+  minimumOrder: text("minimum_order"),
+  categories: text("categories").array(), // Array of category IDs
+  manufacturers: text("manufacturers").array(), // Array of manufacturer IDs
+  productGroups: text("product_groups").array(), // Array of product group IDs
+  notes: text("notes"),
+  status: text("status").notNull().default("active"),
+  rating: integer("rating").default(0),
+  image: text("image"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -191,6 +222,12 @@ export const insertProductSchema = createInsertSchema(products).omit({
   updatedAt: true,
 });
 
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
@@ -213,3 +250,5 @@ export type ProductGroup = typeof productGroups.$inferSelect;
 export type InsertProductGroup = z.infer<typeof insertProductGroupSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;

@@ -10,6 +10,7 @@ import {
   manufacturers,
   productGroups,
   products,
+  suppliers,
   type User, 
   type NavigationItem, 
   type DashboardStats, 
