@@ -524,6 +524,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sale Items routes
+  app.get("/api/sales/:id/items", async (req, res) => {
+    try {
+      const saleId = parseInt(req.params.id);
+      const saleItems = await storage.getSaleItems(saleId);
+      res.json(saleItems);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get sale items" });
+    }
+  });
+
+  app.post("/api/sales/:id/items", async (req, res) => {
+    try {
+      const saleId = parseInt(req.params.id);
+      const saleItem = await storage.createSaleItem({ ...req.body, saleId });
+      res.status(201).json(saleItem);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create sale item" });
+    }
+  });
+
+  // Sale Items routes
   app.get("/api/sales/:saleId/items", async (req, res) => {
     try {
       const saleId = parseInt(req.params.saleId);

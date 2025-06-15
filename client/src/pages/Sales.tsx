@@ -67,6 +67,24 @@ export default function Sales() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: products = [] } = useQuery({
+    queryKey: ["/api/products"],
+  });
+
+  const { data: saleItems = [] } = useQuery({
+    queryKey: ["/api/sale-items"],
+    queryFn: () => {
+      // Buscar itens de todas as vendas
+      const saleIds = (sales as Sale[]).map(sale => sale.id);
+      return Promise.all(
+        saleIds.map(saleId => 
+          apiRequest("GET", `/api/sales/${saleId}/items`)
+        )
+      ).then(results => results.flat());
+    },
+    enabled: !!sales && Array.isArray(sales) && sales.length > 0,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: InsertSale) => apiRequest("POST", "/api/sales", data),
     onSuccess: () => {
@@ -197,6 +215,22 @@ export default function Sales() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const getSaleProducts = (saleId: number) => {
+    const items = (saleItems as any[]).filter((item: any) => item.saleId === saleId);
+    return items.map((item: any) => {
+      const product = (products as any[]).find((p: any) => p.id === item.productId);
+      return {
+        ...item,
+        product: product || { name: "Produto não encontrado", sku: "", image: "" }
+      };
+    });
+  };
+
+  const getLatestStatus = (sale: Sale) => {
+    // Retorna apenas o status principal da venda (não o status de pagamento)
+    return sale.status || "pendente";
   };
 
   if (isLoading) {
@@ -526,11 +560,8 @@ export default function Sales() {
                     <ShoppingCart className="h-5 w-5 text-muted-foreground" />
                     <CardTitle className="text-lg">{sale.saleNumber}</CardTitle>
                   </div>
-                  <Badge className={statusColors[(sale.status || "pendente") as keyof typeof statusColors]}>
-                    {(sale.status || "pendente").charAt(0).toUpperCase() + (sale.status || "pendente").slice(1)}
-                  </Badge>
-                  <Badge className={paymentStatusColors[(sale.paymentStatus || "pendente") as keyof typeof paymentStatusColors]}>
-                    {(sale.paymentStatus || "pendente") === "pago" ? "Pago" : (sale.paymentStatus || "pendente").charAt(0).toUpperCase() + (sale.paymentStatus || "pendente").slice(1)}
+                  <Badge className={statusColors[getLatestStatus(sale) as keyof typeof statusColors]}>
+                    {getLatestStatus(sale).charAt(0).toUpperCase() + getLatestStatus(sale).slice(1)}
                   </Badge>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -583,6 +614,36 @@ export default function Sales() {
                     </p>
                     <p className="text-xs text-muted-foreground">Pagamento</p>
                   </div>
+                </div>
+              </div>
+              
+              {/* Produtos da Venda */}
+              <Separator className="my-3" />
+              <div>
+                <p className="text-sm font-medium mb-2">Produtos</p>
+                <div className="flex flex-wrap gap-2">
+                  {getSaleProducts(sale.id).map((item: any) => (
+                    <div key={item.id} className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
+                      <div className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
+                        {item.product.image ? (
+                          <img 
+                            src={item.product.image} 
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            <Package2 className="h-4 w-4 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{item.product.name}</p>
+                        <p className="text-xs text-muted-foreground">{item.product.sku}</p>
+                        <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               
