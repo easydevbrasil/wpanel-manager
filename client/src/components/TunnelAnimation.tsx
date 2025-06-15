@@ -8,65 +8,59 @@ interface TunnelAnimationProps {
 }
 
 export function TunnelAnimation({ isActive, className }: TunnelAnimationProps) {
-  const [particles, setParticles] = useState<Array<{ id: number; delay: number }>>([]);
-
-  useEffect(() => {
-    if (!isActive) {
-      setParticles([]);
-      return;
-    }
-
-    // Create particles with random delays
-    const newParticles = Array.from({ length: 8 }, (_, i) => ({
-      id: i,
-      delay: i * 0.2
-    }));
-    
-    setParticles(newParticles);
-  }, [isActive]);
-
   return (
     <div className={cn("relative flex items-center justify-center", className)}>
-      {/* Tunnel Background */}
+      {/* Dotted Line Connection */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-24 h-2 bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent rounded-full opacity-30" />
-        <div className="absolute w-20 h-1 bg-gradient-to-r from-transparent via-blue-300 dark:via-blue-700 to-transparent rounded-full" />
+        <div className="w-full h-0.5 flex items-center justify-between px-6">
+          {/* Dotted line with animation */}
+          <div className={cn(
+            "flex-1 h-0.5 border-t-2 border-dotted transition-colors duration-300",
+            isActive 
+              ? "border-blue-400 dark:border-blue-500" 
+              : "border-gray-300 dark:border-gray-600"
+          )}>
+            {/* Moving dot animation */}
+            {isActive && (
+              <div className="relative w-full h-full overflow-hidden">
+                <div className="absolute w-2 h-2 bg-blue-400 rounded-full -top-1 animate-tunnel-dot" />
+                <div className="absolute w-2 h-2 bg-blue-400 rounded-full -top-1 animate-tunnel-dot" style={{ animationDelay: '0.5s' }} />
+                <div className="absolute w-2 h-2 bg-blue-400 rounded-full -top-1 animate-tunnel-dot" style={{ animationDelay: '1s' }} />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Data Particles */}
-      {isActive && particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="absolute w-1 h-1 bg-blue-400 rounded-full animate-tunnel"
-          style={{
-            animationDelay: `${particle.delay}s`,
-            animationDuration: '1.5s',
-            animationIterationCount: 'infinite',
-            left: '20%',
-          }}
-        />
-      ))}
-
       {/* Source Icon (Bolt) */}
-      <div className="absolute left-0">
-        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+      <div className="absolute left-0 z-10">
+        <div className={cn(
+          "w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300",
+          isActive 
+            ? "bg-blue-500 shadow-lg shadow-blue-500/30" 
+            : "bg-gray-400 dark:bg-gray-600"
+        )}>
           <Zap className="w-3 h-3 text-white" />
         </div>
       </div>
 
       {/* Destination Icon (PC) */}
-      <div className="absolute right-0">
-        <div className="w-6 h-6 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
-          <Monitor className="w-3 h-3 text-white dark:text-gray-800" />
+      <div className="absolute right-0 z-10">
+        <div className={cn(
+          "w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300",
+          isActive 
+            ? "bg-green-500 shadow-lg shadow-green-500/30" 
+            : "bg-gray-400 dark:bg-gray-600"
+        )}>
+          <Monitor className="w-3 h-3 text-white" />
         </div>
       </div>
 
-      {/* Tunnel Rings */}
+      {/* Pulse effect when active */}
       {isActive && (
         <>
-          <div className="absolute w-4 h-4 border border-blue-300 dark:border-blue-600 rounded-full animate-ping opacity-20" style={{ animationDelay: '0s' }} />
-          <div className="absolute w-6 h-6 border border-blue-300 dark:border-blue-600 rounded-full animate-ping opacity-20" style={{ animationDelay: '0.3s' }} />
-          <div className="absolute w-8 h-8 border border-blue-300 dark:border-blue-600 rounded-full animate-ping opacity-20" style={{ animationDelay: '0.6s' }} />
+          <div className="absolute left-0 w-6 h-6 bg-blue-500 rounded-full animate-ping opacity-20" />
+          <div className="absolute right-0 w-6 h-6 bg-green-500 rounded-full animate-ping opacity-20" style={{ animationDelay: '0.5s' }} />
         </>
       )}
     </div>

@@ -159,16 +159,14 @@ export function WebSocketIndicator() {
       {/* Main Indicator */}
       <button
         onClick={toggleDetails}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className={cn(
+          "w-12 h-12 rounded-full shadow-lg border-2 border-white dark:border-gray-800 hover:scale-110 transition-all duration-200",
+          config.color,
+          config.animate && "animate-pulse"
+        )}
       >
         {/* Bolt Icon */}
-        <Zap 
-          className={cn(
-            "w-5 h-5",
-            config.textColor,
-            config.animate && "animate-pulse"
-          )} 
-        />
+        <Zap className="w-6 h-6 text-white mx-auto" />
       </button>
     </div>
   );

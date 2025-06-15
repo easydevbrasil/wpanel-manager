@@ -225,3 +225,24 @@
 .animate-tunnel-pulse {
   animation: tunnel-pulse 1.5s infinite ease-in-out;
 }
+
+@keyframes tunnel-dot {
+  0% {
+    transform: translateX(0px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(100% - 8px));
+    opacity: 0;
+  }
+}
+
+.animate-tunnel-dot {
+  animation: tunnel-dot 2s infinite linear;
+}
