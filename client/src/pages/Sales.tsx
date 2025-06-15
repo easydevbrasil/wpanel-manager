@@ -183,7 +183,7 @@ export default function Sales() {
 
   const getClientName = (clientId: number | null) => {
     if (!clientId) return "Cliente não informado";
-    const client = (clients as Client[]).find((c: Client) => c.id === clientId);
+    const client = clientsArray.find((c: Client) => c.id === clientId);
     return client?.name || "Cliente não encontrado";
   };
 
@@ -256,7 +256,7 @@ export default function Sales() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {clients.map((client: Client) => (
+                            {clientsArray.map((client: Client) => (
                               <SelectItem key={client.id} value={client.id.toString()}>
                                 {client.name}
                               </SelectItem>
@@ -526,11 +526,11 @@ export default function Sales() {
                     <ShoppingCart className="h-5 w-5 text-muted-foreground" />
                     <CardTitle className="text-lg">{sale.saleNumber}</CardTitle>
                   </div>
-                  <Badge className={statusColors[sale.status as keyof typeof statusColors]}>
-                    {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
+                  <Badge className={statusColors[(sale.status || "pendente") as keyof typeof statusColors]}>
+                    {(sale.status || "pendente").charAt(0).toUpperCase() + (sale.status || "pendente").slice(1)}
                   </Badge>
-                  <Badge className={paymentStatusColors[sale.paymentStatus as keyof typeof paymentStatusColors]}>
-                    {sale.paymentStatus === "pago" ? "Pago" : sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1)}
+                  <Badge className={paymentStatusColors[(sale.paymentStatus || "pendente") as keyof typeof paymentStatusColors]}>
+                    {(sale.paymentStatus || "pendente") === "pago" ? "Pago" : (sale.paymentStatus || "pendente").charAt(0).toUpperCase() + (sale.paymentStatus || "pendente").slice(1)}
                   </Badge>
                 </div>
                 <div className="flex items-center space-x-2">
