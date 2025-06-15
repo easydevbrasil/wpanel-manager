@@ -606,11 +606,11 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center space-x-3 p-2 hover:bg-gray-100"
+                className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={user?.avatar || undefined} alt={user?.name} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
                     {user?.name
                       ?.split(" ")
                       .map((n) => n[0])
@@ -618,12 +618,12 @@ export function Header() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden sm:block text-left">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {user?.name}
                   </div>
-                  <div className="text-xs text-gray-500">{user?.role}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{user?.role}</div>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+                <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

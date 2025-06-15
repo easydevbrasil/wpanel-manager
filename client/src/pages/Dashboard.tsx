@@ -142,9 +142,9 @@ export default function Dashboard() {
       {/* Content Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Projects */}
-        <Card className="bg-white shadow-sm border border-gray-200">
-          <CardHeader className="border-b border-gray-200">
-            <CardTitle className="text-lg font-semibold text-gray-900">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
               Recent Projects
             </CardTitle>
           </CardHeader>
@@ -153,7 +153,7 @@ export default function Dashboard() {
               {recentProjects.map((project, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 ${project.avatarBg} rounded-lg flex items-center justify-center`}>
@@ -162,15 +162,15 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-gray-900 dark:text-white">
                         {project.name}
                       </h4>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Updated {project.lastUpdate}
                       </p>
                     </div>
                   </div>
-                  <Badge className={`${project.statusColor} font-medium`}>
+                  <Badge className={`${project.statusColor} dark:bg-green-900 dark:text-green-300 font-medium`}>
                     {project.status}
                   </Badge>
                 </div>
@@ -180,9 +180,9 @@ export default function Dashboard() {
         </Card>
 
         {/* Team Activity */}
-        <Card className="bg-white shadow-sm border border-gray-200">
-          <CardHeader className="border-b border-gray-200">
-            <CardTitle className="text-lg font-semibold text-gray-900">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
               Team Activity
             </CardTitle>
           </CardHeader>
@@ -192,16 +192,16 @@ export default function Dashboard() {
                 <div key={index} className="flex items-start space-x-3">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={activity.avatar} alt={activity.name} />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
                       {activity.name.split(" ").map(n => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900">
+                    <p className="text-sm text-gray-900 dark:text-white">
                       <span className="font-medium">{activity.name}</span>{" "}
                       {activity.action}
                     </p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
                   </div>
                 </div>
               ))}
