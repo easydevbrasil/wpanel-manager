@@ -32,7 +32,9 @@ import {
   type ProductGroup,
   type InsertProductGroup,
   type Product,
-  type InsertProduct
+  type InsertProduct,
+  type Supplier,
+  type InsertSupplier
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -103,6 +105,13 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
+  
+  // Suppliers
+  getSuppliers(): Promise<Supplier[]>;
+  getSupplier(id: number): Promise<Supplier | undefined>;
+  createSupplier(supplier: InsertSupplier): Promise<Supplier>;
+  updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier>;
+  deleteSupplier(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -747,6 +756,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  // Supplier CRUD operations
+  async getSuppliers(): Promise<Supplier[]> {
+    return await db.select().from(suppliers).orderBy(suppliers.name);
+  }
+
+  async getSupplier(id: number): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
+    return supplier || undefined;
+  }
+
+  async createSupplier(supplier: InsertSupplier): Promise<Supplier> {
+    const now = new Date().toISOString();
+    const [newSupplier] = await db.insert(suppliers).values({
+      ...supplier,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return newSupplier;
+  }
+
+  async updateSupplier(id: number, supplierData: Partial<InsertSupplier>): Promise<Supplier> {
+    const now = new Date().toISOString();
+    const [updatedSupplier] = await db.update(suppliers)
+      .set({ ...supplierData, updatedAt: now })
+      .where(eq(suppliers.id, id))
+      .returning();
+    return updatedSupplier;
+  }
+
+  async deleteSupplier(id: number): Promise<void> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
   }
 }
 

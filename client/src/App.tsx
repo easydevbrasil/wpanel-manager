@@ -8,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Products from "@/pages/Products";
+import Suppliers from "@/pages/Suppliers";
 import NotFound from "@/pages/not-found";
 
 function Router() {
