@@ -1,31 +1,28 @@
+import { useState } from 'react';
 import { useWebSocket, type WebSocketStatus } from '@/hooks/use-websocket';
-import { Wifi, WifiOff, AlertCircle, Loader2 } from 'lucide-react';
+import { Zap, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const statusConfig = {
   connecting: {
-    icon: Loader2,
     color: 'bg-yellow-500',
     textColor: 'text-yellow-500',
     label: 'Conectando...',
     animate: true
   },
   connected: {
-    icon: Wifi,
     color: 'bg-green-500',
     textColor: 'text-green-500',
     label: 'Conectado',
     animate: false
   },
   disconnected: {
-    icon: WifiOff,
     color: 'bg-red-500',
     textColor: 'text-red-500',
     label: 'Desconectado',
     animate: false
   },
   error: {
-    icon: AlertCircle,
     color: 'bg-red-600',
     textColor: 'text-red-600',
     label: 'Erro de conexão',
@@ -34,66 +31,103 @@ const statusConfig = {
 };
 
 export function WebSocketIndicator() {
-  const { status, connect, disconnect, isConnected } = useWebSocket();
+  const [showDetails, setShowDetails] = useState(false);
+  const { status, connect, lastMessage, isConnected } = useWebSocket();
   const config = statusConfig[status];
-  const IconComponent = config.icon;
+
+  const toggleDetails = () => {
+    setShowDetails(!showDetails);
+  };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
-        {/* Status Indicator */}
+      {/* Details Panel */}
+      {showDetails && (
+        <div className="mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 w-80">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white">Detalhes WebSocket</h3>
+            <button
+              onClick={toggleDetails}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">Status:</span>
+              <span className={cn("font-medium", config.textColor)}>{config.label}</span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">Conectado:</span>
+              <span className="font-medium">{isConnected ? 'Sim' : 'Não'}</span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">URL:</span>
+              <span className="font-mono text-xs">
+                {window.location.protocol === "https:" ? "wss:" : "ws:"}//{window.location.host}/ws
+              </span>
+            </div>
+            
+            {lastMessage && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                <div className="text-gray-600 dark:text-gray-400 mb-1">Última mensagem:</div>
+                <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                  <div><strong>Tipo:</strong> {lastMessage.type}</div>
+                  <div><strong>Hora:</strong> {new Date(lastMessage.timestamp).toLocaleTimeString()}</div>
+                  {lastMessage.data && (
+                    <div><strong>Dados:</strong> {JSON.stringify(lastMessage.data, null, 2).substring(0, 100)}...</div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {(status === 'disconnected' || status === 'error') && (
+              <button
+                onClick={() => connect()}
+                className="w-full mt-3 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded transition-colors"
+              >
+                Reconectar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Indicator */}
+      <button
+        onClick={toggleDetails}
+        className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      >
+        {/* Status Indicator Dot */}
         <div className="relative">
           <div 
             className={cn(
-              "w-3 h-3 rounded-full",
+              "w-2 h-2 rounded-full",
               config.color
             )}
           />
           {status === 'connected' && (
             <div className={cn(
-              "absolute inset-0 w-3 h-3 rounded-full animate-ping",
+              "absolute inset-0 w-2 h-2 rounded-full animate-ping",
               config.color,
               "opacity-75"
             )} />
           )}
         </div>
 
-        {/* Icon */}
-        <IconComponent 
+        {/* Bolt Icon */}
+        <Zap 
           className={cn(
             "w-4 h-4",
             config.textColor,
-            config.animate && "animate-spin"
+            config.animate && "animate-pulse"
           )} 
         />
-
-        {/* Status Text */}
-        <span className={cn(
-          "text-xs font-medium",
-          config.textColor
-        )}>
-          {config.label}
-        </span>
-
-        {/* Action Button */}
-        {(status === 'disconnected' || status === 'error') && (
-          <button
-            onClick={() => connect()}
-            className="ml-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
-          >
-            Reconectar
-          </button>
-        )}
-
-        {status === 'connected' && (
-          <button
-            onClick={() => disconnect()}
-            className="ml-2 text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded transition-colors"
-          >
-            Desconectar
-          </button>
-        )}
-      </div>
+      </button>
     </div>
   );
 }
