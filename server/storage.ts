@@ -208,15 +208,61 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDashboardStats(userId: number): Promise<DashboardStats | undefined> {
-    return { id: 1, userId, cartCount: 3, notificationCount: 5, emailCount: 3, stats: null };
+    const cartItems = await this.getCartItems(userId);
+    const notifications = await this.getNotifications(userId);
+    const emails = await this.getEmails(userId);
+    
+    return { 
+      id: 1, 
+      userId, 
+      cartCount: cartItems.length, 
+      notificationCount: notifications.filter(n => !n.isRead).length, 
+      emailCount: emails.filter(e => !e.isRead).length, 
+      stats: {
+        totalProjects: 12,
+        activeTasks: 24,
+        teamMembers: 8,
+        revenue: 47500
+      }
+    };
   }
 
   async updateDashboardStats(userId: number, updates: Partial<InsertDashboardStats>): Promise<DashboardStats> {
-    return { id: 1, userId, cartCount: 3, notificationCount: 5, emailCount: 3, stats: null };
+    const current = await this.getDashboardStats(userId);
+    return { ...current!, ...updates };
   }
 
   async getCartItems(userId: number): Promise<CartItem[]> {
-    return [];
+    const now = new Date().toISOString();
+    return [
+      {
+        id: 1,
+        userId,
+        productName: "Dashboard Pro License",
+        productImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop",
+        price: 99.99,
+        quantity: 2,
+        createdAt: now
+      },
+      {
+        id: 2,
+        userId,
+        productName: "Premium Support Package",
+        productImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=100&fit=crop",
+        price: 149.50,
+        quantity: 1,
+        createdAt: now
+      },
+      {
+        id: 3,
+        userId,
+        productName: "Custom Integration",
+        productImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=100&h=100&fit=crop",
+        price: 299.00,
+        quantity: 1,
+        createdAt: now
+      }
+    ];
   }
 
   async updateCartItemQuantity(itemId: number, quantity: number): Promise<CartItem> {
@@ -232,7 +278,70 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNotifications(userId: number, limit = 10): Promise<Notification[]> {
-    return [];
+    const now = new Date().toISOString();
+    const notifications = [
+      {
+        id: 1,
+        userId,
+        title: "Novo projeto atribuído",
+        message: "Você foi atribuído ao projeto Alpha como desenvolvedor principal",
+        type: "info",
+        serviceType: "system",
+        senderName: "Sistema",
+        senderAvatar: null,
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 2,
+        userId,
+        title: "Reunião agendada",
+        message: "Reunião de planejamento agendada para amanhã às 14:00",
+        type: "warning",
+        serviceType: "calendar",
+        senderName: "Maria Silva",
+        senderAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 3,
+        userId,
+        title: "Tarefa concluída",
+        message: "Design do sistema foi aprovado pelo cliente",
+        type: "success",
+        serviceType: "task",
+        senderName: "João Santos",
+        senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
+        isRead: true,
+        createdAt: now
+      },
+      {
+        id: 4,
+        userId,
+        title: "Prazo próximo",
+        message: "Entrega do projeto Beta em 2 dias",
+        type: "warning",
+        serviceType: "deadline",
+        senderName: "Sistema",
+        senderAvatar: null,
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 5,
+        userId,
+        title: "Novo comentário",
+        message: "Ana comentou no seu documento de especificações",
+        type: "info",
+        serviceType: "comment",
+        senderName: "Ana Costa",
+        senderAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
+        isRead: false,
+        createdAt: now
+      }
+    ];
+    return notifications.slice(0, limit);
   }
 
   async markNotificationAsRead(notificationId: number): Promise<Notification> {
@@ -248,7 +357,130 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEmails(userId: number, limit = 10): Promise<Email[]> {
-    return [];
+    const now = new Date().toISOString();
+    const emails = [
+      {
+        id: 1,
+        userId,
+        sender: "Carlos Mendes",
+        senderEmail: "carlos@techcorp.com",
+        senderAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=40&h=40&fit=crop&crop=face",
+        subject: "Proposta de Projeto",
+        preview: "Gostaria de discutir uma nova oportunidade de desenvolvimento...",
+        serviceType: "email",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 2,
+        userId,
+        sender: "WhatsApp Business",
+        senderEmail: "noreply@whatsapp.com",
+        senderAvatar: null,
+        subject: "Nova mensagem do cliente",
+        preview: "Olá! Preciso de ajuda com o sistema que desenvolveram...",
+        serviceType: "whatsapp",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 3,
+        userId,
+        sender: "Telegram Bot",
+        senderEmail: "bot@telegram.org",
+        senderAvatar: null,
+        subject: "Relatório diário",
+        preview: "Resumo das atividades do dia: 15 tarefas concluídas...",
+        serviceType: "telegram",
+        isRead: true,
+        createdAt: now
+      },
+      {
+        id: 4,
+        userId,
+        sender: "Laura Santos",
+        senderEmail: "laura@startup.io",
+        senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40&h=40&fit=crop&crop=face",
+        subject: "Reunião de alinhamento",
+        preview: "Podemos agendar uma reunião para alinhar os próximos passos?",
+        serviceType: "email",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 5,
+        userId,
+        sender: "Sistema Push",
+        senderEmail: "notifications@app.com",
+        senderAvatar: null,
+        subject: "Backup concluído",
+        preview: "O backup automático foi realizado com sucesso às 03:00",
+        serviceType: "push",
+        isRead: true,
+        createdAt: now
+      },
+      {
+        id: 6,
+        userId,
+        sender: "Roberto Lima",
+        senderEmail: "roberto@empresa.com.br",
+        senderAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
+        subject: "Feedback do projeto",
+        preview: "Excelente trabalho no último projeto! Gostaria de propor...",
+        serviceType: "email",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 7,
+        userId,
+        sender: "WhatsApp Business",
+        senderEmail: "noreply@whatsapp.com",
+        senderAvatar: null,
+        subject: "Cliente urgente",
+        preview: "Preciso resolver um problema crítico no sistema hoje mesmo!",
+        serviceType: "whatsapp",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 8,
+        userId,
+        sender: "Sistema",
+        senderEmail: "system@dashboard.com",
+        senderAvatar: null,
+        subject: "Atualização disponível",
+        preview: "Nova versão do dashboard disponível com melhorias...",
+        serviceType: "system",
+        isRead: true,
+        createdAt: now
+      },
+      {
+        id: 9,
+        userId,
+        sender: "Telegram Bot",
+        senderEmail: "bot@telegram.org",
+        senderAvatar: null,
+        subject: "Lembrete importante",
+        preview: "Não esqueça da apresentação para o cliente às 16:00",
+        serviceType: "telegram",
+        isRead: false,
+        createdAt: now
+      },
+      {
+        id: 10,
+        userId,
+        sender: "Patricia Oliveira",
+        senderEmail: "patricia@consultoria.com",
+        senderAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
+        subject: "Proposta de parceria",
+        preview: "Nossa empresa está interessada em estabelecer uma parceria...",
+        serviceType: "email",
+        isRead: false,
+        createdAt: now
+      }
+    ];
+    return emails.slice(0, limit);
   }
 
   async markEmailAsRead(emailId: number): Promise<Email> {

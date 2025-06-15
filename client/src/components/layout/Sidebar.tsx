@@ -2,6 +2,13 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
@@ -20,7 +27,13 @@ import {
   Sliders,
   Shield,
   Bell,
+  Palette,
+  Monitor,
+  Sun,
+  Moon,
+  SidebarIcon,
 } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
 import type { NavigationItem } from "@shared/schema";
 
@@ -47,7 +60,8 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [location] = useLocation();
-  const [openItems, setOpenItems] = useState<Set<number>>(new Set([1])); // Dashboard open by default
+  const [openItems, setOpenItems] = useState<Set<number>>(new Set([])); // Start with all collapsed
+  const { theme, setTheme, actualTheme } = useTheme();
 
   const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
     queryKey: ["/api/navigation"],
@@ -88,11 +102,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <>
       <aside
         className={cn(
-          "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out flex-shrink-0",
+          "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col",
           collapsed ? "w-20" : "w-64"
         )}
       >
-        <div className="p-4">
+        {/* Main Navigation */}
+        <div className="flex-1 p-4 overflow-y-auto">
           {/* Toggle Button */}
           <div className="mb-4">
             <Button
