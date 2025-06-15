@@ -6,6 +6,10 @@ import {
   notifications,
   emails,
   clients,
+  categories,
+  manufacturers,
+  productGroups,
+  products,
   type User, 
   type NavigationItem, 
   type DashboardStats, 
@@ -19,7 +23,15 @@ import {
   type Email,
   type InsertEmail,
   type Client,
-  type InsertClient
+  type InsertClient,
+  type Category,
+  type InsertCategory,
+  type Manufacturer,
+  type InsertManufacturer,
+  type ProductGroup,
+  type InsertProductGroup,
+  type Product,
+  type InsertProduct
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -602,6 +614,138 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClient(id: number): Promise<void> {
     await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  // Category CRUD operations
+  async getCategories(): Promise<Category[]> {
+    return await db.select().from(categories).orderBy(categories.name);
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category || undefined;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const now = new Date().toISOString();
+    const [newCategory] = await db.insert(categories).values({
+      ...category,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newCategory;
+  }
+
+  async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category> {
+    const now = new Date().toISOString();
+    const [updatedCategory] = await db.update(categories)
+      .set({ ...categoryData, updatedAt: now })
+      .where(eq(categories.id, id))
+      .returning();
+    return updatedCategory;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await db.delete(categories).where(eq(categories.id, id));
+  }
+
+  // Manufacturer CRUD operations
+  async getManufacturers(): Promise<Manufacturer[]> {
+    return await db.select().from(manufacturers).orderBy(manufacturers.name);
+  }
+
+  async getManufacturer(id: number): Promise<Manufacturer | undefined> {
+    const [manufacturer] = await db.select().from(manufacturers).where(eq(manufacturers.id, id));
+    return manufacturer || undefined;
+  }
+
+  async createManufacturer(manufacturer: InsertManufacturer): Promise<Manufacturer> {
+    const now = new Date().toISOString();
+    const [newManufacturer] = await db.insert(manufacturers).values({
+      ...manufacturer,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newManufacturer;
+  }
+
+  async updateManufacturer(id: number, manufacturerData: Partial<InsertManufacturer>): Promise<Manufacturer> {
+    const now = new Date().toISOString();
+    const [updatedManufacturer] = await db.update(manufacturers)
+      .set({ ...manufacturerData, updatedAt: now })
+      .where(eq(manufacturers.id, id))
+      .returning();
+    return updatedManufacturer;
+  }
+
+  async deleteManufacturer(id: number): Promise<void> {
+    await db.delete(manufacturers).where(eq(manufacturers.id, id));
+  }
+
+  // Product Group CRUD operations
+  async getProductGroups(): Promise<ProductGroup[]> {
+    return await db.select().from(productGroups).orderBy(productGroups.name);
+  }
+
+  async getProductGroup(id: number): Promise<ProductGroup | undefined> {
+    const [group] = await db.select().from(productGroups).where(eq(productGroups.id, id));
+    return group || undefined;
+  }
+
+  async createProductGroup(group: InsertProductGroup): Promise<ProductGroup> {
+    const now = new Date().toISOString();
+    const [newGroup] = await db.insert(productGroups).values({
+      ...group,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newGroup;
+  }
+
+  async updateProductGroup(id: number, groupData: Partial<InsertProductGroup>): Promise<ProductGroup> {
+    const now = new Date().toISOString();
+    const [updatedGroup] = await db.update(productGroups)
+      .set({ ...groupData, updatedAt: now })
+      .where(eq(productGroups.id, id))
+      .returning();
+    return updatedGroup;
+  }
+
+  async deleteProductGroup(id: number): Promise<void> {
+    await db.delete(productGroups).where(eq(productGroups.id, id));
+  }
+
+  // Product CRUD operations
+  async getProducts(): Promise<Product[]> {
+    return await db.select().from(products).orderBy(products.name);
+  }
+
+  async getProduct(id: number): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product || undefined;
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const now = new Date().toISOString();
+    const [newProduct] = await db.insert(products).values({
+      ...product,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newProduct;
+  }
+
+  async updateProduct(id: number, productData: Partial<InsertProduct>): Promise<Product> {
+    const now = new Date().toISOString();
+    const [updatedProduct] = await db.update(products)
+      .set({ ...productData, updatedAt: now })
+      .where(eq(products.id, id))
+      .returning();
+    return updatedProduct;
+  }
+
+  async deleteProduct(id: number): Promise<void> {
+    await db.delete(products).where(eq(products.id, id));
   }
 }
 
