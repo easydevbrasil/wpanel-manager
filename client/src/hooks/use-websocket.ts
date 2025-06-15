@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -18,6 +19,47 @@ export function useWebSocket() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const transmissionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Helper function to show toast notifications
+  const showToast = useCallback((type: string, data?: any) => {
+    const actionMap: Record<string, { title: string; description: string; variant?: 'default' | 'destructive' }> = {
+      // Client operations
+      'client_created': { title: 'Cliente criado', description: `${data?.name} foi adicionado com sucesso` },
+      'client_updated': { title: 'Cliente atualizado', description: `${data?.name} foi modificado` },
+      'client_deleted': { title: 'Cliente removido', description: 'Cliente foi excluído do sistema' },
+      
+      // Product operations
+      'product_created': { title: 'Produto criado', description: `${data?.name} foi adicionado ao catálogo` },
+      'product_updated': { title: 'Produto atualizado', description: `${data?.name} foi modificado` },
+      'product_deleted': { title: 'Produto removido', description: 'Produto foi excluído do catálogo' },
+      
+      // Supplier operations
+      'supplier_created': { title: 'Fornecedor criado', description: `${data?.name} foi adicionado` },
+      'supplier_updated': { title: 'Fornecedor atualizado', description: `${data?.name} foi modificado` },
+      'supplier_deleted': { title: 'Fornecedor removido', description: 'Fornecedor foi excluído' },
+      
+      // Sales operations
+      'sale_created': { title: 'Venda criada', description: `Venda ${data?.saleNumber} foi registrada` },
+      'sale_updated': { title: 'Venda atualizada', description: `Venda ${data?.saleNumber} foi modificada` },
+      'sale_deleted': { title: 'Venda removida', description: 'Venda foi excluída do sistema' },
+      
+      // Support ticket operations
+      'ticket_created': { title: 'Ticket criado', description: `Ticket ${data?.ticketNumber} foi aberto` },
+      'ticket_updated': { title: 'Ticket atualizado', description: `Ticket ${data?.ticketNumber} foi modificado` },
+      'ticket_deleted': { title: 'Ticket removido', description: 'Ticket foi excluído' },
+      'ticket_message_created': { title: 'Nova mensagem', description: 'Mensagem adicionada ao ticket' },
+    };
+
+    const config = actionMap[type];
+    if (config) {
+      toast({
+        title: config.title,
+        description: config.description,
+        variant: type.includes('deleted') ? 'destructive' : 'default',
+      });
+    }
+  }, [toast]);
 
   const connect = useCallback(() => {
     try {
@@ -67,6 +109,7 @@ export function useWebSocket() {
             case 'client_updated':
             case 'client_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+              showToast(message.type, message.data);
               break;
             
             // Product operations
@@ -74,6 +117,7 @@ export function useWebSocket() {
             case 'product_updated':
             case 'product_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+              showToast(message.type, message.data);
               break;
             
             // Supplier operations
@@ -81,6 +125,7 @@ export function useWebSocket() {
             case 'supplier_updated':
             case 'supplier_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+              showToast(message.type, message.data);
               break;
             
             // Sales operations
@@ -94,6 +139,7 @@ export function useWebSocket() {
                   queryKey: ['/api/sales', message.data.id, 'items'] 
                 });
               }
+              showToast(message.type, message.data);
               break;
             
             // Support ticket operations
@@ -102,6 +148,7 @@ export function useWebSocket() {
             case 'ticket_deleted':
               queryClient.invalidateQueries({ queryKey: ['/api/support/tickets'] });
               queryClient.invalidateQueries({ queryKey: ['/api/support/categories'] });
+              showToast(message.type, message.data);
               break;
             
             case 'ticket_message_created':
@@ -109,6 +156,7 @@ export function useWebSocket() {
                 queryKey: ['/api/support/tickets', message.data.ticketId, 'messages'] 
               });
               queryClient.invalidateQueries({ queryKey: ['/api/support/tickets'] });
+              showToast(message.type, message.data);
               break;
             
             // System messages
