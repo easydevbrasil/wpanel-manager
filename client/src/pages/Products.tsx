@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,8 +87,13 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const PRODUCTS_PER_PAGE = 9;
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -258,6 +263,48 @@ export default function Products() {
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  // Scroll infinito com paginação
+  useEffect(() => {
+    if (filteredProducts.length > 0) {
+      const productsToShow = filteredProducts.slice(0, currentPage * PRODUCTS_PER_PAGE);
+      setDisplayedProducts(productsToShow);
+    } else {
+      setDisplayedProducts([]);
+    }
+  }, [filteredProducts, currentPage]);
+
+  // Reset para página 1 quando filtros mudarem
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, categoryFilter]);
+
+  // Função para detectar scroll próximo ao final
+  const handleScroll = useCallback(() => {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = document.documentElement.clientHeight;
+    
+    // Se chegou perto do final (200px antes do fim)
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
+      const hasMoreProducts = displayedProducts.length < filteredProducts.length;
+      
+      if (hasMoreProducts && !isLoadingMore) {
+        setIsLoadingMore(true);
+        // Simula delay de carregamento para melhor UX
+        setTimeout(() => {
+          setCurrentPage(prev => prev + 1);
+          setIsLoadingMore(false);
+        }, 500);
+      }
+    }
+  }, [displayedProducts.length, filteredProducts.length, isLoadingMore]);
+
+  // Adiciona e remove listener de scroll
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -581,7 +628,7 @@ export default function Products() {
       {/* Products Grid */}
       {isLoadingProducts ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(9)].map((_, i) => (
             <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <CardContent className="p-6">
                 <div className="space-y-4">
@@ -593,7 +640,7 @@ export default function Products() {
             </Card>
           ))}
         </div>
-      ) : filteredProducts.length === 0 ? (
+      ) : displayedProducts.length === 0 ? (
         <div className="text-center py-12">
           <Package className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum produto encontrado</h3>
@@ -605,10 +652,11 @@ export default function Products() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <Card key={product.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayedProducts.map((product) => (
+              <Card key={product.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
                 <div className="space-y-4">
                   {/* Product Image */}
                   <div className="relative">
@@ -760,7 +808,27 @@ export default function Products() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+
+          {/* Loading indicator for infinite scroll */}
+          {isLoadingMore && (
+            <div className="flex justify-center items-center py-8">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-gray-600 dark:text-gray-400">Carregando mais produtos...</span>
+              </div>
+            </div>
+          )}
+
+          {/* End of results indicator */}
+          {displayedProducts.length >= filteredProducts.length && displayedProducts.length > 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Todos os produtos foram carregados ({filteredProducts.length} produtos)
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
