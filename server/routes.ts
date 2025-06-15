@@ -211,6 +211,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Category routes
+  app.get("/api/categories", async (req, res) => {
+    try {
+      const categories = await storage.getCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get categories" });
+    }
+  });
+
+  app.get("/api/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const category = await storage.getCategory(id);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get category" });
+    }
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    try {
+      const category = await storage.createCategory(req.body);
+      res.status(201).json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.put("/api/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const category = await storage.updateCategory(id, req.body);
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCategory(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
+  // Manufacturer routes
+  app.get("/api/manufacturers", async (req, res) => {
+    try {
+      const manufacturers = await storage.getManufacturers();
+      res.json(manufacturers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get manufacturers" });
+    }
+  });
+
+  app.get("/api/manufacturers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const manufacturer = await storage.getManufacturer(id);
+      if (!manufacturer) {
+        return res.status(404).json({ message: "Manufacturer not found" });
+      }
+      res.json(manufacturer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get manufacturer" });
+    }
+  });
+
+  app.post("/api/manufacturers", async (req, res) => {
+    try {
+      const manufacturer = await storage.createManufacturer(req.body);
+      res.status(201).json(manufacturer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create manufacturer" });
+    }
+  });
+
+  app.put("/api/manufacturers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const manufacturer = await storage.updateManufacturer(id, req.body);
+      res.json(manufacturer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update manufacturer" });
+    }
+  });
+
+  app.delete("/api/manufacturers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteManufacturer(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete manufacturer" });
+    }
+  });
+
+  // Product Group routes
+  app.get("/api/product-groups", async (req, res) => {
+    try {
+      const groups = await storage.getProductGroups();
+      res.json(groups);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get product groups" });
+    }
+  });
+
+  app.get("/api/product-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const group = await storage.getProductGroup(id);
+      if (!group) {
+        return res.status(404).json({ message: "Product group not found" });
+      }
+      res.json(group);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get product group" });
+    }
+  });
+
+  app.post("/api/product-groups", async (req, res) => {
+    try {
+      const group = await storage.createProductGroup(req.body);
+      res.status(201).json(group);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create product group" });
+    }
+  });
+
+  app.put("/api/product-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const group = await storage.updateProductGroup(id, req.body);
+      res.json(group);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update product group" });
+    }
+  });
+
+  app.delete("/api/product-groups/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProductGroup(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete product group" });
+    }
+  });
+
+  // Product routes
+  app.get("/api/products", async (req, res) => {
+    try {
+      const products = await storage.getProducts();
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get products" });
+    }
+  });
+
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get product" });
+    }
+  });
+
+  app.post("/api/products", async (req, res) => {
+    try {
+      const product = await storage.createProduct(req.body);
+      res.status(201).json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.put("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const product = await storage.updateProduct(id, req.body);
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update product" });
+    }
+  });
+
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProduct(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete product" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,0 +1,767 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Package,
+  Star,
+  TrendingUp,
+  ShoppingCart,
+  Barcode,
+  Tag,
+} from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import type { Product, InsertProduct, Category, Manufacturer, ProductGroup } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+
+const productFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+  sku: z.string().min(1, "SKU é obrigatório"),
+  barcode: z.string().optional(),
+  price: z.string().min(1, "Preço é obrigatório"),
+  costPrice: z.string().optional(),
+  categoryId: z.number().optional(),
+  manufacturerId: z.number().optional(),
+  productGroupId: z.number().optional(),
+  weight: z.string().optional(),
+  stock: z.number().min(0, "Estoque deve ser positivo").default(0),
+  minStock: z.number().min(0, "Estoque mínimo deve ser positivo").default(0),
+  maxStock: z.number().optional(),
+  status: z.enum(["active", "inactive", "discontinued"]).default("active"),
+  featured: z.boolean().default(false),
+  images: z.array(z.string().url()).default([]),
+  tags: z.array(z.string()).default([]),
+});
+
+type ProductFormData = z.infer<typeof productFormSchema>;
+
+export default function Products() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "discontinued">("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | string>("all");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  const { data: manufacturers = [] } = useQuery<Manufacturer[]>({
+    queryKey: ["/api/manufacturers"],
+  });
+
+  const { data: productGroups = [] } = useQuery<ProductGroup[]>({
+    queryKey: ["/api/product-groups"],
+  });
+
+  const form = useForm<ProductFormData>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      sku: "",
+      barcode: "",
+      price: "",
+      costPrice: "",
+      weight: "",
+      stock: 0,
+      minStock: 0,
+      status: "active",
+      featured: false,
+      images: [],
+      tags: [],
+    },
+  });
+
+  const createProductMutation = useMutation({
+    mutationFn: (data: InsertProduct) => apiRequest("POST", "/api/products", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+      form.reset();
+      toast({
+        title: "Produto criado",
+        description: "Produto foi criado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao criar produto.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertProduct> }) =>
+      apiRequest("PUT", `/api/products/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+      form.reset();
+      toast({
+        title: "Produto atualizado",
+        description: "Produto foi atualizado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar produto.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/products/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: "Produto excluído",
+        description: "Produto foi excluído com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir produto.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ProductFormData) => {
+    const productData = {
+      ...data,
+      categoryId: data.categoryId || null,
+      manufacturerId: data.manufacturerId || null,
+      productGroupId: data.productGroupId || null,
+    };
+
+    if (editingProduct) {
+      updateProductMutation.mutate({ id: editingProduct.id, data: productData });
+    } else {
+      createProductMutation.mutate(productData);
+    }
+  };
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    form.reset({
+      name: product.name,
+      description: product.description || "",
+      sku: product.sku,
+      barcode: product.barcode || "",
+      price: product.price,
+      costPrice: product.costPrice || "",
+      categoryId: product.categoryId || undefined,
+      manufacturerId: product.manufacturerId || undefined,
+      productGroupId: product.productGroupId || undefined,
+      weight: product.weight || "",
+      stock: product.stock,
+      minStock: product.minStock || 0,
+      maxStock: product.maxStock || undefined,
+      status: product.status as "active" | "inactive" | "discontinued",
+      featured: product.featured || false,
+      images: product.images || [],
+      tags: product.tags || [],
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: number) => {
+    deleteProductMutation.mutate(id);
+  };
+
+  const handleNewProduct = () => {
+    setEditingProduct(null);
+    form.reset();
+    setIsDialogOpen(true);
+  };
+
+  const getCategoryName = (categoryId: number | null) => {
+    if (!categoryId) return "Sem categoria";
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || "Categoria não encontrada";
+  };
+
+  const getManufacturerName = (manufacturerId: number | null) => {
+    if (!manufacturerId) return "Sem fabricante";
+    const manufacturer = manufacturers.find(m => m.id === manufacturerId);
+    return manufacturer?.name || "Fabricante não encontrado";
+  };
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || product.status === statusFilter;
+    const matchesCategory = categoryFilter === "all" || product.categoryId?.toString() === categoryFilter;
+    
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto">
+      {/* Page Header */}
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Produtos
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Gerencie seu catálogo de produtos, categorias e estoque.
+            </p>
+          </div>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleNewProduct} className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Novo Produto
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-gray-900 dark:text-white">
+                  {editingProduct ? "Editar Produto" : "Novo Produto"}
+                </DialogTitle>
+                <DialogDescription className="text-gray-600 dark:text-gray-400">
+                  {editingProduct 
+                    ? "Atualize as informações do produto."
+                    : "Adicione um novo produto ao seu catálogo."
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel className="text-gray-900 dark:text-white">Nome do Produto</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Nome do produto" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="sku"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">SKU</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="SKU-001" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="barcode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Código de Barras</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="7891234567890" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Preço de Venda</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="99.90" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="costPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Preço de Custo</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="75.00" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="categoryId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Categoria</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectValue placeholder="Selecione uma categoria" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              {categories.map((category) => (
+                                <SelectItem key={category.id} value={category.id.toString()}>
+                                  {category.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="manufacturerId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Fabricante</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectValue placeholder="Selecione um fabricante" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              {manufacturers.map((manufacturer) => (
+                                <SelectItem key={manufacturer.id} value={manufacturer.id.toString()}>
+                                  {manufacturer.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="stock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Estoque Atual</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              placeholder="0" 
+                              {...field} 
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="minStock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Estoque Mínimo</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              placeholder="0" 
+                              {...field} 
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              <SelectItem value="active">Ativo</SelectItem>
+                              <SelectItem value="inactive">Inativo</SelectItem>
+                              <SelectItem value="discontinued">Descontinuado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Descrição detalhada do produto..."
+                            className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsDialogOpen(false)}
+                      className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                    >
+                      {editingProduct ? "Atualizar" : "Criar"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Buscar produtos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive" | "discontinued") => setStatusFilter(value)}>
+          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+            <SelectValue placeholder="Filtrar por status" />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+            <SelectItem value="discontinued">Descontinuados</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+            <SelectValue placeholder="Filtrar por categoria" />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+            <SelectItem value="all">Todas</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.id.toString()}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Products Grid */}
+      {isLoadingProducts ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="w-full h-48 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                  <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <Package className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum produto encontrado</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {searchTerm || statusFilter !== "all" || categoryFilter !== "all" 
+              ? "Tente ajustar os filtros de busca."
+              : "Comece criando seu primeiro produto."
+            }
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {/* Product Image */}
+                  <div className="relative">
+                    {product.images && product.images.length > 0 ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <Package className="w-12 h-12 text-gray-400" />
+                      </div>
+                    )}
+                    {product.featured && (
+                      <Badge className="absolute top-2 left-2 bg-yellow-500 text-white">
+                        <Star className="w-3 h-3 mr-1" />
+                        Destaque
+                      </Badge>
+                    )}
+                    <div className="absolute top-2 right-2 flex items-center space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(product)}
+                        className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-gray-900 dark:text-white">
+                              Excluir Produto
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                              Tem certeza que deseja excluir {product.name}? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                              Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(product.id)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
+                        {product.name}
+                      </h3>
+                      <Badge 
+                        variant={product.status === "active" ? "default" : "secondary"}
+                        className={
+                          product.status === "active" 
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                            : product.status === "discontinued"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                        }
+                      >
+                        {product.status === "active" ? "Ativo" : product.status === "discontinued" ? "Descontinuado" : "Inativo"}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center">
+                        <Barcode className="w-4 h-4 mr-2" />
+                        <span className="font-mono">{product.sku}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Tag className="w-4 h-4 mr-2" />
+                        <span>{getCategoryName(product.categoryId)}</span>
+                      </div>
+                      {product.manufacturerId && (
+                        <div className="flex items-center">
+                          <Package className="w-4 h-4 mr-2" />
+                          <span>{getManufacturerName(product.manufacturerId)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {product.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                        {product.description}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="space-y-1">
+                        <div className="text-lg font-bold text-gray-900 dark:text-white">
+                          R$ {parseFloat(product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </div>
+                        {product.costPrice && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Custo: R$ {parseFloat(product.costPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center text-sm">
+                          <ShoppingCart className="w-4 h-4 mr-1" />
+                          <span className={product.stock <= (product.minStock || 0) ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-900 dark:text-white"}>
+                            {product.stock}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          em estoque
+                        </div>
+                      </div>
+                    </div>
+
+                    {product.tags && product.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-2">
+                        {product.tags.slice(0, 3).map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {product.tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{product.tags.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
