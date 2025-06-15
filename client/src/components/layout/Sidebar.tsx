@@ -164,14 +164,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     <CollapsibleContent className="space-y-1">
                       {children.map((child) => (
                         <Link key={child.id} href={child.href || "#"}>
-                          <a
+                          <div
                             className={cn(
-                              "block ml-8 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors",
+                              "block ml-8 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer",
                               isActive(child.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
                             )}
                           >
                             {child.label}
-                          </a>
+                          </div>
                         </Link>
                       ))}
                     </CollapsibleContent>

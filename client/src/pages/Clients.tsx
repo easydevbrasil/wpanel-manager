@@ -66,7 +66,7 @@ const clientFormSchema = z.object({
   company: z.string().optional(),
   position: z.string().optional(),
   image: z.string().url("URL da imagem inválida").optional().or(z.literal("")),
-  status: z.enum(["active", "inactive"]).default("active"),
+  status: z.enum(["active", "inactive", "pending"]).default("active"),
   notes: z.string().optional(),
 });
 
@@ -74,7 +74,7 @@ type ClientFormData = z.infer<typeof clientFormSchema>;
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "pending">("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const queryClient = useQueryClient();
@@ -432,7 +432,7 @@ export default function Clients() {
             className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive") => setStatusFilter(value)}>
+        <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive" | "pending") => setStatusFilter(value)}>
           <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
@@ -440,6 +440,7 @@ export default function Clients() {
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="active">Ativos</SelectItem>
             <SelectItem value="inactive">Inativos</SelectItem>
+            <SelectItem value="pending">Pendente</SelectItem>
           </SelectContent>
         </Select>
       </div>
