@@ -510,13 +510,13 @@ export function Header() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="p-4 border-b">
-                  <h3 className="font-semibold text-gray-900">Emails</h3>
+              <DropdownMenuContent align="end" className="w-80 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Emails</h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
                   {emails.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                       Nenhum email
                     </div>
                   ) : (
@@ -524,24 +524,45 @@ export function Header() {
                       {emails.slice(0, 5).map((email) => (
                         <div
                           key={email.id}
-                          className={`p-4 border-b hover:bg-gray-50 ${
-                            !email.isRead ? "bg-green-50" : ""
+                          className={`p-4 border-b hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                            !email.isRead ? "bg-green-50 dark:bg-green-900/20" : ""
                           }`}
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            {/* User Avatar */}
+                            <Avatar className="w-8 h-8 flex-shrink-0">
+                              {email.senderAvatar ? (
+                                <AvatarImage src={email.senderAvatar} alt={email.sender} />
+                              ) : (
+                                <AvatarFallback className="bg-gray-200 dark:bg-gray-600">
+                                  {email.sender.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900">
-                                {email.sender}
-                              </p>
-                              <p className="text-sm font-medium text-gray-800 mt-1">
-                                {email.subject}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1 truncate">
-                                {email.preview}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-2">
-                                {formatTimeAgo(email.createdAt)}
-                              </p>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {email.sender}
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1">
+                                    {email.subject}
+                                  </p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
+                                    {email.preview}
+                                  </p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                                      {formatTimeAgo(email.createdAt)}
+                                    </p>
+                                    {/* Service indicator */}
+                                    <div className="flex items-center">
+                                      {getServiceIcon(email.serviceType)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                             <div className="flex items-center space-x-1 ml-2">
                               {!email.isRead && (
