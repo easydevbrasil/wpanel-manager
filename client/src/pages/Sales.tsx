@@ -222,8 +222,10 @@ export default function Sales() {
         
         for (const sale of sales) {
           try {
-            const items = await apiRequest("GET", `/api/sales/${sale.id}/items`);
-            newCache[sale.id] = items || [];
+            const response = await apiRequest("GET", `/api/sales/${sale.id}/items`);
+            const items = await response.json();
+            // Garantir que items é sempre um array
+            newCache[sale.id] = Array.isArray(items) ? items : [];
           } catch (error) {
             console.error(`Erro ao carregar itens da venda ${sale.id}:`, error);
             newCache[sale.id] = [];
@@ -239,7 +241,9 @@ export default function Sales() {
 
   const getSaleProducts = (saleId: number) => {
     const items = saleItemsCache[saleId] || [];
-    return items.map((item: any) => {
+    // Garantir que items é sempre um array
+    const itemsArray = Array.isArray(items) ? items : [];
+    return itemsArray.map((item: any) => {
       const product = (products as any[]).find((p: any) => p.id === item.productId);
       return {
         ...item,
