@@ -873,7 +873,7 @@ export default function Suppliers() {
                           <Star
                             key={index}
                             className={`w-4 h-4 ${
-                              index < supplier.rating 
+                              index < (supplier.rating || 0)
                                 ? "fill-yellow-400 text-yellow-400" 
                                 : "text-gray-300 dark:text-gray-600"
                             }`}

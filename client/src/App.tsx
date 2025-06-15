@@ -18,6 +18,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/clients" component={Clients} />
         <Route path="/products" component={Products} />
+        <Route path="/suppliers" component={Suppliers} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>
