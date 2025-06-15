@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, decimal, varchar, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -200,6 +200,65 @@ export const saleItems = pgTable("sale_items", {
   createdAt: text("created_at").notNull(),
 });
 
+// Support Tickets
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  ticketNumber: text("ticket_number").unique().notNull(),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: text("status").default("open").notNull(), // open, in-progress, pending, resolved, closed
+  priority: text("priority").default("medium").notNull(), // low, medium, high, urgent
+  category: text("category").notNull(),
+  tags: text("tags").array(),
+  assignedTo: integer("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  chatwootConversationId: integer("chatwoot_conversation_id"),
+  chatwootInboxId: integer("chatwoot_inbox_id"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  resolvedAt: text("resolved_at"),
+  firstResponseAt: text("first_response_at"),
+  lastActivityAt: text("last_activity_at").notNull(),
+});
+
+// Support Ticket Messages
+export const supportTicketMessages = pgTable("support_ticket_messages", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").references(() => supportTickets.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  message: text("message").notNull(),
+  messageType: text("message_type").default("message").notNull(), // message, note, status_change
+  isInternal: boolean("is_internal").default(false),
+  attachments: text("attachments").array(),
+  chatwootMessageId: integer("chatwoot_message_id"),
+  createdAt: text("created_at").notNull(),
+});
+
+// Support Categories
+export const supportCategories = pgTable("support_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").default("#6366f1"),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+});
+
+// Chatwoot Integration Settings
+export const chatwootSettings = pgTable("chatwoot_settings", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull(),
+  inboxId: integer("inbox_id").notNull(),
+  inboxName: text("inbox_name"),
+  apiToken: text("api_token").notNull(),
+  webhookUrl: text("webhook_url"),
+  isActive: boolean("is_active").default(true),
+  syncEnabled: boolean("sync_enabled").default(true),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -271,6 +330,30 @@ export const insertSaleItemSchema = createInsertSchema(saleItems).omit({
   createdAt: true,
 });
 
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  firstResponseAt: true,
+  lastActivityAt: true,
+});
+
+export const insertSupportTicketMessageSchema = createInsertSchema(supportTicketMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSupportCategorySchema = createInsertSchema(supportCategories).omit({
+  id: true,
+});
+
+export const insertChatwootSettingsSchema = createInsertSchema(chatwootSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
@@ -299,3 +382,11 @@ export type Sale = typeof sales.$inferSelect;
 export type InsertSale = z.infer<typeof insertSaleSchema>;
 export type SaleItem = typeof saleItems.$inferSelect;
 export type InsertSaleItem = z.infer<typeof insertSaleItemSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicketMessage = typeof supportTicketMessages.$inferSelect;
+export type InsertSupportTicketMessage = z.infer<typeof insertSupportTicketMessageSchema>;
+export type SupportCategory = typeof supportCategories.$inferSelect;
+export type InsertSupportCategory = z.infer<typeof insertSupportCategorySchema>;
+export type ChatwootSettings = typeof chatwootSettings.$inferSelect;
+export type InsertChatwootSettings = z.infer<typeof insertChatwootSettingsSchema>;

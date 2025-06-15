@@ -13,6 +13,10 @@ import {
   suppliers,
   sales,
   saleItems,
+  supportTickets,
+  supportTicketMessages,
+  supportCategories,
+  chatwootSettings,
   type User, 
   type NavigationItem, 
   type DashboardStats, 
@@ -131,6 +135,33 @@ export interface IStorage {
   createSaleItem(saleItem: InsertSaleItem): Promise<SaleItem>;
   updateSaleItem(id: number, saleItem: Partial<InsertSaleItem>): Promise<SaleItem>;
   deleteSaleItem(id: number): Promise<void>;
+  
+  // Support Tickets
+  getSupportTickets(): Promise<SupportTicket[]>;
+  getSupportTicket(id: number): Promise<SupportTicket | undefined>;
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  updateSupportTicket(id: number, ticket: Partial<InsertSupportTicket>): Promise<SupportTicket>;
+  deleteSupportTicket(id: number): Promise<void>;
+  
+  // Support Ticket Messages
+  getSupportTicketMessages(ticketId: number): Promise<SupportTicketMessage[]>;
+  createSupportTicketMessage(message: InsertSupportTicketMessage): Promise<SupportTicketMessage>;
+  updateSupportTicketMessage(id: number, message: Partial<InsertSupportTicketMessage>): Promise<SupportTicketMessage>;
+  deleteSupportTicketMessage(id: number): Promise<void>;
+  
+  // Support Categories
+  getSupportCategories(): Promise<SupportCategory[]>;
+  getSupportCategory(id: number): Promise<SupportCategory | undefined>;
+  createSupportCategory(category: InsertSupportCategory): Promise<SupportCategory>;
+  updateSupportCategory(id: number, category: Partial<InsertSupportCategory>): Promise<SupportCategory>;
+  deleteSupportCategory(id: number): Promise<void>;
+  
+  // Chatwoot Settings
+  getChatwootSettings(): Promise<ChatwootSettings[]>;
+  getChatwootSetting(id: number): Promise<ChatwootSettings | undefined>;
+  createChatwootSettings(settings: InsertChatwootSettings): Promise<ChatwootSettings>;
+  updateChatwootSettings(id: number, settings: Partial<InsertChatwootSettings>): Promise<ChatwootSettings>;
+  deleteChatwootSettings(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
