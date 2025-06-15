@@ -34,6 +34,7 @@ import {
   SidebarIcon,
   Package,
   Truck,
+  ShoppingCart,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +53,7 @@ const iconMap = {
   Copy,
   Package,
   Truck,
+  ShoppingCart,
   Sliders,
   Shield,
   Bell,
