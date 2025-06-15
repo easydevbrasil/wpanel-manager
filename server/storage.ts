@@ -149,22 +149,22 @@ export class MemStorage implements IStorage {
 
     // Create sample notifications
     const notificationsData: Notification[] = [
-      { id: 1, userId: 1, title: "New Project Assigned", message: "You have been assigned to Project Alpha", type: "info", isRead: false, createdAt: "2024-06-15T14:30:00Z" },
-      { id: 2, userId: 1, title: "Task Completed", message: "Sarah completed the wireframes task", type: "success", isRead: false, createdAt: "2024-06-15T13:15:00Z" },
-      { id: 3, userId: 1, title: "Deadline Reminder", message: "Project Beta deadline is tomorrow", type: "warning", isRead: true, createdAt: "2024-06-15T10:45:00Z" },
-      { id: 4, userId: 1, title: "System Update", message: "System will be updated tonight at 2 AM", type: "info", isRead: false, createdAt: "2024-06-15T09:20:00Z" },
-      { id: 5, userId: 1, title: "Budget Approved", message: "Q3 budget has been approved", type: "success", isRead: false, createdAt: "2024-06-15T08:00:00Z" },
+      { id: 1, userId: 1, title: "New Project Assigned", message: "You have been assigned to Project Alpha", type: "info", senderName: "Project Manager", senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face", serviceType: "push", isRead: false, createdAt: "2024-06-15T14:30:00Z" },
+      { id: 2, userId: 1, title: "Task Completed", message: "Sarah completed the wireframes task", type: "success", senderName: "Sarah Chen", senderAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face", serviceType: "app", isRead: false, createdAt: "2024-06-15T13:15:00Z" },
+      { id: 3, userId: 1, title: "Deadline Reminder", message: "Project Beta deadline is tomorrow", type: "warning", senderName: "System", senderAvatar: null, serviceType: "system", isRead: true, createdAt: "2024-06-15T10:45:00Z" },
+      { id: 4, userId: 1, title: "System Update", message: "System will be updated tonight at 2 AM", type: "info", senderName: "Admin", senderAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face", serviceType: "system", isRead: false, createdAt: "2024-06-15T09:20:00Z" },
+      { id: 5, userId: 1, title: "Budget Approved", message: "Q3 budget has been approved", type: "success", senderName: "Mike Rodriguez", senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face", serviceType: "push", isRead: false, createdAt: "2024-06-15T08:00:00Z" },
     ];
     notificationsData.forEach(notification => this.notifications.set(notification.id, notification));
     this.currentNotificationId = 6;
 
     // Create sample emails
     const emailsData: Email[] = [
-      { id: 1, userId: 1, sender: "Sarah Chen", senderEmail: "sarah@company.com", subject: "Project Update", preview: "The wireframes are ready for review...", isRead: false, createdAt: "2024-06-15T15:30:00Z" },
-      { id: 2, userId: 1, sender: "Mike Rodriguez", senderEmail: "mike@company.com", subject: "Code Review Request", preview: "Please review the latest commits...", isRead: false, createdAt: "2024-06-15T14:45:00Z" },
-      { id: 3, userId: 1, sender: "Team Lead", senderEmail: "lead@company.com", subject: "Weekly Meeting", preview: "Weekly team meeting scheduled for...", isRead: true, createdAt: "2024-06-15T13:20:00Z" },
-      { id: 4, userId: 1, sender: "HR Department", senderEmail: "hr@company.com", subject: "Benefits Update", preview: "New benefits package information...", isRead: false, createdAt: "2024-06-15T11:10:00Z" },
-      { id: 5, userId: 1, sender: "Client Support", senderEmail: "support@client.com", subject: "Feature Request", preview: "Client requesting new dashboard features...", isRead: false, createdAt: "2024-06-15T10:30:00Z" },
+      { id: 1, userId: 1, sender: "Sarah Chen", senderEmail: "sarah@company.com", senderAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face", subject: "Project Update", preview: "The wireframes are ready for review...", serviceType: "email", isRead: false, createdAt: "2024-06-15T15:30:00Z" },
+      { id: 2, userId: 1, sender: "Mike Rodriguez", senderEmail: "mike@company.com", senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face", subject: "Code Review Request", preview: "Please review the latest commits...", serviceType: "whatsapp", isRead: false, createdAt: "2024-06-15T14:45:00Z" },
+      { id: 3, userId: 1, sender: "Team Lead", senderEmail: "lead@company.com", senderAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face", subject: "Weekly Meeting", preview: "Weekly team meeting scheduled for...", serviceType: "email", isRead: true, createdAt: "2024-06-15T13:20:00Z" },
+      { id: 4, userId: 1, sender: "HR Department", senderEmail: "hr@company.com", senderAvatar: null, subject: "Benefits Update", preview: "New benefits package information...", serviceType: "email", isRead: false, createdAt: "2024-06-15T11:10:00Z" },
+      { id: 5, userId: 1, sender: "Client Support", senderEmail: "support@client.com", senderAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face", subject: "Feature Request", preview: "Client requesting new dashboard features...", serviceType: "telegram", isRead: false, createdAt: "2024-06-15T10:30:00Z" },
     ];
     emailsData.forEach(email => this.emails.set(email.id, email));
     this.currentEmailId = 6;

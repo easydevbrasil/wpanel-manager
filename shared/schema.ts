@@ -45,6 +45,9 @@ export const notifications = pgTable("notifications", {
   title: text("title").notNull(),
   message: text("message").notNull(),
   type: text("type").notNull(), // info, warning, success, error
+  senderName: text("sender_name"),
+  senderAvatar: text("sender_avatar"),
+  serviceType: text("service_type").notNull(), // push, system, app
   isRead: boolean("is_read").notNull().default(false),
   createdAt: text("created_at").notNull(),
 });
@@ -54,8 +57,10 @@ export const emails = pgTable("emails", {
   userId: integer("user_id").notNull(),
   sender: text("sender").notNull(),
   senderEmail: text("sender_email").notNull(),
+  senderAvatar: text("sender_avatar"),
   subject: text("subject").notNull(),
   preview: text("preview").notNull(),
+  serviceType: text("service_type").notNull(), // email, whatsapp, telegram
   isRead: boolean("is_read").notNull().default(false),
   createdAt: text("created_at").notNull(),
 });
