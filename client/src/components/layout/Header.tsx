@@ -32,11 +32,34 @@ import {
   Moon,
   Monitor,
   Menu,
+  MessageCircle,
+  Send,
 } from "lucide-react";
+import { SiWhatsapp, SiTelegram } from "react-icons/si";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/components/ThemeProvider";
 import type { User, DashboardStats, CartItem, Notification, Email } from "@shared/schema";
+
+// Helper function to get service icon
+function getServiceIcon(serviceType: string) {
+  switch (serviceType) {
+    case "whatsapp":
+      return <SiWhatsapp className="w-3 h-3 text-green-500" />;
+    case "telegram":
+      return <SiTelegram className="w-3 h-3 text-blue-500" />;
+    case "email":
+      return <Mail className="w-3 h-3 text-gray-500" />;
+    case "push":
+      return <Bell className="w-3 h-3 text-orange-500" />;
+    case "system":
+      return <Monitor className="w-3 h-3 text-gray-500" />;
+    case "app":
+      return <MessageCircle className="w-3 h-3 text-blue-500" />;
+    default:
+      return <Send className="w-3 h-3 text-gray-500" />;
+  }
+}
 
 export function Header() {
   const queryClient = useQueryClient();
@@ -372,9 +395,9 @@ export function Header() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="p-4 border-b">
-                  <h3 className="font-semibold text-gray-900">Notificações</h3>
+              <DropdownMenuContent align="end" className="w-80 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Notificações</h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
                   {notifications.length === 0 ? (
@@ -386,41 +409,62 @@ export function Header() {
                       {notifications.slice(0, 5).map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-4 border-b hover:bg-gray-50 ${
-                            !notification.isRead ? "bg-blue-50" : ""
+                          className={`p-4 border-b hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                            !notification.isRead ? "bg-blue-50 dark:bg-blue-900/20" : ""
                           }`}
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            {/* User Avatar */}
+                            <Avatar className="w-8 h-8 flex-shrink-0">
+                              {notification.senderAvatar ? (
+                                <AvatarImage src={notification.senderAvatar} alt={notification.senderName || "User"} />
+                              ) : (
+                                <AvatarFallback className="bg-gray-200 dark:bg-gray-600">
+                                  {notification.senderName ? notification.senderName.charAt(0).toUpperCase() : "S"}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900">
-                                {notification.title}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {notification.message}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-2">
-                                {formatTimeAgo(notification.createdAt)}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-1 ml-2">
-                              {!notification.isRead && (
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    {notification.message}
+                                  </p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                                      {formatTimeAgo(notification.createdAt)}
+                                    </p>
+                                    {/* Service indicator */}
+                                    <div className="flex items-center">
+                                      {getServiceIcon(notification.serviceType)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1 ml-2">
+                                {!notification.isRead && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+                                    onClick={() => markNotificationRead.mutate(notification.id)}
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
-                                  onClick={() => markNotificationRead.mutate(notification.id)}
+                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  onClick={() => deleteNotification.mutate(notification.id)}
                                 >
-                                  <CheckCircle2 className="w-3 h-3" />
+                                  <X className="w-3 h-3" />
                                 </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                onClick={() => deleteNotification.mutate(notification.id)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
