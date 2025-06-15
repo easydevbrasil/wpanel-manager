@@ -47,11 +47,11 @@ export default function Support() {
   const queryClient = useQueryClient();
 
   // Queries
-  const { data: tickets = [], isLoading: ticketsLoading } = useQuery({
+  const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
     queryKey: ["/api/support/tickets"],
   });
 
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
@@ -59,7 +59,7 @@ export default function Support() {
     queryKey: ["/api/support/categories"],
   });
 
-  const { data: messages = [] } = useQuery({
+  const { data: messages = [] } = useQuery<SupportTicketMessage[]>({
     queryKey: ["/api/support/tickets", selectedTicket?.id, "messages"],
     enabled: !!selectedTicket?.id,
   });
@@ -148,12 +148,12 @@ export default function Support() {
   };
 
   const getClientName = (clientId: number) => {
-    const client = clients.find((c: Client) => c.id === clientId);
+    const client = clients.find((c) => c.id === clientId);
     return client ? client.name : "Cliente não encontrado";
   };
 
   // Filter tickets
-  const filteredTickets = tickets.filter((ticket: SupportTicket) => {
+  const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase());
@@ -309,7 +309,7 @@ export default function Support() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {clients.map((client: Client) => (
+                            {clients.map((client) => (
                               <SelectItem key={client.id} value={client.id.toString()}>
                                 {client.name}
                               </SelectItem>
@@ -403,7 +403,7 @@ export default function Support() {
             </CardContent>
           </Card>
         ) : (
-          filteredTickets.map((ticket: SupportTicket) => (
+          filteredTickets.map((ticket) => (
             <Card 
               key={ticket.id} 
               className="cursor-pointer hover:shadow-md transition-shadow"
@@ -591,7 +591,7 @@ export default function Support() {
                       Nenhuma mensagem ainda. Seja o primeiro a responder!
                     </p>
                   ) : (
-                    messages.map((message: SupportTicketMessage) => (
+                    messages.map((message) => (
                       <div key={message.id} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">

@@ -325,14 +325,160 @@ export class DatabaseStorage implements IStorage {
       }
     ];
 
-    await db.insert(clients).values(clientsData);
+    const [client1, client2, client3] = await db.insert(clients).values(clientsData).returning();
+
+    // Create support categories
+    const supportCategoriesData = [
+      { name: "Técnico", description: "Problemas técnicos e bugs", color: "#ef4444", isActive: true, sortOrder: 1 },
+      { name: "Financeiro", description: "Questões de cobrança e pagamento", color: "#f59e0b", isActive: true, sortOrder: 2 },
+      { name: "Geral", description: "Dúvidas gerais e informações", color: "#3b82f6", isActive: true, sortOrder: 3 },
+      { name: "Nova Funcionalidade", description: "Solicitações de recursos", color: "#10b981", isActive: true, sortOrder: 4 }
+    ];
+
+    await db.insert(supportCategories).values(supportCategoriesData);
+
+    // Create sample support tickets
+    const ticketsData = [
+      {
+        ticketNumber: "TCK-001",
+        clientId: client1.id,
+        userId: user.id,
+        title: "Problema no login da aplicação",
+        description: "Não consigo fazer login na aplicação. Aparece uma mensagem de erro dizendo que as credenciais são inválidas, mesmo usando as informações corretas.",
+        status: "open",
+        priority: "high",
+        category: "Técnico",
+        tags: ["login", "autenticação", "erro"],
+        assignedTo: user.id,
+        chatwootConversationId: 12345,
+        chatwootInboxId: 1,
+        createdAt: now,
+        updatedAt: now,
+        lastActivityAt: now
+      },
+      {
+        ticketNumber: "TCK-002",
+        clientId: client2.id,
+        userId: user.id,
+        title: "Solicitação de nova funcionalidade",
+        description: "Gostaria de solicitar a implementação de relatórios personalizados na aplicação. Seria muito útil poder gerar relatórios com filtros específicos.",
+        status: "in-progress",
+        priority: "medium",
+        category: "Nova Funcionalidade",
+        tags: ["relatórios", "funcionalidade", "personalização"],
+        assignedTo: user.id,
+        createdAt: now,
+        updatedAt: now,
+        lastActivityAt: now
+      },
+      {
+        ticketNumber: "TCK-003",
+        clientId: client3.id,
+        userId: user.id,
+        title: "Dúvida sobre cobrança",
+        description: "Recebi uma cobrança que não entendo. Gostaria de esclarecimentos sobre os valores cobrados no último mês.",
+        status: "pending",
+        priority: "low",
+        category: "Financeiro",
+        tags: ["cobrança", "faturamento", "dúvida"],
+        assignedTo: user.id,
+        createdAt: now,
+        updatedAt: now,
+        lastActivityAt: now
+      },
+      {
+        ticketNumber: "TCK-004",
+        clientId: null,
+        userId: user.id,
+        title: "Lentidão na aplicação",
+        description: "A aplicação está muito lenta para carregar as páginas. Especialmente na seção de relatórios, que demora mais de 30 segundos para abrir.",
+        status: "resolved",
+        priority: "urgent",
+        category: "Técnico",
+        tags: ["performance", "lentidão", "relatórios"],
+        assignedTo: user.id,
+        resolvedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        lastActivityAt: now
+      },
+      {
+        ticketNumber: "TCK-005",
+        clientId: client1.id,
+        userId: user.id,
+        title: "Treinamento para novos usuários",
+        description: "Precisamos de treinamento para 5 novos usuários que foram contratados. Gostaria de agendar uma sessão de treinamento.",
+        status: "closed",
+        priority: "medium",
+        category: "Geral",
+        tags: ["treinamento", "usuários", "agendamento"],
+        assignedTo: user.id,
+        resolvedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        lastActivityAt: now
+      }
+    ];
+
+    const [ticket1, ticket2, ticket3] = await db.insert(supportTickets).values(ticketsData).returning();
+
+    // Create sample ticket messages
+    const messagesData = [
+      {
+        ticketId: ticket1.id,
+        userId: user.id,
+        message: "Olá! Obrigado por reportar este problema. Estou investigando a questão do login e em breve terei uma resposta.",
+        messageType: "message",
+        isInternal: false,
+        attachments: [],
+        chatwootMessageId: 98765,
+        createdAt: now
+      },
+      {
+        ticketId: ticket1.id,
+        userId: user.id,
+        message: "Verificamos que há um problema no servidor de autenticação. Estamos trabalhando na correção.",
+        messageType: "note",
+        isInternal: true,
+        attachments: [],
+        createdAt: now
+      },
+      {
+        ticketId: ticket2.id,
+        userId: user.id,
+        message: "Sua solicitação foi recebida e está sendo analisada pela equipe de desenvolvimento. Estimamos 2-3 semanas para implementação.",
+        messageType: "message",
+        isInternal: false,
+        attachments: [],
+        createdAt: now
+      }
+    ];
+
+    await db.insert(supportTicketMessages).values(messagesData);
+
+    // Create Chatwoot settings example
+    const chatwootSettingsData = {
+      accountId: 1,
+      inboxId: 1,
+      inboxName: "Suporte Principal",
+      apiToken: "chatwoot_api_token_example",
+      webhookUrl: "https://example.com/webhook/chatwoot",
+      isActive: true,
+      syncEnabled: true,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await db.insert(chatwootSettings).values(chatwootSettingsData);
 
     // Create navigation items
     const navItems = [
       { label: "Dashboard", icon: "LayoutDashboard", href: "/", order: 1, parentId: null },
       { label: "Clientes", icon: "Users", href: "/clients", order: 2, parentId: null },
-      { label: "Projetos", icon: "FolderOpen", href: "/projects", order: 3, parentId: null },
-      { label: "Relatórios", icon: "BarChart3", href: "/reports", order: 4, parentId: null }
+      { label: "Produtos", icon: "Package", href: "/products", order: 3, parentId: null },
+      { label: "Fornecedores", icon: "Truck", href: "/suppliers", order: 4, parentId: null },
+      { label: "Vendas", icon: "ShoppingCart", href: "/sales", order: 5, parentId: null },
+      { label: "Suporte", icon: "MessageSquare", href: "/support", order: 6, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);
