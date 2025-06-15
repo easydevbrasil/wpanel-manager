@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck } from "lucide-react";
+import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText } from "lucide-react";
 import type { Sale, InsertSale, Client, Product } from "@shared/schema";
 
 const saleFormSchema = z.object({
@@ -231,6 +231,73 @@ export default function Sales() {
   const getLatestStatus = (sale: Sale) => {
     // Retorna apenas o status principal da venda (não o status de pagamento)
     return sale.status || "pendente";
+  };
+
+  const generateReceipt = (sale: Sale) => {
+    const client = clientsArray.find((c: Client) => c.id === sale.clientId);
+    const saleProducts = getSaleProducts(sale.id);
+    
+    let receiptContent = `
+================================
+         CUPOM DE VENDA
+      (NÃO É DOCUMENTO FISCAL)
+================================
+
+Venda: ${sale.saleNumber}
+Data: ${formatDate(sale.saleDate)}
+Cliente: ${client?.name || "Cliente não informado"}
+
+--------------------------------
+            PRODUTOS
+--------------------------------
+`;
+
+    saleProducts.forEach((item: any) => {
+      const unitPrice = item.unitPrice ? Number(item.unitPrice) : 0;
+      const total = unitPrice * item.quantity;
+      receiptContent += `
+${item.product.name}
+SKU: ${item.product.sku}
+Qtd: ${item.quantity} x ${formatCurrency(unitPrice.toString())}
+Total: ${formatCurrency(total.toString())}
+--------------------------------`;
+    });
+
+    receiptContent += `
+
+SUBTOTAL: ${formatCurrency(sale.subtotal || "0")}
+DESCONTO: ${formatCurrency(sale.discount || "0")}
+TAXA: ${formatCurrency(sale.tax || "0")}
+FRETE: ${formatCurrency(sale.shipping || "0")}
+
+TOTAL: ${formatCurrency(sale.total)}
+
+Pagamento: ${sale.paymentMethod?.toUpperCase() || "NÃO INFORMADO"}
+Status: ${getLatestStatus(sale).toUpperCase()}
+
+${sale.deliveryAddress ? `
+Endereço de Entrega:
+${sale.deliveryAddress}
+${sale.deliveryDate ? `Data prevista: ${formatDate(sale.deliveryDate)}` : ''}
+` : ''}
+
+${sale.notes ? `Observações: ${sale.notes}` : ''}
+
+================================
+    Obrigado pela preferência!
+================================
+`;
+
+    // Criar um novo arquivo de texto e baixar
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cupom-venda-${sale.saleNumber}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   if (isLoading) {
@@ -568,6 +635,13 @@ export default function Sales() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => generateReceipt(sale)}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleEdit(sale)}
                   >
                     <Edit className="h-4 w-4" />
@@ -640,9 +714,14 @@ export default function Sales() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">{item.product.sku}</p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Qtd: {item.quantity}</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {item.quantity}x {formatCurrency(item.unitPrice || "0")}
+                          </p>
+                          <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                            = {formatCurrency(((Number(item.unitPrice) || 0) * item.quantity).toString())}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}
