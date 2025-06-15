@@ -62,6 +62,34 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
+  
+  // Categories
+  getCategories(): Promise<Category[]>;
+  getCategory(id: number): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category>;
+  deleteCategory(id: number): Promise<void>;
+  
+  // Manufacturers
+  getManufacturers(): Promise<Manufacturer[]>;
+  getManufacturer(id: number): Promise<Manufacturer | undefined>;
+  createManufacturer(manufacturer: InsertManufacturer): Promise<Manufacturer>;
+  updateManufacturer(id: number, manufacturer: Partial<InsertManufacturer>): Promise<Manufacturer>;
+  deleteManufacturer(id: number): Promise<void>;
+  
+  // Product Groups
+  getProductGroups(): Promise<ProductGroup[]>;
+  getProductGroup(id: number): Promise<ProductGroup | undefined>;
+  createProductGroup(group: InsertProductGroup): Promise<ProductGroup>;
+  updateProductGroup(id: number, group: Partial<InsertProductGroup>): Promise<ProductGroup>;
+  deleteProductGroup(id: number): Promise<void>;
+  
+  // Products
+  getProducts(): Promise<Product[]>;
+  getProduct(id: number): Promise<Product | undefined>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
+  deleteProduct(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {

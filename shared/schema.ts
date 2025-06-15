@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -79,6 +79,64 @@ export const clients = pgTable("clients", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  parentId: integer("parent_id"),
+  image: text("image"),
+  status: text("status").notNull().default("active"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const manufacturers = pgTable("manufacturers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  website: text("website"),
+  email: text("email"),
+  phone: text("phone"),
+  logo: text("logo"),
+  status: text("status").notNull().default("active"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const productGroups = pgTable("product_groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  categoryId: integer("category_id").references(() => categories.id),
+  status: text("status").notNull().default("active"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  sku: text("sku").notNull().unique(),
+  barcode: text("barcode"),
+  price: text("price").notNull(), // Store as string to avoid decimal issues
+  costPrice: text("cost_price"),
+  categoryId: integer("category_id"),
+  manufacturerId: integer("manufacturer_id"),
+  productGroupId: integer("product_group_id"),
+  weight: text("weight"),
+  dimensions: text("dimensions"), // JSON string for length, width, height
+  stock: integer("stock").notNull().default(0),
+  minStock: integer("min_stock").default(0),
+  maxStock: integer("max_stock"),
+  images: text("images").array(), // Array of image URLs
+  status: text("status").notNull().default("active"), // active, inactive, discontinued
+  featured: boolean("featured").default(false),
+  tags: text("tags").array(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -109,6 +167,30 @@ export const insertClientSchema = createInsertSchema(clients).omit({
   updatedAt: true,
 });
 
+export const insertCategorySchema = createInsertSchema(categories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertManufacturerSchema = createInsertSchema(manufacturers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductGroupSchema = createInsertSchema(productGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
@@ -123,3 +205,11 @@ export type Email = typeof emails.$inferSelect;
 export type InsertEmail = z.infer<typeof insertEmailSchema>;
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = z.infer<typeof insertClientSchema>;
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type Manufacturer = typeof manufacturers.$inferSelect;
+export type InsertManufacturer = z.infer<typeof insertManufacturerSchema>;
+export type ProductGroup = typeof productGroups.$inferSelect;
+export type InsertProductGroup = z.infer<typeof insertProductGroupSchema>;
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
