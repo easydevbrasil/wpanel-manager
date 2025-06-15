@@ -183,14 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/clients", async (req, res) => {
-    try {
-      const client = await storage.createClient(req.body);
-      res.status(201).json(client);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create client" });
-    }
-  });
+
 
   app.put("/api/clients/:id", async (req, res) => {
     try {

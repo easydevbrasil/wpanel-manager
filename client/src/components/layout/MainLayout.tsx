@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import { WebSocketIndicator } from "../WebSocketIndicator";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -44,6 +45,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           {children}
         </main>
       </div>
+      <WebSocketIndicator />
     </div>
   );
 }
