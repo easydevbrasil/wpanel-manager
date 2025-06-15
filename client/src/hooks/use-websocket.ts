@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { ToastSounds } from '@/utils/toast-sounds';
 
 export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -21,9 +22,31 @@ export function useWebSocket() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Helper function to show toast notifications
+  // Helper function to show toast notifications with sounds and icons
   const showToast = useCallback((type: string, data?: any) => {
-    const actionMap: Record<string, { title: string; description: string; variant?: 'default' | 'destructive' }> = {
+    const getSoundAndVariant = (operationType: string) => {
+      const isDeleted = operationType.includes('deleted');
+      const isCreated = operationType.includes('created');
+      const isUpdated = operationType.includes('updated');
+
+      let soundType: 'success' | 'error' | 'info' | 'warning';
+      let variant: 'default' | 'destructive' = 'default';
+
+      if (isDeleted) {
+        soundType = 'error';
+        variant = 'destructive';
+      } else if (isCreated) {
+        soundType = 'success';
+      } else if (isUpdated) {
+        soundType = 'info';
+      } else {
+        soundType = 'info';
+      }
+
+      return { soundType, variant };
+    };
+
+    const actionMap: Record<string, { title: string; description: string }> = {
       // Client operations
       'client_created': { title: 'Cliente criado', description: `${data?.name} foi adicionado com sucesso` },
       'client_updated': { title: 'Cliente atualizado', description: `${data?.name} foi modificado` },
@@ -53,10 +76,31 @@ export function useWebSocket() {
 
     const config = actionMap[type];
     if (config) {
+      const { soundType, IconComponent, variant } = getIconAndSound(type);
+      
+      // Play sound
+      ToastSounds.playSound(soundType);
+      
+      // Get icon emoji based on type
+      const getIconEmoji = (operationType: string) => {
+        if (operationType.includes('deleted')) return '🗑️';
+        if (operationType.includes('created')) return '✅';
+        if (operationType.includes('updated')) return 'ℹ️';
+        if (operationType.includes('client')) return '👤';
+        if (operationType.includes('product')) return '📦';
+        if (operationType.includes('supplier')) return '🚛';
+        if (operationType.includes('sale')) return '🛒';
+        if (operationType.includes('ticket')) return '🎫';
+        return 'ℹ️';
+      };
+
+      const iconEmoji = getIconEmoji(type);
+
+      // Show toast with icon emoji
       toast({
-        title: config.title,
+        title: `${iconEmoji} ${config.title}`,
         description: config.description,
-        variant: type.includes('deleted') ? 'destructive' : 'default',
+        variant: variant,
       });
     }
   }, [toast]);
