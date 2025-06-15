@@ -213,6 +213,78 @@ export class MemStorage implements IStorage {
       return stats;
     }
   }
+
+  // Cart Items
+  async getCartItems(userId: number): Promise<CartItem[]> {
+    return Array.from(this.cartItems.values()).filter(item => item.userId === userId);
+  }
+
+  async updateCartItemQuantity(itemId: number, quantity: number): Promise<CartItem> {
+    const item = this.cartItems.get(itemId);
+    if (!item) throw new Error("Cart item not found");
+    const updated = { ...item, quantity };
+    this.cartItems.set(itemId, updated);
+    return updated;
+  }
+
+  async deleteCartItem(itemId: number): Promise<void> {
+    this.cartItems.delete(itemId);
+  }
+
+  async clearCart(userId: number): Promise<void> {
+    const userItems = await this.getCartItems(userId);
+    userItems.forEach(item => this.cartItems.delete(item.id));
+  }
+
+  // Notifications
+  async getNotifications(userId: number, limit = 10): Promise<Notification[]> {
+    return Array.from(this.notifications.values())
+      .filter(notification => notification.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<Notification> {
+    const notification = this.notifications.get(notificationId);
+    if (!notification) throw new Error("Notification not found");
+    const updated = { ...notification, isRead: true };
+    this.notifications.set(notificationId, updated);
+    return updated;
+  }
+
+  async deleteNotification(notificationId: number): Promise<void> {
+    this.notifications.delete(notificationId);
+  }
+
+  async clearNotifications(userId: number): Promise<void> {
+    const userNotifications = await this.getNotifications(userId, 1000);
+    userNotifications.forEach(notification => this.notifications.delete(notification.id));
+  }
+
+  // Emails
+  async getEmails(userId: number, limit = 10): Promise<Email[]> {
+    return Array.from(this.emails.values())
+      .filter(email => email.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
+  }
+
+  async markEmailAsRead(emailId: number): Promise<Email> {
+    const email = this.emails.get(emailId);
+    if (!email) throw new Error("Email not found");
+    const updated = { ...email, isRead: true };
+    this.emails.set(emailId, updated);
+    return updated;
+  }
+
+  async deleteEmail(emailId: number): Promise<void> {
+    this.emails.delete(emailId);
+  }
+
+  async clearEmails(userId: number): Promise<void> {
+    const userEmails = await this.getEmails(userId, 1000);
+    userEmails.forEach(email => this.emails.delete(email.id));
+  }
 }
 
 export const storage = new MemStorage();

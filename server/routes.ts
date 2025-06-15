@@ -39,6 +39,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cart routes
+  app.get("/api/cart", async (req, res) => {
+    try {
+      const items = await storage.getCartItems(1); // Mock user ID
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get cart items" });
+    }
+  });
+
+  app.patch("/api/cart/:id/quantity", async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const { quantity } = req.body;
+      const updated = await storage.updateCartItemQuantity(itemId, quantity);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update cart item" });
+    }
+  });
+
+  app.delete("/api/cart/:id", async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      await storage.deleteCartItem(itemId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete cart item" });
+    }
+  });
+
+  app.delete("/api/cart", async (req, res) => {
+    try {
+      await storage.clearCart(1); // Mock user ID
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clear cart" });
+    }
+  });
+
+  // Notification routes
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+      const notifications = await storage.getNotifications(1, limit); // Mock user ID
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get notifications" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      const updated = await storage.markNotificationAsRead(notificationId);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", async (req, res) => {
+    try {
+      const notificationId = parseInt(req.params.id);
+      await storage.deleteNotification(notificationId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  app.delete("/api/notifications", async (req, res) => {
+    try {
+      await storage.clearNotifications(1); // Mock user ID
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clear notifications" });
+    }
+  });
+
+  // Email routes
+  app.get("/api/emails", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
+      const emails = await storage.getEmails(1, limit); // Mock user ID
+      res.json(emails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get emails" });
+    }
+  });
+
+  app.patch("/api/emails/:id/read", async (req, res) => {
+    try {
+      const emailId = parseInt(req.params.id);
+      const updated = await storage.markEmailAsRead(emailId);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark email as read" });
+    }
+  });
+
+  app.delete("/api/emails/:id", async (req, res) => {
+    try {
+      const emailId = parseInt(req.params.id);
+      await storage.deleteEmail(emailId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete email" });
+    }
+  });
+
+  app.delete("/api/emails", async (req, res) => {
+    try {
+      await storage.clearEmails(1); // Mock user ID
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clear emails" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
