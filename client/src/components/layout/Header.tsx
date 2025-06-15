@@ -266,7 +266,7 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   <ShoppingCart className="w-6 h-6" />
                   {stats?.cartCount && stats.cartCount > 0 && (
@@ -373,7 +373,7 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   <Bell className="w-6 h-6" />
                   {stats?.notificationCount && stats.notificationCount > 0 && (
@@ -488,7 +488,7 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   <Mail className="w-6 h-6" />
                   {stats?.emailCount && stats.emailCount > 0 && (
