@@ -272,7 +272,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   size="sm"
                   className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <ShoppingCart className="w-6 h-6" />
+                  <ShoppingCart className="w-5 h-5" />
                   {stats?.cartCount && stats.cartCount > 0 && (
                     <Badge
                       variant="destructive"
@@ -294,21 +294,23 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                     </div>
                   ) : (
                     <>
-                      {cartItems.slice(0, 5).map((item) => (
-                        <div key={item.id} className="p-4 border-b hover:bg-gray-50">
+                      {cartItems.slice(0, 4).map((item) => (
+                        <div key={item.id} className="p-4 border-b hover:bg-gray-50 dark:hover:bg-gray-700">
                           <div className="flex items-center space-x-3">
-                            {item.productImage && (
-                              <img
-                                src={item.productImage}
-                                alt={item.productName}
-                                className="w-12 h-12 rounded-lg object-cover"
-                              />
-                            )}
+                            <div className="flex-shrink-0 flex justify-center items-center">
+                              {item.productImage && (
+                                <img
+                                  src={item.productImage}
+                                  alt={item.productName}
+                                  className="w-12 h-12 rounded-lg object-cover"
+                                />
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                 {item.productName}
                               </p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
                                 R$ {formatPrice(item.price)}
                               </p>
                             </div>
@@ -379,7 +381,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   size="sm"
                   className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <Bell className="w-6 h-6" />
+                  <Bell className="w-5 h-5" />
                   {stats?.notificationCount && stats.notificationCount > 0 && (
                     <Badge
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-blue-500 hover:bg-blue-600"
@@ -400,7 +402,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                     </div>
                   ) : (
                     <>
-                      {notifications.slice(0, 5).map((notification) => (
+                      {notifications.slice(0, 4).map((notification) => (
                         <div
                           key={notification.id}
                           className={`p-4 border-b hover:bg-gray-50 dark:hover:bg-gray-700 ${
@@ -409,23 +411,25 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                         >
                           <div className="flex items-start space-x-3">
                             {/* User Avatar */}
-                            <Avatar className="w-8 h-8 flex-shrink-0">
-                              {notification.senderAvatar ? (
-                                <AvatarImage src={notification.senderAvatar} alt={notification.senderName || "User"} />
-                              ) : (
-                                <AvatarFallback className="bg-gray-200 dark:bg-gray-600">
-                                  {notification.senderName ? notification.senderName.charAt(0).toUpperCase() : "S"}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
+                            <div className="flex-shrink-0 flex justify-center items-center">
+                              <Avatar className="w-8 h-8">
+                                {notification.senderAvatar ? (
+                                  <AvatarImage src={notification.senderAvatar} alt={notification.senderName || "User"} />
+                                ) : (
+                                  <AvatarFallback className="bg-gray-200 dark:bg-gray-600">
+                                    {notification.senderName ? notification.senderName.charAt(0).toUpperCase() : "S"}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                            </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                     {notification.title}
                                   </p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
                                     {notification.message}
                                   </p>
                                   <div className="flex items-center justify-between mt-2">
@@ -494,7 +498,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   size="sm"
                   className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
-                  <Mail className="w-6 h-6" />
+                  <Mail className="w-5 h-5" />
                   {stats?.emailCount && stats.emailCount > 0 && (
                     <Badge
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-green-500 hover:bg-green-600"
@@ -515,7 +519,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                     </div>
                   ) : (
                     <>
-                      {emails.slice(0, 5).map((email) => (
+                      {emails.slice(0, 4).map((email) => (
                         <div
                           key={email.id}
                           className={`p-4 border-b hover:bg-gray-50 dark:hover:bg-gray-700 ${
@@ -524,23 +528,25 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                         >
                           <div className="flex items-start space-x-3">
                             {/* User Avatar */}
-                            <Avatar className="w-8 h-8 flex-shrink-0">
-                              {email.senderAvatar ? (
-                                <AvatarImage src={email.senderAvatar} alt={email.sender} />
-                              ) : (
-                                <AvatarFallback className="bg-gray-200 dark:bg-gray-600">
-                                  {email.sender.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
+                            <div className="flex-shrink-0 flex justify-center items-center">
+                              <Avatar className="w-8 h-8">
+                                {email.senderAvatar ? (
+                                  <AvatarImage src={email.senderAvatar} alt={email.sender} />
+                                ) : (
+                                  <AvatarFallback className="bg-gray-200 dark:bg-gray-600">
+                                    {email.sender.charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                            </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                     {email.sender}
                                   </p>
-                                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1">
+                                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1 truncate">
                                     {email.subject}
                                   </p>
                                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
