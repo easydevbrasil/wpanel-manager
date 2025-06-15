@@ -10,6 +10,7 @@ import Clients from "@/pages/Clients";
 import Products from "@/pages/Products";
 import Suppliers from "@/pages/Suppliers";
 import Sales from "@/pages/Sales";
+import Support from "@/pages/Support";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
         <Route path="/products" component={Products} />
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/sales" component={Sales} />
+        <Route path="/support" component={Support} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>

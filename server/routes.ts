@@ -584,6 +584,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Support Tickets routes
+  app.get("/api/support/tickets", async (req, res) => {
+    try {
+      const tickets = await storage.getSupportTickets();
+      res.json(tickets);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get support tickets" });
+    }
+  });
+
+  app.get("/api/support/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ticket = await storage.getSupportTicket(id);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      res.json(ticket);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get support ticket" });
+    }
+  });
+
+  app.post("/api/support/tickets", async (req, res) => {
+    try {
+      const ticket = await storage.createSupportTicket(req.body);
+      res.status(201).json(ticket);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create support ticket" });
+    }
+  });
+
+  app.put("/api/support/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ticket = await storage.updateSupportTicket(id, req.body);
+      res.json(ticket);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update support ticket" });
+    }
+  });
+
+  app.delete("/api/support/tickets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSupportTicket(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete support ticket" });
+    }
+  });
+
+  // Support Ticket Messages routes
+  app.get("/api/support/tickets/:id/messages", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const messages = await storage.getSupportTicketMessages(ticketId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get ticket messages" });
+    }
+  });
+
+  app.post("/api/support/tickets/:id/messages", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const message = await storage.createSupportTicketMessage({ ...req.body, ticketId });
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create ticket message" });
+    }
+  });
+
+  // Support Categories routes
+  app.get("/api/support/categories", async (req, res) => {
+    try {
+      const categories = await storage.getSupportCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get support categories" });
+    }
+  });
+
+  app.post("/api/support/categories", async (req, res) => {
+    try {
+      const category = await storage.createSupportCategory(req.body);
+      res.status(201).json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create support category" });
+    }
+  });
+
+  // Chatwoot Settings routes
+  app.get("/api/chatwoot/settings", async (req, res) => {
+    try {
+      const settings = await storage.getChatwootSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get Chatwoot settings" });
+    }
+  });
+
+  app.post("/api/chatwoot/settings", async (req, res) => {
+    try {
+      const settings = await storage.createChatwootSettings(req.body);
+      res.status(201).json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create Chatwoot settings" });
+    }
+  });
+
+  app.put("/api/chatwoot/settings/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const settings = await storage.updateChatwootSettings(id, req.body);
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update Chatwoot settings" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

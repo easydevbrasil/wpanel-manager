@@ -44,7 +44,15 @@ import {
   type Sale,
   type InsertSale,
   type SaleItem,
-  type InsertSaleItem
+  type InsertSaleItem,
+  type SupportTicket,
+  type InsertSupportTicket,
+  type SupportTicketMessage,
+  type InsertSupportTicketMessage,
+  type SupportCategory,
+  type InsertSupportCategory,
+  type ChatwootSettings,
+  type InsertChatwootSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -898,6 +906,142 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSaleItem(id: number): Promise<void> {
     await db.delete(saleItems).where(eq(saleItems.id, id));
+  }
+
+  // Support Tickets
+  async getSupportTickets(): Promise<SupportTicket[]> {
+    return await db.select().from(supportTickets);
+  }
+
+  async getSupportTicket(id: number): Promise<SupportTicket | undefined> {
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, id));
+    return ticket || undefined;
+  }
+
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const now = new Date().toISOString();
+    const [newTicket] = await db
+      .insert(supportTickets)
+      .values({
+        ...ticket,
+        createdAt: now,
+        updatedAt: now,
+        lastActivityAt: now
+      })
+      .returning();
+    return newTicket;
+  }
+
+  async updateSupportTicket(id: number, ticketData: Partial<InsertSupportTicket>): Promise<SupportTicket> {
+    const [updatedTicket] = await db.update(supportTickets)
+      .set({
+        ...ticketData,
+        updatedAt: new Date().toISOString(),
+        lastActivityAt: new Date().toISOString()
+      })
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return updatedTicket;
+  }
+
+  async deleteSupportTicket(id: number): Promise<void> {
+    await db.delete(supportTickets).where(eq(supportTickets.id, id));
+  }
+
+  // Support Ticket Messages
+  async getSupportTicketMessages(ticketId: number): Promise<SupportTicketMessage[]> {
+    return await db.select().from(supportTicketMessages).where(eq(supportTicketMessages.ticketId, ticketId));
+  }
+
+  async createSupportTicketMessage(message: InsertSupportTicketMessage): Promise<SupportTicketMessage> {
+    const [newMessage] = await db
+      .insert(supportTicketMessages)
+      .values({
+        ...message,
+        createdAt: new Date().toISOString()
+      })
+      .returning();
+    return newMessage;
+  }
+
+  async updateSupportTicketMessage(id: number, messageData: Partial<InsertSupportTicketMessage>): Promise<SupportTicketMessage> {
+    const [updatedMessage] = await db.update(supportTicketMessages)
+      .set(messageData)
+      .where(eq(supportTicketMessages.id, id))
+      .returning();
+    return updatedMessage;
+  }
+
+  async deleteSupportTicketMessage(id: number): Promise<void> {
+    await db.delete(supportTicketMessages).where(eq(supportTicketMessages.id, id));
+  }
+
+  // Support Categories
+  async getSupportCategories(): Promise<SupportCategory[]> {
+    return await db.select().from(supportCategories);
+  }
+
+  async getSupportCategory(id: number): Promise<SupportCategory | undefined> {
+    const [category] = await db.select().from(supportCategories).where(eq(supportCategories.id, id));
+    return category || undefined;
+  }
+
+  async createSupportCategory(category: InsertSupportCategory): Promise<SupportCategory> {
+    const [newCategory] = await db
+      .insert(supportCategories)
+      .values(category)
+      .returning();
+    return newCategory;
+  }
+
+  async updateSupportCategory(id: number, categoryData: Partial<InsertSupportCategory>): Promise<SupportCategory> {
+    const [updatedCategory] = await db.update(supportCategories)
+      .set(categoryData)
+      .where(eq(supportCategories.id, id))
+      .returning();
+    return updatedCategory;
+  }
+
+  async deleteSupportCategory(id: number): Promise<void> {
+    await db.delete(supportCategories).where(eq(supportCategories.id, id));
+  }
+
+  // Chatwoot Settings
+  async getChatwootSettings(): Promise<ChatwootSettings[]> {
+    return await db.select().from(chatwootSettings);
+  }
+
+  async getChatwootSetting(id: number): Promise<ChatwootSettings | undefined> {
+    const [setting] = await db.select().from(chatwootSettings).where(eq(chatwootSettings.id, id));
+    return setting || undefined;
+  }
+
+  async createChatwootSettings(settings: InsertChatwootSettings): Promise<ChatwootSettings> {
+    const now = new Date().toISOString();
+    const [newSettings] = await db
+      .insert(chatwootSettings)
+      .values({
+        ...settings,
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning();
+    return newSettings;
+  }
+
+  async updateChatwootSettings(id: number, settingsData: Partial<InsertChatwootSettings>): Promise<ChatwootSettings> {
+    const [updatedSettings] = await db.update(chatwootSettings)
+      .set({
+        ...settingsData,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(chatwootSettings.id, id))
+      .returning();
+    return updatedSettings;
+  }
+
+  async deleteChatwootSettings(id: number): Promise<void> {
+    await db.delete(chatwootSettings).where(eq(chatwootSettings.id, id));
   }
 }
 
