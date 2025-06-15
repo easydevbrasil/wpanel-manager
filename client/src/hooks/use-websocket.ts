@@ -13,8 +13,10 @@ export function useWebSocket() {
   const [status, setStatus] = useState<WebSocketStatus>('disconnected');
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [connectedAt, setConnectedAt] = useState<Date | null>(null);
+  const [isTransmitting, setIsTransmitting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const transmissionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
   const connect = useCallback(() => {
@@ -46,6 +48,17 @@ export function useWebSocket() {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
           setLastMessage(message);
+
+          // Show transmission animation for data messages
+          if (message.type !== 'connection' && message.type !== 'pong') {
+            setIsTransmitting(true);
+            if (transmissionTimeoutRef.current) {
+              clearTimeout(transmissionTimeoutRef.current);
+            }
+            transmissionTimeoutRef.current = setTimeout(() => {
+              setIsTransmitting(false);
+            }, 2000);
+          }
 
           // Handle different message types and invalidate queries
           switch (message.type) {
@@ -115,12 +128,18 @@ export function useWebSocket() {
       reconnectTimeoutRef.current = null;
     }
     
+    if (transmissionTimeoutRef.current) {
+      clearTimeout(transmissionTimeoutRef.current);
+      transmissionTimeoutRef.current = null;
+    }
+    
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     
     setStatus('disconnected');
+    setIsTransmitting(false);
   }, []);
 
   const sendMessage = useCallback((message: any) => {
@@ -143,6 +162,7 @@ export function useWebSocket() {
     status,
     lastMessage,
     connectedAt,
+    isTransmitting,
     connect,
     disconnect,
     sendMessage,

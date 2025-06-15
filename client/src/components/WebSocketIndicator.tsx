@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWebSocket, type WebSocketStatus } from '@/hooks/use-websocket';
 import { Zap, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TunnelAnimation } from './TunnelAnimation';
 
 const statusConfig = {
   connecting: {
@@ -47,7 +48,7 @@ function truncateText(text: string, maxLength: number = 30): string {
 export function WebSocketIndicator() {
   const [showDetails, setShowDetails] = useState(false);
   const [connectionTime, setConnectionTime] = useState<string>('');
-  const { status, connect, lastMessage, connectedAt, isConnected } = useWebSocket();
+  const { status, connect, lastMessage, connectedAt, isConnected, isTransmitting } = useWebSocket();
   const config = statusConfig[status];
 
   // Update connection time every second
@@ -107,6 +108,17 @@ export function WebSocketIndicator() {
                 {truncateText(`${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`, 25)}
               </span>
             </div>
+
+            {/* Tunnel Animation */}
+            {isConnected && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                <div className="text-gray-600 dark:text-gray-400 mb-2 text-center">Transmissão de Dados</div>
+                <TunnelAnimation isActive={isTransmitting} className="h-8 w-full" />
+                <div className="text-xs text-center mt-1 text-gray-500 dark:text-gray-400">
+                  {isTransmitting ? 'Enviando dados...' : 'Aguardando...'}
+                </div>
+              </div>
+            )}
             
             {lastMessage && (
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
