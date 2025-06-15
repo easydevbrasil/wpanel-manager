@@ -99,11 +99,7 @@ export default function Clients() {
   });
 
   const createClientMutation = useMutation({
-    mutationFn: (data: InsertClient) => apiRequest("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: InsertClient) => apiRequest("POST", "/api/clients", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsDialogOpen(false);
@@ -125,11 +121,7 @@ export default function Clients() {
 
   const updateClientMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<InsertClient> }) =>
-      apiRequest(`/api/clients/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }),
+      apiRequest("PUT", `/api/clients/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsDialogOpen(false);
@@ -150,9 +142,7 @@ export default function Clients() {
   });
 
   const deleteClientMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/clients/${id}`, {
-      method: "DELETE",
-    }),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/clients/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({
@@ -498,12 +488,15 @@ export default function Clients() {
                       <div className="mt-2">
                         <Badge 
                           variant={client.status === "active" ? "default" : "secondary"}
-                          className={client.status === "active" 
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          className={
+                            client.status === "active" 
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                              : client.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                           }
                         >
-                          {client.status === "active" ? "Ativo" : "Inativo"}
+                          {client.status === "active" ? "Ativo" : client.status === "pending" ? "Pendente" : "Inativo"}
                         </Badge>
                       </div>
                     </div>

@@ -73,7 +73,7 @@ export const clients = pgTable("clients", {
   company: text("company"),
   position: text("position"),
   image: text("image"),
-  status: text("status").notNull().default("active"), // active, inactive
+  status: text("status").notNull().default("active"), // active, inactive, pending
   notes: text("notes"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
