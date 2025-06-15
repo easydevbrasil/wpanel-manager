@@ -35,6 +35,7 @@ import {
   Package,
   Truck,
   ShoppingCart,
+  MessageSquare,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -54,6 +55,7 @@ const iconMap = {
   Package,
   Truck,
   ShoppingCart,
+  MessageSquare,
   Sliders,
   Shield,
   Bell,
