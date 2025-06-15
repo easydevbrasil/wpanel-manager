@@ -143,6 +143,8 @@ Changelog:
 - June 15, 2025. Enhanced sales page to show only latest status, product photos instead of icons, and product names with smaller SKU text
 - June 15, 2025. Implemented non-fiscal receipt generation system with downloadable text format cupons for customers
 - June 15, 2025. Added product pricing display in sales with quantity, unit price, and calculated totals for each item
+- June 15, 2025. Reorganized sales cards to display products in clean format: photo + quantity + name + total price (e.g. "1x iPhone 14 Pro Max R$ 10.000,00")
+- June 15, 2025. Fixed sale items loading system with proper async data fetching and JSON conversion for reliable product display
 ```
 
 ## User Preferences

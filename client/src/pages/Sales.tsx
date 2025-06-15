@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText } from "lucide-react";
+import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import type { Sale, InsertSale, Client, Product } from "@shared/schema";
 
 const saleFormSchema = z.object({
@@ -57,6 +57,7 @@ export default function Sales() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [expandedSales, setExpandedSales] = useState<Set<number>>(new Set());
   const queryClient = useQueryClient();
 
   const { data: sales = [], isLoading } = useQuery({
@@ -256,6 +257,18 @@ export default function Sales() {
     // Retorna apenas o status principal da venda (não o status de pagamento)
     return sale.status || "pendente";
   };
+
+  const toggleExpanded = (saleId: number) => {
+    const newExpanded = new Set(expandedSales);
+    if (newExpanded.has(saleId)) {
+      newExpanded.delete(saleId);
+    } else {
+      newExpanded.add(saleId);
+    }
+    setExpandedSales(newExpanded);
+  };
+
+  const isExpanded = (saleId: number) => expandedSales.has(saleId);
 
   const generateReceipt = (sale: Sale) => {
     const client = clientsArray.find((c: Client) => c.id === sale.clientId);
@@ -644,18 +657,43 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
       <div className="grid gap-4">
         {filteredSales.map((sale: Sale) => (
           <Card key={sale.id} className="overflow-hidden">
-            <CardHeader className="pb-3">
+            {/* Versão Compacta - Sempre Visível */}
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <ShoppingCart className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-lg">{sale.saleNumber}</CardTitle>
+                {/* Informações Básicas */}
+                <div className="flex items-center space-x-4 flex-1">
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center space-x-3">
+                    <span className="font-semibold">{sale.saleNumber}</span>
+                    <Badge className={statusColors[getLatestStatus(sale) as keyof typeof statusColors]}>
+                      {getLatestStatus(sale).charAt(0).toUpperCase() + getLatestStatus(sale).slice(1)}
+                    </Badge>
                   </div>
-                  <Badge className={statusColors[getLatestStatus(sale) as keyof typeof statusColors]}>
-                    {getLatestStatus(sale).charAt(0).toUpperCase() + getLatestStatus(sale).slice(1)}
-                  </Badge>
+                  <div className="text-sm text-muted-foreground">
+                    {getClientName(sale.clientId)}
+                  </div>
+                  <div className="text-sm">
+                    {formatDate(sale.saleDate)}
+                  </div>
+                  <div className="font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(sale.total)}
+                  </div>
                 </div>
+
+                {/* Botões de Ação */}
                 <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleExpanded(sale.id)}
+                    className="p-2"
+                  >
+                    {isExpanded(sale.id) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -680,8 +718,12 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                   </Button>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
+            </CardContent>
+
+            {/* Versão Expandida - Conditional */}
+            {isExpanded(sale.id) && (
+              <CardContent className="pt-0 pb-4 px-4">
+                <Separator className="mb-4" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Informações da Venda */}
                 <div className="space-y-3">
@@ -823,7 +865,8 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                   </div>
                 </>
               )}
-            </CardContent>
+              </CardContent>
+            )}
           </Card>
         ))}
 
