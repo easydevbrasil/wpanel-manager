@@ -28,13 +28,20 @@ import {
   MoreHorizontal,
   X,
   CheckCircle2,
+  Sun,
+  Moon,
+  Monitor,
+  Menu,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useTheme } from "@/components/ThemeProvider";
 import type { User, DashboardStats, CartItem, Notification, Email } from "@shared/schema";
 
 export function Header() {
   const queryClient = useQueryClient();
+  const { theme, setTheme, actualTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const { data: user } = useQuery<User>({
     queryKey: ["/api/user"],
@@ -155,7 +162,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 fixed w-full top-0 z-40">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4 fixed w-full top-0 z-40">
       <div className="flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
@@ -164,39 +171,82 @@ export function Header() {
               A
             </div>
           </div>
-          <span className="ml-3 text-xl font-semibold text-gray-900 hidden sm:block">
+          <span className="ml-3 text-xl font-semibold text-gray-900 dark:text-white hidden sm:block">
             AppName
           </span>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <Menu className="w-6 h-6" />
+          </Button>
         </div>
 
         {/* Center Navigation */}
         <nav className="hidden md:flex space-x-8">
           <Link href="/">
-            <span className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
+            <span className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
               Dashboard
             </span>
           </Link>
           <Link href="/projects">
-            <span className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
+            <span className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
               Projects
             </span>
           </Link>
           <Link href="/analytics">
-            <span className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
+            <span className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
               Analytics
             </span>
           </Link>
           <Link href="/reports">
-            <span className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
+            <span className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer">
               Reports
             </span>
           </Link>
         </nav>
 
         {/* Right Section */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 md:space-x-4">
+          {/* Theme Toggle */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                {actualTheme === "dark" ? (
+                  <Moon className="w-5 h-5" />
+                ) : (
+                  <Sun className="w-5 h-5" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                <Sun className="w-4 h-4 mr-2" />
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                <Moon className="w-4 h-4 mr-2" />
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>
+                <Monitor className="w-4 h-4 mr-2" />
+                System
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
+          <div className="hidden sm:flex items-center space-x-2 md:space-x-3">
             {/* Cart Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -216,9 +266,9 @@ export function Header() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="p-4 border-b">
-                  <h3 className="font-semibold text-gray-900">Carrinho</h3>
+              <DropdownMenuContent align="end" className="w-80 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Carrinho</h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
                   {cartItems.length === 0 ? (
