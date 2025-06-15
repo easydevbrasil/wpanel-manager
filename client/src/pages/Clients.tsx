@@ -466,11 +466,11 @@ export default function Clients() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClients.map((client) => (
-            <Card key={client.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <Avatar className="w-12 h-12">
+            <Card key={client.id} className="client-card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow overflow-hidden">
+              <CardContent className="client-card-content p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <Avatar className="w-12 h-12 flex-shrink-0">
                       <AvatarImage src={client.image || undefined} alt={client.name} />
                       <AvatarFallback className="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
                         {client.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
@@ -485,24 +485,10 @@ export default function Clients() {
                           {client.position} na {client.company}
                         </p>
                       )}
-                      <div className="mt-2">
-                        <Badge 
-                          variant={client.status === "active" ? "default" : "secondary"}
-                          className={
-                            client.status === "active" 
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
-                              : client.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                          }
-                        >
-                          {client.status === "active" ? "Ativo" : client.status === "pending" ? "Pendente" : "Inativo"}
-                        </Badge>
-                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -546,21 +532,36 @@ export default function Clients() {
                     </AlertDialog>
                   </div>
                 </div>
+
+                <div className="mb-3">
+                  <Badge 
+                    variant={client.status === "active" ? "default" : "secondary"}
+                    className={
+                      client.status === "active" 
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                        : client.status === "pending"
+                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                    }
+                  >
+                    {client.status === "active" ? "Ativo" : client.status === "pending" ? "Pendente" : "Inativo"}
+                  </Badge>
+                </div>
                 
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <Mail className="w-4 h-4 mr-2" />
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 min-w-0">
+                    <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="truncate">{client.email}</span>
                   </div>
                   {client.phone && (
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                      <Phone className="w-4 h-4 mr-2" />
-                      <span>{client.phone}</span>
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 min-w-0">
+                      <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                      <span className="truncate">{client.phone}</span>
                     </div>
                   )}
                   {client.company && (
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                      <Building className="w-4 h-4 mr-2" />
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 min-w-0">
+                      <Building className="w-4 h-4 mr-2 flex-shrink-0" />
                       <span className="truncate">{client.company}</span>
                     </div>
                   )}
@@ -568,7 +569,7 @@ export default function Clients() {
                 
                 {client.notes && (
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 break-words line-clamp-3">
                       {client.notes}
                     </p>
                   </div>
