@@ -96,6 +96,12 @@ Changelog:
 - June 15, 2025. Enhanced header with interactive dropdowns for cart (with quantity controls), notifications, and emails (with read/delete actions)
 - June 15, 2025. Implemented Portuguese language interface for dropdown components
 - June 15, 2025. Added user avatars on left and service indicators (email, WhatsApp, Telegram, push, system) on bottom for notifications and emails
+- June 15, 2025. Fixed dark mode theme colors for Recent Projects, Team Activity, and user name in header
+- June 15, 2025. Fixed sidebar icon sizes (increased to w-6 h-6) and added click-outside collapse functionality
+- June 15, 2025. Added sample data for cart (3 items), notifications (5 items), and emails (10 items) with correct counters
+- June 15, 2025. Made sidebar full height with configuration section at bottom including theme controls
+- June 15, 2025. Implemented PostgreSQL database storage with comprehensive clients CRUD operations
+- June 15, 2025. Created clients page with responsive card layout (3 per row), image support, search/filter functionality
 ```
 
 ## User Preferences

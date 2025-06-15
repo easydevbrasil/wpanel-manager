@@ -198,23 +198,79 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             })}
           </nav>
         </div>
-      </aside>
 
-      {/* Toggle Button */}
-      <Button
-        onClick={onToggle}
-        size="sm"
-        className={cn(
-          "fixed top-1/2 transform -translate-y-1/2 bg-white border border-gray-200 rounded-lg p-2 shadow-lg hover:shadow-xl transition-all duration-200 z-30",
-          collapsed ? "left-24" : "left-68"
-        )}
-      >
-        {collapsed ? (
-          <ChevronRight className="w-5 h-5 text-gray-600" />
-        ) : (
-          <ChevronLeft className="w-5 h-5 text-gray-600" />
-        )}
-      </Button>
+        {/* Configuration Section */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800",
+                  collapsed ? "justify-center px-2" : "justify-start px-3"
+                )}
+              >
+                <Settings className="w-6 h-6" />
+                {!collapsed && <span className="ml-3">Configurações</span>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              side={collapsed ? "right" : "top"} 
+              className="w-56 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            >
+              <div className="px-3 py-2">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Tema do Sistema</p>
+              </div>
+              <DropdownMenuItem 
+                onClick={() => setTheme("light")}
+                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Sun className="w-4 h-4 mr-3" />
+                Claro
+                {theme === "light" && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setTheme("dark")}
+                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Moon className="w-4 h-4 mr-3" />
+                Escuro
+                {theme === "dark" && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setTheme("system")}
+                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Monitor className="w-4 h-4 mr-3" />
+                Sistema
+                {theme === "system" && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-600" />
+              
+              <div className="px-3 py-2">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Aparência</p>
+              </div>
+              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <Palette className="w-4 h-4 mr-3" />
+                Cores do Sidebar
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <SidebarIcon className="w-4 h-4 mr-3" />
+                Modo Inicial: {collapsed ? "Recolhido" : "Expandido"}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <Eye className="w-4 h-4 mr-3" />
+                Cores do Header
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <LayoutDashboard className="w-4 h-4 mr-3" />
+                Cores Principais
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </aside>
     </>
   );
 }
