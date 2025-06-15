@@ -153,6 +153,10 @@ Changelog:
 - June 15, 2025. Created minimalist WebSocket indicator with bolt icon in bottom-right corner showing connection status via colors
 - June 15, 2025. Added expandable connection details panel with technical information, last message data, and reconnection capabilities
 - June 15, 2025. All CRUD operations now broadcast real-time updates to connected clients with automatic cache invalidation
+- June 15, 2025. Migrated all data from local storage to PostgreSQL database for complete persistence
+- June 15, 2025. Implemented dynamic data loading via WebSocket with real-time synchronization across all pages
+- June 15, 2025. Enhanced WebSocket indicator with tunnel animation showing data flow from server to client via dotted lines
+- June 15, 2025. System now fully database-driven with 40+ records across clients, products, sales, suppliers, and support tickets
 ```
 
 ## User Preferences
