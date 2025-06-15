@@ -593,6 +593,235 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-3 space-y-1">
+            <Link href="/">
+              <span 
+                className="block px-3 py-2 text-base font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </span>
+            </Link>
+            <Link href="/projects">
+              <span 
+                className="block px-3 py-2 text-base font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Projects
+              </span>
+            </Link>
+            <Link href="/analytics">
+              <span 
+                className="block px-3 py-2 text-base font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Analytics
+              </span>
+            </Link>
+            <Link href="/reports">
+              <span 
+                className="block px-3 py-2 text-base font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Reports
+              </span>
+            </Link>
+          </div>
+          
+          {/* Mobile Action Buttons */}
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-center space-x-6">
+              {/* Mobile Cart */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative p-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <ShoppingCart className="w-6 h-6" />
+                    {stats?.cartCount && stats.cartCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0"
+                      >
+                        {stats.cartCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-80 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Carrinho</h3>
+                  </div>
+                  {/* Cart content - simplified for mobile */}
+                  <div className="max-h-60 overflow-y-auto">
+                    {cartItems.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                        Carrinho vazio
+                      </div>
+                    ) : (
+                      <>
+                        {cartItems.slice(0, 3).map((item) => (
+                          <div key={item.id} className="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                  {item.productName}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  R$ {formatPrice(item.price)} x {item.quantity}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                onClick={() => deleteCartItem.mutate(item.id)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        {cartItems.length > 3 && (
+                          <div className="p-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                            +{cartItems.length - 3} mais items
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Mobile Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative p-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <Bell className="w-6 h-6" />
+                    {stats?.notificationCount && stats.notificationCount > 0 && (
+                      <Badge
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-blue-500 hover:bg-blue-600"
+                      >
+                        {stats.notificationCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-80 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Notificações</h3>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                        Nenhuma notificação
+                      </div>
+                    ) : (
+                      notifications.slice(0, 3).map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                            !notification.isRead ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                                {notification.message}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 ml-2"
+                              onClick={() => deleteNotification.mutate(notification.id)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Mobile Emails */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative p-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <Mail className="w-6 h-6" />
+                    {stats?.emailCount && stats.emailCount > 0 && (
+                      <Badge
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-green-500 hover:bg-green-600"
+                      >
+                        {stats.emailCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-80 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Emails</h3>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {emails.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                        Nenhum email
+                      </div>
+                    ) : (
+                      emails.slice(0, 3).map((email) => (
+                        <div
+                          key={email.id}
+                          className={`p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                            !email.isRead ? "bg-green-50 dark:bg-green-900/20" : ""
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {email.sender}
+                              </p>
+                              <p className="text-xs font-medium text-gray-800 dark:text-gray-200 mt-1">
+                                {email.subject}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 ml-2"
+                              onClick={() => deleteEmail.mutate(email.id)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

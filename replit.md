@@ -92,10 +92,15 @@ This is a modern full-stack dashboard application built with React, TypeScript, 
 ```
 Changelog:
 - June 15, 2025. Initial setup
+- June 15, 2025. Added responsive mobile design and dark/light theme toggle with system preference detection and localStorage persistence
+- June 15, 2025. Enhanced header with interactive dropdowns for cart (with quantity controls), notifications, and emails (with read/delete actions)
+- June 15, 2025. Implemented Portuguese language interface for dropdown components
 ```
 
 ## User Preferences
 
 ```
 Preferred communication style: Simple, everyday language.
+Interface language: Portuguese for user-facing elements
+Theme preference: System default with manual toggle capability
 ```

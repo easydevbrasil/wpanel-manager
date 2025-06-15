@@ -96,39 +96,39 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Dashboard Overview
         </h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Welcome back! Here's what's happening with your projects today.
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {statItems.map((stat, index) => (
-          <Card key={index} className="bg-white shadow-sm border border-gray-200">
-            <CardContent className="p-6">
+          <Card key={index} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                     {stat.title}
                   </p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                     {stat.value}
                   </p>
                 </div>
-                <div className={`${stat.iconBg} p-3 rounded-lg`}>
-                  <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+                <div className={`${stat.iconBg} p-2 md:p-3 rounded-lg`}>
+                  <stat.icon className={`w-5 h-5 md:w-6 md:h-6 ${stat.iconColor}`} />
                 </div>
               </div>
-              <div className="mt-4 flex items-center">
-                <span className="text-sm text-green-600 font-medium flex items-center">
+              <div className="mt-3 md:mt-4 flex items-center">
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center">
                   <TrendingUp className="w-4 h-4 mr-1" />
                   {stat.change}
                 </span>
-                <span className="text-sm text-gray-600 ml-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
                   {stat.title === "Team Members" ? "new this month" : 
                    stat.title === "Revenue" ? "from last month" :
                    "from last week"}

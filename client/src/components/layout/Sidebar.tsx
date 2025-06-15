@@ -88,7 +88,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <>
       <aside
         className={cn(
-          "bg-white border-r border-gray-200 transition-all duration-300 ease-in-out flex-shrink-0",
+          "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out flex-shrink-0",
           collapsed ? "w-20" : "w-64"
         )}
       >
@@ -110,7 +110,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-between px-3 py-2 text-gray-700 hover:bg-gray-100",
+                          "w-full justify-between px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
                           collapsed && "justify-center"
                         )}
                       >
@@ -135,8 +135,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <Link key={child.id} href={child.href || "#"}>
                           <a
                             className={cn(
-                              "block ml-8 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors",
-                              isActive(child.href) && "bg-gray-100 text-gray-900"
+                              "block ml-8 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors",
+                              isActive(child.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
                             )}
                           >
                             {child.label}
@@ -151,8 +151,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Link key={item.id} href={item.href || "#"}>
                     <a
                       className={cn(
-                        "flex items-center px-3 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors",
-                        isActive(item.href) && "bg-gray-100 text-gray-900",
+                        "flex items-center px-3 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                        isActive(item.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white",
                         collapsed && "justify-center"
                       )}
                     >
