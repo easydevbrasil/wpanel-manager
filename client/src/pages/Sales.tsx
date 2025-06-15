@@ -654,7 +654,7 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
       </div>
 
       {/* Lista de Vendas */}
-      <div className="grid gap-4">
+      <div className="grid gap-3">
         {filteredSales.map((sale: Sale) => (
           <Card key={sale.id} className="overflow-hidden">
             {/* Versão Compacta - Sempre Visível */}
@@ -724,147 +724,136 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
             {isExpanded(sale.id) && (
               <CardContent className="pt-0 pb-4 px-4">
                 <Separator className="mb-4" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Informações da Venda */}
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{getClientName(sale.clientId)}</p>
-                      <p className="text-xs text-muted-foreground">Cliente</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{formatDate(sale.saleDate)}</p>
-                      <p className="text-xs text-muted-foreground">Data da Venda</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">{formatCurrency(sale.total)}</p>
-                      <p className="text-xs text-muted-foreground">Total</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Package2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">
-                        {sale.paymentMethod ? sale.paymentMethod.toUpperCase() : "Não informado"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Pagamento</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Produtos Vendidos */}
-                <div>
-                  <p className="text-sm font-medium mb-3">Produtos Vendidos</p>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {getSaleProducts(sale.id).map((item: any) => {
-                      const unitPrice = item.unitPrice ? Number(item.unitPrice) : 0;
-                      const itemTotal = unitPrice * item.quantity;
-                      
-                      return (
-                        <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                              {item.product.image ? (
-                                <img 
-                                  src={item.product.image} 
-                                  alt={item.product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                  <Package2 className="h-3 w-3 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">
-                                {item.quantity}x {item.product.name}
-                              </p>
-                              {item.product.sku && (
-                                <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                            {formatCurrency(itemTotal.toString())}
-                          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Informações Detalhadas da Venda */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold">Detalhes da Venda</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">{getClientName(sale.clientId)}</p>
+                          <p className="text-xs text-muted-foreground">Cliente</p>
                         </div>
-                      );
-                    })}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Package2 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {sale.paymentMethod ? sale.paymentMethod.toUpperCase() : "Não informado"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Pagamento</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
-                  {/* Resumo Financeiro */}
-                  <div className="mt-4 pt-3 border-t">
-                    <div className="space-y-1 text-xs">
-                      {sale.subtotal && Number(sale.subtotal) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Subtotal:</span>
-                          <span className="font-medium">{formatCurrency(sale.subtotal)}</span>
+                  {/* Produtos Vendidos */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3">Produtos Vendidos</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {getSaleProducts(sale.id).map((item: any) => {
+                        const unitPrice = item.unitPrice ? Number(item.unitPrice) : 0;
+                        const itemTotal = unitPrice * item.quantity;
+                        
+                        return (
+                          <div key={item.id} className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                                {item.product.image ? (
+                                  <img 
+                                    src={item.product.image} 
+                                    alt={item.product.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                    <Package2 className="h-3 w-3 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {item.quantity}x {item.product.name}
+                                </p>
+                                {item.product.sku && (
+                                  <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(itemTotal.toString())}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Resumo Financeiro */}
+                    <div className="mt-4 pt-3 border-t">
+                      <div className="space-y-1 text-xs">
+                        {sale.subtotal && Number(sale.subtotal) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Subtotal:</span>
+                            <span className="font-medium">{formatCurrency(sale.subtotal)}</span>
+                          </div>
+                        )}
+                        {sale.discount && Number(sale.discount) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Desconto:</span>
+                            <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(sale.discount)}</span>
+                          </div>
+                        )}
+                        {sale.tax && Number(sale.tax) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Taxa:</span>
+                            <span className="font-medium">{formatCurrency(sale.tax)}</span>
+                          </div>
+                        )}
+                        {sale.shipping && Number(sale.shipping) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Frete:</span>
+                            <span className="font-medium">{formatCurrency(sale.shipping)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between pt-2 border-t">
+                          <span className="font-semibold">Total Final:</span>
+                          <span className="font-bold text-lg text-green-600 dark:text-green-400">
+                            {formatCurrency(sale.total)}
+                          </span>
                         </div>
-                      )}
-                      {sale.discount && Number(sale.discount) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Desconto:</span>
-                          <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(sale.discount)}</span>
-                        </div>
-                      )}
-                      {sale.tax && Number(sale.tax) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Taxa:</span>
-                          <span className="font-medium">{formatCurrency(sale.tax)}</span>
-                        </div>
-                      )}
-                      {sale.shipping && Number(sale.shipping) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Frete:</span>
-                          <span className="font-medium">{formatCurrency(sale.shipping)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between pt-2 border-t">
-                        <span className="font-semibold">Total Final:</span>
-                        <span className="font-bold text-lg text-green-600 dark:text-green-400">
-                          {formatCurrency(sale.total)}
-                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {sale.deliveryAddress && (
-                <>
-                  <Separator className="my-3" />
-                  <div className="flex items-start space-x-2">
-                    <Truck className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Endereço de Entrega</p>
-                      <p className="text-xs text-muted-foreground">{sale.deliveryAddress}</p>
-                      {sale.deliveryDate && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Entrega prevista: {formatDate(sale.deliveryDate)}
-                        </p>
-                      )}
+                
+                {sale.deliveryAddress && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="flex items-start space-x-2">
+                      <Truck className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Endereço de Entrega</p>
+                        <p className="text-xs text-muted-foreground">{sale.deliveryAddress}</p>
+                        {sale.deliveryDate && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Entrega prevista: {formatDate(sale.deliveryDate)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
-              
-              {sale.notes && (
-                <>
-                  <Separator className="my-3" />
-                  <div>
-                    <p className="text-sm font-medium mb-1">Observações</p>
-                    <p className="text-xs text-muted-foreground">{sale.notes}</p>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+                
+                {sale.notes && (
+                  <>
+                    <Separator className="my-4" />
+                    <div>
+                      <p className="text-sm font-medium mb-1">Observações</p>
+                      <p className="text-xs text-muted-foreground">{sale.notes}</p>
+                    </div>
+                  </>
+                )}
               </CardContent>
             )}
           </Card>
