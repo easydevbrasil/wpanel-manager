@@ -1,4 +1,23 @@
-import { users, navigationItems, dashboardStats, type User, type NavigationItem, type DashboardStats, type InsertUser, type InsertNavigationItem, type InsertDashboardStats } from "@shared/schema";
+import { 
+  users, 
+  navigationItems, 
+  dashboardStats, 
+  cartItems,
+  notifications,
+  emails,
+  type User, 
+  type NavigationItem, 
+  type DashboardStats, 
+  type InsertUser, 
+  type InsertNavigationItem, 
+  type InsertDashboardStats,
+  type CartItem,
+  type InsertCartItem,
+  type Notification,
+  type InsertNotification,
+  type Email,
+  type InsertEmail
+} from "@shared/schema";
 
 export interface IStorage {
   // Users
@@ -13,23 +32,53 @@ export interface IStorage {
   // Dashboard Stats
   getDashboardStats(userId: number): Promise<DashboardStats | undefined>;
   updateDashboardStats(userId: number, stats: Partial<InsertDashboardStats>): Promise<DashboardStats>;
+  
+  // Cart Items
+  getCartItems(userId: number): Promise<CartItem[]>;
+  updateCartItemQuantity(itemId: number, quantity: number): Promise<CartItem>;
+  deleteCartItem(itemId: number): Promise<void>;
+  clearCart(userId: number): Promise<void>;
+  
+  // Notifications
+  getNotifications(userId: number, limit?: number): Promise<Notification[]>;
+  markNotificationAsRead(notificationId: number): Promise<Notification>;
+  deleteNotification(notificationId: number): Promise<void>;
+  clearNotifications(userId: number): Promise<void>;
+  
+  // Emails
+  getEmails(userId: number, limit?: number): Promise<Email[]>;
+  markEmailAsRead(emailId: number): Promise<Email>;
+  deleteEmail(emailId: number): Promise<void>;
+  clearEmails(userId: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private navigationItems: Map<number, NavigationItem>;
   private dashboardStats: Map<number, DashboardStats>;
+  private cartItems: Map<number, CartItem>;
+  private notifications: Map<number, Notification>;
+  private emails: Map<number, Email>;
   private currentUserId: number;
   private currentNavId: number;
   private currentStatsId: number;
+  private currentCartId: number;
+  private currentNotificationId: number;
+  private currentEmailId: number;
 
   constructor() {
     this.users = new Map();
     this.navigationItems = new Map();
     this.dashboardStats = new Map();
+    this.cartItems = new Map();
+    this.notifications = new Map();
+    this.emails = new Map();
     this.currentUserId = 1;
     this.currentNavId = 1;
     this.currentStatsId = 1;
+    this.currentCartId = 1;
+    this.currentNotificationId = 1;
+    this.currentEmailId = 1;
     
     this.initializeData();
   }
@@ -88,6 +137,37 @@ export class MemStorage implements IStorage {
     };
     this.dashboardStats.set(1, stats);
     this.currentStatsId = 2;
+
+    // Create sample cart items
+    const cartItemsData: CartItem[] = [
+      { id: 1, userId: 1, productName: "Wireless Headphones", productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop", price: 9999, quantity: 2, createdAt: "2024-06-15T10:00:00Z" },
+      { id: 2, userId: 1, productName: "Smartphone Case", productImage: "https://images.unsplash.com/photo-1601593346740-925612772716?w=100&h=100&fit=crop", price: 2999, quantity: 1, createdAt: "2024-06-15T11:00:00Z" },
+      { id: 3, userId: 1, productName: "USB Cable", productImage: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=100&h=100&fit=crop", price: 1599, quantity: 3, createdAt: "2024-06-15T12:00:00Z" },
+    ];
+    cartItemsData.forEach(item => this.cartItems.set(item.id, item));
+    this.currentCartId = 4;
+
+    // Create sample notifications
+    const notificationsData: Notification[] = [
+      { id: 1, userId: 1, title: "New Project Assigned", message: "You have been assigned to Project Alpha", type: "info", isRead: false, createdAt: "2024-06-15T14:30:00Z" },
+      { id: 2, userId: 1, title: "Task Completed", message: "Sarah completed the wireframes task", type: "success", isRead: false, createdAt: "2024-06-15T13:15:00Z" },
+      { id: 3, userId: 1, title: "Deadline Reminder", message: "Project Beta deadline is tomorrow", type: "warning", isRead: true, createdAt: "2024-06-15T10:45:00Z" },
+      { id: 4, userId: 1, title: "System Update", message: "System will be updated tonight at 2 AM", type: "info", isRead: false, createdAt: "2024-06-15T09:20:00Z" },
+      { id: 5, userId: 1, title: "Budget Approved", message: "Q3 budget has been approved", type: "success", isRead: false, createdAt: "2024-06-15T08:00:00Z" },
+    ];
+    notificationsData.forEach(notification => this.notifications.set(notification.id, notification));
+    this.currentNotificationId = 6;
+
+    // Create sample emails
+    const emailsData: Email[] = [
+      { id: 1, userId: 1, sender: "Sarah Chen", senderEmail: "sarah@company.com", subject: "Project Update", preview: "The wireframes are ready for review...", isRead: false, createdAt: "2024-06-15T15:30:00Z" },
+      { id: 2, userId: 1, sender: "Mike Rodriguez", senderEmail: "mike@company.com", subject: "Code Review Request", preview: "Please review the latest commits...", isRead: false, createdAt: "2024-06-15T14:45:00Z" },
+      { id: 3, userId: 1, sender: "Team Lead", senderEmail: "lead@company.com", subject: "Weekly Meeting", preview: "Weekly team meeting scheduled for...", isRead: true, createdAt: "2024-06-15T13:20:00Z" },
+      { id: 4, userId: 1, sender: "HR Department", senderEmail: "hr@company.com", subject: "Benefits Update", preview: "New benefits package information...", isRead: false, createdAt: "2024-06-15T11:10:00Z" },
+      { id: 5, userId: 1, sender: "Client Support", senderEmail: "support@client.com", subject: "Feature Request", preview: "Client requesting new dashboard features...", isRead: false, createdAt: "2024-06-15T10:30:00Z" },
+    ];
+    emailsData.forEach(email => this.emails.set(email.id, email));
+    this.currentEmailId = 6;
   }
 
   async getUser(id: number): Promise<User | undefined> {

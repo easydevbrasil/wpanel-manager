@@ -29,6 +29,37 @@ export const dashboardStats = pgTable("dashboard_stats", {
   stats: jsonb("stats"),
 });
 
+export const cartItems = pgTable("cart_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  productName: text("product_name").notNull(),
+  productImage: text("product_image"),
+  price: integer("price").notNull(), // in cents
+  quantity: integer("quantity").notNull().default(1),
+  createdAt: text("created_at").notNull(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(), // info, warning, success, error
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: text("created_at").notNull(),
+});
+
+export const emails = pgTable("emails", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  sender: text("sender").notNull(),
+  senderEmail: text("sender_email").notNull(),
+  subject: text("subject").notNull(),
+  preview: text("preview").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: text("created_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -41,9 +72,27 @@ export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omi
   id: true,
 });
 
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({
+  id: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+});
+
+export const insertEmailSchema = createInsertSchema(emails).omit({
+  id: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type InsertNavigationItem = z.infer<typeof insertNavigationItemSchema>;
 export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
+export type CartItem = typeof cartItems.$inferSelect;
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Email = typeof emails.$inferSelect;
+export type InsertEmail = z.infer<typeof insertEmailSchema>;

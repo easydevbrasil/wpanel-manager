@@ -15,12 +15,18 @@ import {
   Bell,
   Mail,
   ChevronDown,
-  User,
+  User as UserIcon,
   Settings,
   CreditCard,
   LogOut,
+  Trash2,
+  Check,
+  Plus,
+  Minus,
+  Eye,
+  MoreHorizontal,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User, DashboardStats } from "@shared/schema";
 
 export function Header() {
@@ -133,7 +139,7 @@ export function Header() {
                 className="flex items-center space-x-3 p-2 hover:bg-gray-100"
               >
                 <Avatar className="w-8 h-8">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
+                  <AvatarImage src={user?.avatar || undefined} alt={user?.name} />
                   <AvatarFallback>
                     {user?.name
                       ?.split(" ")
@@ -152,7 +158,7 @@ export function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem>
-                <User className="w-4 h-4 mr-3" />
+                <UserIcon className="w-4 h-4 mr-3" />
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem>
