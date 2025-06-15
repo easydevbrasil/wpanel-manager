@@ -24,50 +24,43 @@ export function useWebSocket() {
 
   // Helper function to show toast notifications with sounds and icons
   const showToast = useCallback((type: string, data?: any) => {
-    const getSoundAndVariant = (operationType: string) => {
-      const isDeleted = operationType.includes('deleted');
-      const isCreated = operationType.includes('created');
-      const isUpdated = operationType.includes('updated');
+    // Determine sound type and variant based on operation
+    let soundType: 'success' | 'error' | 'info' | 'warning' = 'info';
+    let variant: 'default' | 'destructive' = 'default';
+    
+    if (type.includes('deleted')) {
+      soundType = 'error';
+      variant = 'destructive';
+    } else if (type.includes('created')) {
+      soundType = 'success';
+    } else if (type.includes('updated')) {
+      soundType = 'info';
+    }
 
-      let soundType: 'success' | 'error' | 'info' | 'warning';
-      let variant: 'default' | 'destructive' = 'default';
-
-      if (isDeleted) {
-        soundType = 'error';
-        variant = 'destructive';
-      } else if (isCreated) {
-        soundType = 'success';
-      } else if (isUpdated) {
-        soundType = 'info';
-      } else {
-        soundType = 'info';
-      }
-
-      return { soundType, variant };
-    };
+    // Get icon emoji based on type
+    let iconEmoji = 'ℹ️';
+    if (type.includes('deleted')) iconEmoji = '🗑️';
+    else if (type.includes('created')) iconEmoji = '✅';
+    else if (type.includes('updated')) iconEmoji = 'ℹ️';
+    else if (type.includes('client')) iconEmoji = '👤';
+    else if (type.includes('product')) iconEmoji = '📦';
+    else if (type.includes('supplier')) iconEmoji = '🚛';
+    else if (type.includes('sale')) iconEmoji = '🛒';
+    else if (type.includes('ticket')) iconEmoji = '🎫';
 
     const actionMap: Record<string, { title: string; description: string }> = {
-      // Client operations
       'client_created': { title: 'Cliente criado', description: `${data?.name} foi adicionado com sucesso` },
       'client_updated': { title: 'Cliente atualizado', description: `${data?.name} foi modificado` },
       'client_deleted': { title: 'Cliente removido', description: 'Cliente foi excluído do sistema' },
-      
-      // Product operations
       'product_created': { title: 'Produto criado', description: `${data?.name} foi adicionado ao catálogo` },
       'product_updated': { title: 'Produto atualizado', description: `${data?.name} foi modificado` },
       'product_deleted': { title: 'Produto removido', description: 'Produto foi excluído do catálogo' },
-      
-      // Supplier operations
       'supplier_created': { title: 'Fornecedor criado', description: `${data?.name} foi adicionado` },
       'supplier_updated': { title: 'Fornecedor atualizado', description: `${data?.name} foi modificado` },
       'supplier_deleted': { title: 'Fornecedor removido', description: 'Fornecedor foi excluído' },
-      
-      // Sales operations
       'sale_created': { title: 'Venda criada', description: `Venda ${data?.saleNumber} foi registrada` },
       'sale_updated': { title: 'Venda atualizada', description: `Venda ${data?.saleNumber} foi modificada` },
       'sale_deleted': { title: 'Venda removida', description: 'Venda foi excluída do sistema' },
-      
-      // Support ticket operations
       'ticket_created': { title: 'Ticket criado', description: `Ticket ${data?.ticketNumber} foi aberto` },
       'ticket_updated': { title: 'Ticket atualizado', description: `Ticket ${data?.ticketNumber} foi modificado` },
       'ticket_deleted': { title: 'Ticket removido', description: 'Ticket foi excluído' },
@@ -76,26 +69,9 @@ export function useWebSocket() {
 
     const config = actionMap[type];
     if (config) {
-      const { soundType, IconComponent, variant } = getIconAndSound(type);
-      
       // Play sound
       ToastSounds.playSound(soundType);
       
-      // Get icon emoji based on type
-      const getIconEmoji = (operationType: string) => {
-        if (operationType.includes('deleted')) return '🗑️';
-        if (operationType.includes('created')) return '✅';
-        if (operationType.includes('updated')) return 'ℹ️';
-        if (operationType.includes('client')) return '👤';
-        if (operationType.includes('product')) return '📦';
-        if (operationType.includes('supplier')) return '🚛';
-        if (operationType.includes('sale')) return '🛒';
-        if (operationType.includes('ticket')) return '🎫';
-        return 'ℹ️';
-      };
-
-      const iconEmoji = getIconEmoji(type);
-
       // Show toast with icon emoji
       toast({
         title: `${iconEmoji} ${config.title}`,
