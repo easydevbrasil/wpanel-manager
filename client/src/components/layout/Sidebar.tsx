@@ -76,7 +76,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const renderIcon = (iconName: string) => {
     const Icon = iconMap[iconName as keyof typeof iconMap];
-    return Icon ? <Icon className="w-5 h-5" /> : <LayoutDashboard className="w-5 h-5" />;
+    return Icon ? <Icon className="w-6 h-6" /> : <LayoutDashboard className="w-6 h-6" />;
   };
 
   const isActive = (href: string | null) => {
@@ -92,7 +92,23 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           collapsed ? "w-20" : "w-64"
         )}
       >
-        <div className="p-6">
+        <div className="p-4">
+          {/* Toggle Button */}
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggle}
+              className={cn(
+                "p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800",
+                collapsed ? "w-full justify-center" : "ml-auto"
+              )}
+              data-sidebar-toggle
+            >
+              {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </Button>
+          </div>
+          
           <nav className="space-y-2">
             {parentItems.map((item) => {
               const children = childrenByParent[item.id] || [];

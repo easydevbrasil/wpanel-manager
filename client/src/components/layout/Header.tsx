@@ -61,7 +61,11 @@ function getServiceIcon(serviceType: string) {
   }
 }
 
-export function Header() {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+}
+
+export function Header({ onToggleSidebar }: HeaderProps) {
   const queryClient = useQueryClient();
   const { theme, setTheme, actualTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -652,7 +656,14 @@ export function Header() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => {
+                if (onToggleSidebar) {
+                  onToggleSidebar();
+                } else {
+                  setMobileMenuOpen(!mobileMenuOpen);
+                }
+              }}
+              data-sidebar-toggle
               className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <Menu className="w-6 h-6" />
