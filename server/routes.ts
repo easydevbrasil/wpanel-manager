@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -706,5 +707,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+
+  // WebSocket Server for real-time updates
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store connected clients
+  const clients = new Set<WebSocket>();
+  
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('New WebSocket connection established');
+    clients.add(ws);
+    
+    // Send initial connection confirmation
+    ws.send(JSON.stringify({ 
+      type: 'connection', 
+      status: 'connected',
+      timestamp: new Date().toISOString()
+    }));
+    
+    // Handle client messages
+    ws.on('message', (message: string) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+    
+    // Handle disconnection
+    ws.on('close', () => {
+      console.log('WebSocket connection closed');
+      clients.delete(ws);
+    });
+    
+    // Handle errors
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      clients.delete(ws);
+    });
+  });
+
+  // Function to broadcast updates to all connected clients
+  function broadcastUpdate(type: string, data: any) {
+    const message = JSON.stringify({
+      type,
+      data,
+      timestamp: new Date().toISOString()
+    });
+    
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+
+  // Override some API endpoints to broadcast updates
+  
+  // Override client creation to broadcast updates
+  app.post("/api/clients", async (req, res) => {
+    try {
+      const client = await storage.createClient(req.body);
+      broadcastUpdate('client_created', client);
+      res.status(201).json(client);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create client" });
+    }
+  });
+
+  // Override product creation to broadcast updates
+  app.post("/api/products", async (req, res) => {
+    try {
+      const product = await storage.createProduct(req.body);
+      broadcastUpdate('product_created', product);
+      res.status(201).json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  // Override sale creation to broadcast updates
+  app.post("/api/sales", async (req, res) => {
+    try {
+      const sale = await storage.createSale(req.body);
+      broadcastUpdate('sale_created', sale);
+      res.status(201).json(sale);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create sale" });
+    }
+  });
+
+  // Override support ticket creation to broadcast updates
+  app.post("/api/support/tickets", async (req, res) => {
+    try {
+      const ticket = await storage.createSupportTicket(req.body);
+      broadcastUpdate('ticket_created', ticket);
+      res.status(201).json(ticket);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create support ticket" });
+    }
+  });
+
+  // Override support ticket message creation to broadcast updates
+  app.post("/api/support/tickets/:id/messages", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const message = await storage.createSupportTicketMessage({ ...req.body, ticketId });
+      broadcastUpdate('ticket_message_created', { ticketId, message });
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create ticket message" });
+    }
+  });
+
+  // Store broadcast function globally for access from other modules
+  (global as any).broadcastUpdate = broadcastUpdate;
+
   return httpServer;
 }
