@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -71,19 +71,13 @@ export default function Sales() {
     queryKey: ["/api/products"],
   });
 
-  const { data: saleItems = [] } = useQuery({
-    queryKey: ["/api/sale-items"],
-    queryFn: () => {
-      // Buscar itens de todas as vendas
-      const saleIds = (sales as Sale[]).map(sale => sale.id);
-      return Promise.all(
-        saleIds.map(saleId => 
-          apiRequest("GET", `/api/sales/${saleId}/items`)
-        )
-      ).then(results => results.flat());
-    },
-    enabled: !!sales && Array.isArray(sales) && sales.length > 0,
-  });
+  // Hook para buscar itens de uma venda específica
+  const useSaleItems = (saleId: number) => {
+    return useQuery({
+      queryKey: ["/api/sales", saleId, "items"],
+      queryFn: () => apiRequest("GET", `/api/sales/${saleId}/items`),
+    });
+  };
 
   const createMutation = useMutation({
     mutationFn: (data: InsertSale) => apiRequest("POST", "/api/sales", data),
@@ -217,8 +211,34 @@ export default function Sales() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  // Cache para itens de venda por venda
+  const [saleItemsCache, setSaleItemsCache] = useState<Record<number, any[]>>({});
+
+  // Carregar itens de venda quando as vendas são carregadas
+  useEffect(() => {
+    if (sales && Array.isArray(sales) && sales.length > 0) {
+      const loadSaleItems = async () => {
+        const newCache: Record<number, any[]> = {};
+        
+        for (const sale of sales) {
+          try {
+            const items = await apiRequest("GET", `/api/sales/${sale.id}/items`);
+            newCache[sale.id] = items || [];
+          } catch (error) {
+            console.error(`Erro ao carregar itens da venda ${sale.id}:`, error);
+            newCache[sale.id] = [];
+          }
+        }
+        
+        setSaleItemsCache(newCache);
+      };
+      
+      loadSaleItems();
+    }
+  }, [sales]);
+
   const getSaleProducts = (saleId: number) => {
-    const items = (saleItems as any[]).filter((item: any) => item.saleId === saleId);
+    const items = saleItemsCache[saleId] || [];
     return items.map((item: any) => {
       const product = (products as any[]).find((p: any) => p.id === item.productId);
       return {
