@@ -471,6 +471,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales routes
+  app.get("/api/sales", async (req, res) => {
+    try {
+      const sales = await storage.getSales();
+      res.json(sales);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get sales" });
+    }
+  });
+
+  app.get("/api/sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const sale = await storage.getSale(id);
+      if (!sale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+      res.json(sale);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get sale" });
+    }
+  });
+
+  app.post("/api/sales", async (req, res) => {
+    try {
+      const sale = await storage.createSale(req.body);
+      res.status(201).json(sale);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create sale" });
+    }
+  });
+
+  app.put("/api/sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const sale = await storage.updateSale(id, req.body);
+      res.json(sale);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update sale" });
+    }
+  });
+
+  app.delete("/api/sales/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSale(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete sale" });
+    }
+  });
+
+  // Sale Items routes
+  app.get("/api/sales/:saleId/items", async (req, res) => {
+    try {
+      const saleId = parseInt(req.params.saleId);
+      const items = await storage.getSaleItems(saleId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get sale items" });
+    }
+  });
+
+  app.post("/api/sale-items", async (req, res) => {
+    try {
+      const saleItem = await storage.createSaleItem(req.body);
+      res.status(201).json(saleItem);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create sale item" });
+    }
+  });
+
+  app.put("/api/sale-items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const saleItem = await storage.updateSaleItem(id, req.body);
+      res.json(saleItem);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update sale item" });
+    }
+  });
+
+  app.delete("/api/sale-items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSaleItem(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete sale item" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

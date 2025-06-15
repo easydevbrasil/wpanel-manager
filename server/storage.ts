@@ -11,6 +11,8 @@ import {
   productGroups,
   products,
   suppliers,
+  sales,
+  saleItems,
   type User, 
   type NavigationItem, 
   type DashboardStats, 
@@ -34,7 +36,11 @@ import {
   type Product,
   type InsertProduct,
   type Supplier,
-  type InsertSupplier
+  type InsertSupplier,
+  type Sale,
+  type InsertSale,
+  type SaleItem,
+  type InsertSaleItem
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -112,6 +118,19 @@ export interface IStorage {
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier>;
   deleteSupplier(id: number): Promise<void>;
+  
+  // Sales
+  getSales(): Promise<Sale[]>;
+  getSale(id: number): Promise<Sale | undefined>;
+  createSale(sale: InsertSale): Promise<Sale>;
+  updateSale(id: number, sale: Partial<InsertSale>): Promise<Sale>;
+  deleteSale(id: number): Promise<void>;
+  
+  // Sale Items
+  getSaleItems(saleId: number): Promise<SaleItem[]>;
+  createSaleItem(saleItem: InsertSaleItem): Promise<SaleItem>;
+  updateSaleItem(id: number, saleItem: Partial<InsertSaleItem>): Promise<SaleItem>;
+  deleteSaleItem(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -789,6 +808,65 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSupplier(id: number): Promise<void> {
     await db.delete(suppliers).where(eq(suppliers.id, id));
+  }
+
+  // Sales CRUD operations
+  async getSales(): Promise<Sale[]> {
+    return await db.select().from(sales).orderBy(sales.saleDate);
+  }
+
+  async getSale(id: number): Promise<Sale | undefined> {
+    const [sale] = await db.select().from(sales).where(eq(sales.id, id));
+    return sale || undefined;
+  }
+
+  async createSale(sale: InsertSale): Promise<Sale> {
+    const now = new Date().toISOString();
+    const [newSale] = await db.insert(sales).values({
+      ...sale,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newSale;
+  }
+
+  async updateSale(id: number, saleData: Partial<InsertSale>): Promise<Sale> {
+    const now = new Date().toISOString();
+    const [updatedSale] = await db.update(sales)
+      .set({ ...saleData, updatedAt: now })
+      .where(eq(sales.id, id))
+      .returning();
+    return updatedSale;
+  }
+
+  async deleteSale(id: number): Promise<void> {
+    await db.delete(sales).where(eq(sales.id, id));
+  }
+
+  // Sale Items CRUD operations
+  async getSaleItems(saleId: number): Promise<SaleItem[]> {
+    return await db.select().from(saleItems).where(eq(saleItems.saleId, saleId));
+  }
+
+  async createSaleItem(saleItem: InsertSaleItem): Promise<SaleItem> {
+    const now = new Date().toISOString();
+    const [newSaleItem] = await db.insert(saleItems).values({
+      ...saleItem,
+      createdAt: now
+    }).returning();
+    return newSaleItem;
+  }
+
+  async updateSaleItem(id: number, saleItemData: Partial<InsertSaleItem>): Promise<SaleItem> {
+    const [updatedSaleItem] = await db.update(saleItems)
+      .set(saleItemData)
+      .where(eq(saleItems.id, id))
+      .returning();
+    return updatedSaleItem;
+  }
+
+  async deleteSaleItem(id: number): Promise<void> {
+    await db.delete(saleItems).where(eq(saleItems.id, id));
   }
 }
 
