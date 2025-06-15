@@ -145,6 +145,10 @@ Changelog:
 - June 15, 2025. Added product pricing display in sales with quantity, unit price, and calculated totals for each item
 - June 15, 2025. Reorganized sales cards to display products in clean format: photo + quantity + name + total price (e.g. "1x iPhone 14 Pro Max R$ 10.000,00")
 - June 15, 2025. Fixed sale items loading system with proper async data fetching and JSON conversion for reliable product display
+- June 15, 2025. Implemented complete support ticket system with PostgreSQL integration and Chatwoot compatibility
+- June 15, 2025. Created comprehensive ticket management with categories, priorities, status tracking, and message threading
+- June 15, 2025. Added support navigation item and 5 sample tickets with realistic data including client associations and message history
+- June 15, 2025. Built ticket detail view with expandable information, Chatwoot integration links, and message management interface
 ```
 
 ## User Preferences
