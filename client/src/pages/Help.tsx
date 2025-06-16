@@ -331,8 +331,26 @@ export default function Help() {
   const [selectedTestEvent, setSelectedTestEvent] = useState('client.created');
   const [testResponse, setTestResponse] = useState<any>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const [customHeaders, setCustomHeaders] = useState(() => {
+    try {
+      const saved = localStorage.getItem('webhook_custom_headers');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load custom headers from localStorage');
+    }
+    return [
+      { key: 'Content-Type', value: 'application/json', id: Date.now() }
+    ];
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Auto-update HMAC header when secret key changes
+  React.useEffect(() => {
+    updateHMACHeader();
+  }, [webhookConfig.secretKey]);
 
   const handleEventToggle = (eventName: string) => {
     setWebhookConfig(prev => ({
@@ -368,6 +386,36 @@ export default function Help() {
     ];
   };
 
+  const addCustomHeader = () => {
+    const newHeader = { key: '', value: '', id: Date.now() };
+    setCustomHeaders(prev => [...prev, newHeader]);
+  };
+
+  const updateCustomHeader = (id: number, field: 'key' | 'value', newValue: string) => {
+    setCustomHeaders(prev => prev.map(header => 
+      header.id === id ? { ...header, [field]: newValue } : header
+    ));
+  };
+
+  const removeCustomHeader = (id: number) => {
+    setCustomHeaders(prev => prev.filter(header => header.id !== id));
+  };
+
+  const updateHMACHeader = () => {
+    if (webhookConfig.secretKey.trim()) {
+      const hmacHeaderExists = customHeaders.find(h => h.key === 'X-Hub-Signature');
+      if (!hmacHeaderExists) {
+        setCustomHeaders(prev => [...prev, { 
+          key: 'X-Hub-Signature', 
+          value: 'sha256=[será gerado automaticamente]', 
+          id: Date.now() 
+        }]);
+      }
+    } else {
+      setCustomHeaders(prev => prev.filter(header => header.key !== 'X-Hub-Signature'));
+    }
+  };
+
   const generateSecretKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
@@ -375,6 +423,7 @@ export default function Help() {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setWebhookConfig(prev => ({ ...prev, secretKey: result }));
+    updateHMACHeader();
     toast({
       title: "🔑 Chave gerada",
       description: "Nova chave secreta foi gerada com sucesso",
@@ -568,19 +617,14 @@ export default function Help() {
     try {
       const testPayload = generateTestPayload(selectedTestEvent);
 
-      let headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
+      let headers: Record<string, string> = {};
 
-      // Parse custom headers safely
-      try {
-        if (webhookConfig.headers.trim()) {
-          const customHeaders = JSON.parse(webhookConfig.headers);
-          headers = { ...headers, ...customHeaders };
+      // Build headers from custom headers array
+      customHeaders.forEach(header => {
+        if (header.key.trim() && header.value.trim()) {
+          headers[header.key] = header.value;
         }
-      } catch (e) {
-        console.warn('Invalid JSON in headers, using default headers');
-      }
+      });
 
       const payloadString = JSON.stringify(testPayload);
 
@@ -700,10 +744,11 @@ export default function Help() {
 
       // Save to localStorage for now (can be changed to API later)
       localStorage.setItem('webhook_config', JSON.stringify(configToSave));
+      localStorage.setItem('webhook_custom_headers', JSON.stringify(customHeaders));
 
       toast({
         title: "✅ Configuração salva",
-        description: `Webhook configurado com ${webhookConfig.events.length} eventos`,
+        description: `Webhook configurado com ${webhookConfig.events.length} eventos e ${customHeaders.length} headers`,
       });
 
       // Simulate some processing time
@@ -1262,15 +1307,62 @@ export default function Help() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Headers Personalizados
-                      </label>
-                      <textarea
-                        value={webhookConfig.headers}
-                        onChange={(e) => setWebhookConfig(prev => ({ ...prev, headers: e.target.value }))}
-                        placeholder='{"Authorization": "Bearer sua-chave", "X-Custom-Header": "valor"}'
-                        className="w-full h-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm"
-                      />
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Headers Personalizados
+                        </label>
+                        <Button
+                          type="button"
+                          onClick={addCustomHeader}
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Adicionar
+                        </Button>
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {customHeaders.map((header) => (
+                          <div key={header.id} className="flex gap-2 items-center p-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
+                            <input
+                              type="text"
+                              placeholder="Chave (ex: Authorization)"
+                              value={header.key}
+                              onChange={(e) => updateCustomHeader(header.id, 'key', e.target.value)}
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              disabled={header.key === 'X-Hub-Signature'}
+                            />
+                            <span className="text-gray-500">:</span>
+                            <input
+                              type="text"
+                              placeholder="Valor (ex: Bearer token123)"
+                              value={header.value}
+                              onChange={(e) => updateCustomHeader(header.id, 'value', e.target.value)}
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              disabled={header.key === 'X-Hub-Signature'}
+                            />
+                            {header.key !== 'Content-Type' && header.key !== 'X-Hub-Signature' && (
+                              <button
+                                type="button"
+                                onClick={() => removeCustomHeader(header.id)}
+                                className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {customHeaders.length === 0 && (
+                        <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                          Nenhum header personalizado. Clique em "Adicionar" para criar um.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
