@@ -174,6 +174,11 @@ Changelog:
 - June 16, 2025. Implemented VS Code-style JSON editor with syntax highlighting, line numbers, and window controls (red/yellow/green buttons)
 - June 16, 2025. Created interactive API testing interface with real-time execution, result display, and downloadable responses in JSON/TXT formats
 - June 16, 2025. Enhanced API documentation with color-coded HTTP method badges, editable resource IDs, and comprehensive endpoint coverage
+- June 16, 2025. Implemented complete database administration system with full CRUD operations for all tables
+- June 16, 2025. Added "Admin DB" navigation item with Database icon and comprehensive data management interface
+- June 16, 2025. Created user management APIs (/api/users) with create, read, update, delete operations
+- June 16, 2025. Fixed dashboard data counters to show real database statistics (clients, products, sales, suppliers, support tickets)
+- June 16, 2025. Corrected data access in dashboard to display authentic counts from PostgreSQL database
 ```
 
 ## User Preferences

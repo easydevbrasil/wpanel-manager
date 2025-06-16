@@ -167,7 +167,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const stats = statsData?.stats as any;
+  const stats = statsData as any;
 
   const statItems = [
     {
