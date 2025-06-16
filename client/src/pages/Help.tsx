@@ -29,9 +29,15 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ToastSounds } from '@/utils/toast-sounds';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export default function Help() {
   const { toast } = useToast();
+  const [editablePayloads, setEditablePayloads] = useState<{[key: string]: string}>({});
+  const [editableIds, setEditableIds] = useState<{[key: string]: string}>({});
 
   const showExampleToast = (type: 'success' | 'error' | 'info' | 'warning', title: string, description: string, icon: string) => {
     ToastSounds.playSound(type);
@@ -42,8 +48,40 @@ export default function Help() {
     });
   };
 
-  const testApiEndpoint = async (method: string, endpoint: string, body?: any) => {
+  const getEndpointKey = (method: string, path: string) => `${method}-${path}`;
+
+  const testApiEndpoint = async (method: string, endpoint: string, defaultBody?: any) => {
     try {
+      const endpointKey = getEndpointKey(method, endpoint);
+      let finalEndpoint = endpoint;
+      let body = defaultBody;
+
+      // Handle editable ID for DELETE/PUT operations
+      if ((method === 'DELETE' || method === 'PUT') && endpoint.includes('/:id')) {
+        const editableId = editableIds[endpointKey] || '1';
+        finalEndpoint = endpoint.replace('/:id', `/${editableId}`);
+      } else if (endpoint.includes('/1')) {
+        const editableId = editableIds[endpointKey] || '1';
+        finalEndpoint = endpoint.replace('/1', `/${editableId}`);
+      }
+
+      // Handle editable JSON payload
+      if (defaultBody && (method === 'POST' || method === 'PUT')) {
+        const editablePayload = editablePayloads[endpointKey];
+        if (editablePayload) {
+          try {
+            body = JSON.parse(editablePayload);
+          } catch (parseError) {
+            toast({
+              title: "❌ JSON Inválido",
+              description: "Verifique a sintaxe do JSON editado",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
+
       const options: RequestInit = {
         method,
         headers: {
@@ -55,20 +93,20 @@ export default function Help() {
         options.body = JSON.stringify(body);
       }
 
-      const response = await fetch(endpoint, options);
+      const response = await fetch(finalEndpoint, options);
       const data = await response.json();
 
       if (response.ok) {
         toast({
           title: "✅ API Test Success",
-          description: `${method} ${endpoint} - Status: ${response.status}`,
+          description: `${method} ${finalEndpoint} - Status: ${response.status}`,
           variant: "default",
         });
         console.log('API Response:', data);
       } else {
         toast({
           title: "❌ API Test Failed", 
-          description: `${method} ${endpoint} - Status: ${response.status}`,
+          description: `${method} ${finalEndpoint} - Status: ${response.status}`,
           variant: "destructive",
         });
       }
@@ -79,6 +117,20 @@ export default function Help() {
         variant: "destructive",
       });
     }
+  };
+
+  const updatePayload = (endpointKey: string, value: string) => {
+    setEditablePayloads(prev => ({
+      ...prev,
+      [endpointKey]: value
+    }));
+  };
+
+  const updateId = (endpointKey: string, value: string) => {
+    setEditableIds(prev => ({
+      ...prev,
+      [endpointKey]: value
+    }));
   };
 
   const features = [
@@ -611,60 +663,108 @@ export default function Help() {
               </div>
               
               <div className="grid gap-4">
-                {category.endpoints.map((endpoint, endpointIndex) => (
-                  <Card key={endpointIndex} className="border-l-4 border-l-blue-500">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Badge 
-                            variant={endpoint.method === 'GET' ? 'secondary' : 
-                                   endpoint.method === 'POST' ? 'default' : 
-                                   endpoint.method === 'PUT' ? 'outline' : 'destructive'}
-                            className={`font-mono text-xs ${
-                              endpoint.method === 'GET' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                              endpoint.method === 'POST' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
-                              endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
-                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                            }`}
+                {category.endpoints.map((endpoint, endpointIndex) => {
+                  const endpointKey = getEndpointKey(endpoint.method, endpoint.path);
+                  const needsId = endpoint.path.includes('/1') || endpoint.path.includes('/:id');
+                  const hasPayload = endpoint.testBody && (endpoint.method === 'POST' || endpoint.method === 'PUT');
+                  
+                  return (
+                    <Card key={endpointIndex} className="border-l-4 border-l-blue-500">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Badge 
+                              variant={endpoint.method === 'GET' ? 'secondary' : 
+                                     endpoint.method === 'POST' ? 'default' : 
+                                     endpoint.method === 'PUT' ? 'outline' : 'destructive'}
+                              className={`font-mono text-xs ${
+                                endpoint.method === 'GET' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                                endpoint.method === 'POST' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
+                                endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                                'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                              }`}
+                            >
+                              {endpoint.method}
+                            </Badge>
+                            <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">
+                              {endpoint.path}
+                            </code>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => testApiEndpoint(endpoint.method, endpoint.path, endpoint.testBody)}
+                            className="flex items-center space-x-1"
                           >
-                            {endpoint.method}
-                          </Badge>
-                          <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">
-                            {endpoint.path}
-                          </code>
+                            <Play className="w-3 h-3" />
+                            <span>Testar</span>
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => testApiEndpoint(endpoint.method, endpoint.path, endpoint.testBody)}
-                          className="flex items-center space-x-1"
-                        >
-                          <Play className="w-3 h-3" />
-                          <span>Testar</span>
-                        </Button>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        {endpoint.description}
-                      </p>
-                    </CardHeader>
-                    
-                    {endpoint.testBody && (
-                      <CardContent className="pt-0">
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <Settings className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm font-medium">Exemplo de Payload:</span>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          {endpoint.description}
+                        </p>
+                      </CardHeader>
+                      
+                      <CardContent className="pt-0 space-y-4">
+                        {needsId && (
+                          <div className="space-y-2">
+                            <Label htmlFor={`id-${endpointKey}`} className="text-sm font-medium">
+                              ID do Recurso:
+                            </Label>
+                            <Input
+                              id={`id-${endpointKey}`}
+                              type="number"
+                              placeholder="1"
+                              value={editableIds[endpointKey] || ''}
+                              onChange={(e) => updateId(endpointKey, e.target.value)}
+                              className="w-24"
+                            />
                           </div>
-                          <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-x-auto">
-                            <pre className="text-xs text-gray-700 dark:text-gray-300">
-                              {JSON.stringify(endpoint.testBody, null, 2)}
-                            </pre>
+                        )}
+                        
+                        {hasPayload && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor={`payload-${endpointKey}`} className="text-sm font-medium">
+                                Payload JSON (editável):
+                              </Label>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => updatePayload(endpointKey, JSON.stringify(endpoint.testBody, null, 2))}
+                                className="text-xs h-6"
+                              >
+                                <Copy className="w-3 h-3 mr-1" />
+                                Restaurar
+                              </Button>
+                            </div>
+                            <Textarea
+                              id={`payload-${endpointKey}`}
+                              placeholder={JSON.stringify(endpoint.testBody, null, 2)}
+                              value={editablePayloads[endpointKey] || JSON.stringify(endpoint.testBody, null, 2)}
+                              onChange={(e) => updatePayload(endpointKey, e.target.value)}
+                              className="font-mono text-xs min-h-[120px]"
+                            />
                           </div>
-                        </div>
+                        )}
+                        
+                        {endpoint.testBody && !hasPayload && (
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Settings className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm font-medium">Exemplo de Payload:</span>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-x-auto">
+                              <pre className="text-xs text-gray-700 dark:text-gray-300">
+                                {JSON.stringify(endpoint.testBody, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
-                    )}
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ))}
