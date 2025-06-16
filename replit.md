@@ -207,6 +207,9 @@ Changelog:
 - June 16, 2025. Created 6 sample containers (nginx, mysql, redis, node, postgres, mongodb) with realistic configurations
 - June 16, 2025. Added "Docker" navigation item with Container icon to sidebar
 - June 16, 2025. Optimized control buttons to display only icons (play, stop, restart, pause) with tooltips for compact interface
+- June 16, 2025. Implemented dynamic environment variables management in Docker container forms
+- June 16, 2025. Added ability to add, update, and delete environment variables with key-value pairs interface
+- June 16, 2025. Environment variables automatically loaded when editing existing containers and properly saved to database
 ```
 
 ## User Preferences

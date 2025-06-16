@@ -27,7 +27,8 @@ import {
   Globe,
   HardDrive,
   Cpu,
-  MemoryStick
+  MemoryStick,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,9 +58,15 @@ const containerFormSchema = z.object({
 
 type ContainerFormData = z.infer<typeof containerFormSchema>;
 
+interface EnvironmentVariable {
+  key: string;
+  value: string;
+}
+
 export default function DockerContainers() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContainer, setEditingContainer] = useState<any>(null);
+  const [environmentVars, setEnvironmentVars] = useState<EnvironmentVariable[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -92,6 +99,7 @@ export default function DockerContainers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
       setIsDialogOpen(false);
+      setEnvironmentVars([]);
       form.reset();
       toast({
         title: "🐳 Container criado",
@@ -116,6 +124,7 @@ export default function DockerContainers() {
       queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
       setIsDialogOpen(false);
       setEditingContainer(null);
+      setEnvironmentVars([]);
       form.reset();
       toast({
         title: "🔄 Container atualizado",
@@ -205,16 +214,54 @@ export default function DockerContainers() {
     },
   });
 
+  // Environment variables management
+  const addEnvironmentVar = () => {
+    setEnvironmentVars([...environmentVars, { key: "", value: "" }]);
+  };
+
+  const updateEnvironmentVar = (index: number, field: 'key' | 'value', value: string) => {
+    const newVars = [...environmentVars];
+    newVars[index][field] = value;
+    setEnvironmentVars(newVars);
+  };
+
+  const removeEnvironmentVar = (index: number) => {
+    setEnvironmentVars(environmentVars.filter((_, i) => i !== index));
+  };
+
   const onSubmit = (data: ContainerFormData) => {
+    // Convert environment variables array to object
+    const environmentObj: Record<string, string> = {};
+    environmentVars.forEach(({ key, value }) => {
+      if (key.trim() && value.trim()) {
+        environmentObj[key.trim()] = value.trim();
+      }
+    });
+
+    const containerData = {
+      ...data,
+      environment: environmentObj
+    };
+
     if (editingContainer) {
-      updateMutation.mutate({ id: editingContainer.id, data });
+      updateMutation.mutate({ id: editingContainer.id, data: containerData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(containerData);
     }
   };
 
   const handleEdit = (container: any) => {
     setEditingContainer(container);
+    
+    // Load existing environment variables
+    const envVars: EnvironmentVariable[] = [];
+    if (container.environment && typeof container.environment === 'object') {
+      Object.entries(container.environment).forEach(([key, value]) => {
+        envVars.push({ key, value: String(value) });
+      });
+    }
+    setEnvironmentVars(envVars);
+    
     form.reset({
       name: container.name,
       image: container.image,
@@ -292,6 +339,7 @@ export default function DockerContainers() {
             <Button 
               onClick={() => {
                 setEditingContainer(null);
+                setEnvironmentVars([]);
                 form.reset();
               }}
               className="flex items-center gap-2"
@@ -464,6 +512,57 @@ export default function DockerContainers() {
                     </FormItem>
                   )}
                 />
+
+                {/* Environment Variables Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Variáveis de Ambiente</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addEnvironmentVar}
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Adicionar
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {environmentVars.map((envVar, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="CHAVE"
+                          value={envVar.key}
+                          onChange={(e) => updateEnvironmentVar(index, 'key', e.target.value)}
+                          className="flex-1"
+                        />
+                        <span className="text-gray-400">=</span>
+                        <Input
+                          placeholder="valor"
+                          value={envVar.value}
+                          onChange={(e) => updateEnvironmentVar(index, 'value', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeEnvironmentVar(index)}
+                          className="p-2 text-red-600 hover:text-red-700"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    {environmentVars.length === 0 && (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        Nenhuma variável de ambiente configurada
+                      </p>
+                    )}
+                  </div>
+                </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
