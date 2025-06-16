@@ -196,9 +196,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               } else {
                 return (
                   <Link key={item.id} href={item.href || "#"}>
-                    <a
+                    <div
                       className={cn(
-                        "flex items-center px-3 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                        "flex items-center px-3 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer",
                         isActive(item.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white",
                         collapsed && "justify-center"
                       )}
@@ -207,7 +207,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       {!collapsed && (
                         <span className="ml-3">{item.label}</span>
                       )}
-                    </a>
+                    </div>
                   </Link>
                 );
               }
