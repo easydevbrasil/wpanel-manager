@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -63,10 +64,17 @@ interface EnvironmentVariable {
   value: string;
 }
 
+interface VolumeMapping {
+  host: string;
+  container: string;
+}
+
 export default function DockerContainers() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContainer, setEditingContainer] = useState<any>(null);
   const [environmentVars, setEnvironmentVars] = useState<EnvironmentVariable[]>([]);
+  const [volumeMappings, setVolumeMappings] = useState<VolumeMapping[]>([]);
+  const [activeTab, setActiveTab] = useState("info");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -100,6 +108,7 @@ export default function DockerContainers() {
       queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
       setIsDialogOpen(false);
       setEnvironmentVars([]);
+      setVolumeMappings([]);
       form.reset();
       toast({
         title: "🐳 Container criado",
@@ -125,6 +134,7 @@ export default function DockerContainers() {
       setIsDialogOpen(false);
       setEditingContainer(null);
       setEnvironmentVars([]);
+      setVolumeMappings([]);
       form.reset();
       toast({
         title: "🔄 Container atualizado",
@@ -229,6 +239,21 @@ export default function DockerContainers() {
     setEnvironmentVars(environmentVars.filter((_, i) => i !== index));
   };
 
+  // Volume mappings management
+  const addVolumeMapping = () => {
+    setVolumeMappings([...volumeMappings, { host: "", container: "" }]);
+  };
+
+  const updateVolumeMapping = (index: number, field: 'host' | 'container', value: string) => {
+    const newMappings = [...volumeMappings];
+    newMappings[index][field] = value;
+    setVolumeMappings(newMappings);
+  };
+
+  const removeVolumeMapping = (index: number) => {
+    setVolumeMappings(volumeMappings.filter((_, i) => i !== index));
+  };
+
   const onSubmit = (data: ContainerFormData) => {
     // Convert environment variables array to object
     const environmentObj: Record<string, string> = {};
@@ -238,9 +263,15 @@ export default function DockerContainers() {
       }
     });
 
+    // Convert volume mappings array to array of objects
+    const volumesArray = volumeMappings
+      .filter(({ host, container }) => host.trim() && container.trim())
+      .map(({ host, container }) => ({ host: host.trim(), container: container.trim() }));
+
     const containerData = {
       ...data,
-      environment: environmentObj
+      environment: environmentObj,
+      volumes: volumesArray
     };
 
     if (editingContainer) {
@@ -261,6 +292,17 @@ export default function DockerContainers() {
       });
     }
     setEnvironmentVars(envVars);
+
+    // Load existing volume mappings
+    const volumes: VolumeMapping[] = [];
+    if (container.volumes && Array.isArray(container.volumes)) {
+      container.volumes.forEach((volume: any) => {
+        if (volume.host && volume.container) {
+          volumes.push({ host: volume.host, container: volume.container });
+        }
+      });
+    }
+    setVolumeMappings(volumes);
     
     form.reset({
       name: container.name,
@@ -273,6 +315,7 @@ export default function DockerContainers() {
       cpuLimit: container.cpuLimit || "",
       memoryLimit: container.memoryLimit || "",
     });
+    setActiveTab("info");
     setIsDialogOpen(true);
   };
 
@@ -340,6 +383,8 @@ export default function DockerContainers() {
               onClick={() => {
                 setEditingContainer(null);
                 setEnvironmentVars([]);
+                setVolumeMappings([]);
+                setActiveTab("info");
                 form.reset();
               }}
               className="flex items-center gap-2"
