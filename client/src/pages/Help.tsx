@@ -330,6 +330,7 @@ export default function Help() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTestEvent, setSelectedTestEvent] = useState('client.created');
   const [testResponse, setTestResponse] = useState<any>(null);
+  const [showSecretKey, setShowSecretKey] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -365,6 +366,38 @@ export default function Help() {
       { value: 'container.stopped', label: 'Container Parado', category: 'Docker' },
       { value: 'container.error', label: 'Erro no Container', category: 'Docker' }
     ];
+  };
+
+  const generateSecretKey = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 64; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setWebhookConfig(prev => ({ ...prev, secretKey: result }));
+    toast({
+      title: "🔑 Chave gerada",
+      description: "Nova chave secreta foi gerada com sucesso",
+    });
+  };
+
+  const generateHMACSignature = async (payload: string, secret: string) => {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(payload);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const hashArray = Array.from(new Uint8Array(signature));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return `sha256=${hashHex}`;
   };
 
   const generateTestPayload = (eventType: string) => {
@@ -549,10 +582,22 @@ export default function Help() {
         console.warn('Invalid JSON in headers, using default headers');
       }
 
+      const payloadString = JSON.stringify(testPayload);
+
+      // Add HMAC signature if secret key is provided
+      if (webhookConfig.secretKey.trim()) {
+        try {
+          const signature = await generateHMACSignature(payloadString, webhookConfig.secretKey);
+          headers['X-Hub-Signature'] = signature;
+        } catch (error) {
+          console.warn('Failed to generate HMAC signature:', error);
+        }
+      }
+
       const response = await fetch(webhookConfig.url, {
         method: webhookConfig.method,
         headers,
-        body: JSON.stringify(testPayload)
+        body: payloadString
       });
 
       const responseText = await response.text();
@@ -1555,13 +1600,44 @@ export default function Help() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Secret Key (HMAC)
                         </label>
-                        <input
-                          type="password"
-                          value={webhookConfig.secretKey}
-                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, secretKey: e.target.value }))}
-                          placeholder="sua-chave-secreta-hmac"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        />
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <input
+                              type={showSecretKey ? "text" : "password"}
+                              value={webhookConfig.secretKey}
+                              onChange={(e) => setWebhookConfig(prev => ({ ...prev, secretKey: e.target.value }))}
+                              placeholder="sua-chave-secreta-hmac"
+                              className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSecretKey(!showSecretKey)}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                              {showSecretKey ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={generateSecretKey}
+                            variant="outline"
+                            className="px-3"
+                            title="Gerar nova chave"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 12H9v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.586l4.707-4.707C10.923 2.663 11.596 2 12.414 2h.172a2 2 0 011.414.586L17.414 6A2 2 0 0118 7.414V9a4.002 4.002 0 01-3 3.874V15a1 1 0 01-1 1h-4a1 1 0 01-1-1v-2.126A4.002 4.002 0 016 9V7.414A2 2 0 016.586 6L10 2.586A2 2 0 0111.414 2h.172c.818 0 1.591.337 2.14.879z" />
+                            </svg>
+                          </Button>
+                        </div>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
                         <p>• Todos os webhooks incluem header <code>X-Hub-Signature-256</code></p>
