@@ -328,6 +328,8 @@ export default function Help() {
   const [testResult, setTestResult] = useState<any>(null);
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedTestEvent, setSelectedTestEvent] = useState('client.created');
+  const [testResponse, setTestResponse] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -338,6 +340,179 @@ export default function Help() {
         ? prev.events.filter(e => e !== eventName)
         : [...prev.events, eventName]
     }));
+  };
+
+  const getEventExamples = () => {
+    return [
+      { value: 'client.created', label: 'Cliente Criado', category: 'Clientes' },
+      { value: 'client.updated', label: 'Cliente Atualizado', category: 'Clientes' },
+      { value: 'client.deleted', label: 'Cliente Removido', category: 'Clientes' },
+      { value: 'product.created', label: 'Produto Criado', category: 'Produtos' },
+      { value: 'product.updated', label: 'Produto Atualizado', category: 'Produtos' },
+      { value: 'product.deleted', label: 'Produto Removido', category: 'Produtos' },
+      { value: 'product.stock_low', label: 'Estoque Baixo', category: 'Produtos' },
+      { value: 'sale.created', label: 'Venda Criada', category: 'Vendas' },
+      { value: 'sale.completed', label: 'Venda Finalizada', category: 'Vendas' },
+      { value: 'sale.cancelled', label: 'Venda Cancelada', category: 'Vendas' },
+      { value: 'sale.refunded', label: 'Venda Reembolsada', category: 'Vendas' },
+      { value: 'ticket.created', label: 'Ticket Criado', category: 'Suporte' },
+      { value: 'ticket.updated', label: 'Ticket Atualizado', category: 'Suporte' },
+      { value: 'ticket.resolved', label: 'Ticket Resolvido', category: 'Suporte' },
+      { value: 'user.login', label: 'Login de Usuário', category: 'Sistema' },
+      { value: 'user.logout', label: 'Logout de Usuário', category: 'Sistema' },
+      { value: 'backup.completed', label: 'Backup Concluído', category: 'Sistema' },
+      { value: 'container.started', label: 'Container Iniciado', category: 'Docker' },
+      { value: 'container.stopped', label: 'Container Parado', category: 'Docker' },
+      { value: 'container.error', label: 'Erro no Container', category: 'Docker' }
+    ];
+  };
+
+  const generateTestPayload = (eventType: string) => {
+    const basePayload = {
+      event: eventType,
+      timestamp: new Date().toISOString(),
+      webhook_id: Date.now(),
+      user: {
+        id: 1,
+        username: "admin",
+        name: "Administrador"
+      }
+    };
+
+    switch (eventType) {
+      case 'client.created':
+        return {
+          ...basePayload,
+          data: {
+            id: 101,
+            name: "Empresa ABC Ltda",
+            email: "contato@empresaabc.com",
+            phone: "(11) 99999-9999",
+            address: "Rua das Flores, 123, São Paulo, SP",
+            created_at: new Date().toISOString()
+          }
+        };
+      case 'client.updated':
+        return {
+          ...basePayload,
+          data: {
+            id: 101,
+            name: "Empresa ABC Ltda - Atualizada",
+            email: "novo@empresaabc.com",
+            phone: "(11) 88888-8888",
+            changes: ["email", "phone"],
+            updated_at: new Date().toISOString()
+          }
+        };
+      case 'client.deleted':
+        return {
+          ...basePayload,
+          data: {
+            id: 101,
+            name: "Empresa ABC Ltda",
+            deleted_at: new Date().toISOString()
+          }
+        };
+      case 'product.created':
+        return {
+          ...basePayload,
+          data: {
+            id: 201,
+            name: "iPhone 15 Pro Max",
+            sku: "IPH15PM256",
+            price: 8999.99,
+            stock: 50,
+            category: "Smartphones",
+            manufacturer: "Apple",
+            created_at: new Date().toISOString()
+          }
+        };
+      case 'product.stock_low':
+        return {
+          ...basePayload,
+          data: {
+            id: 201,
+            name: "iPhone 15 Pro Max",
+            sku: "IPH15PM256",
+            current_stock: 3,
+            minimum_stock: 10,
+            alert_level: "low"
+          }
+        };
+      case 'sale.created':
+        return {
+          ...basePayload,
+          data: {
+            id: 301,
+            client_id: 101,
+            client_name: "Empresa ABC Ltda",
+            total: 17999.98,
+            payment_method: "PIX",
+            status: "pending",
+            items: [
+              { product_id: 201, name: "iPhone 15 Pro Max", quantity: 2, unit_price: 8999.99 }
+            ],
+            created_at: new Date().toISOString()
+          }
+        };
+      case 'sale.completed':
+        return {
+          ...basePayload,
+          data: {
+            id: 301,
+            client_id: 101,
+            total: 17999.98,
+            payment_method: "PIX",
+            status: "completed",
+            completed_at: new Date().toISOString()
+          }
+        };
+      case 'ticket.created':
+        return {
+          ...basePayload,
+          data: {
+            id: 401,
+            title: "Problema com produto",
+            description: "Cliente relatou defeito no produto recebido",
+            priority: "high",
+            status: "open",
+            client_id: 101,
+            client_name: "Empresa ABC Ltda",
+            created_at: new Date().toISOString()
+          }
+        };
+      case 'user.login':
+        return {
+          ...basePayload,
+          data: {
+            user_id: 1,
+            username: "admin",
+            ip_address: "192.168.1.100",
+            user_agent: "Mozilla/5.0 Chrome/120.0.0.0",
+            login_time: new Date().toISOString()
+          }
+        };
+      case 'container.started':
+        return {
+          ...basePayload,
+          data: {
+            id: 501,
+            name: "nginx-web",
+            image: "nginx:latest",
+            status: "running",
+            ports: ["80:8080"],
+            started_at: new Date().toISOString()
+          }
+        };
+      default:
+        return {
+          ...basePayload,
+          data: {
+            message: `Test payload for ${eventType}`,
+            test_id: Date.now()
+          }
+        };
+    }
   };
 
   const testWebhook = async () => {
@@ -358,23 +533,7 @@ export default function Help() {
     });
 
     try {
-      const testPayload = {
-        event: "webhook.test",
-        timestamp: new Date().toISOString(),
-        data: {
-          message: "Test webhook from ProjectHub Dashboard",
-          test_id: Date.now(),
-          config: {
-            method: webhookConfig.method,
-            format: webhookConfig.format,
-            events_count: webhookConfig.events.length
-          }
-        },
-        user: {
-          id: 1,
-          username: "admin"
-        }
-      };
+      const testPayload = generateTestPayload(selectedTestEvent);
 
       let headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -396,6 +555,14 @@ export default function Help() {
         body: JSON.stringify(testPayload)
       });
 
+      const responseText = await response.text();
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
+
       const result = {
         status: response.status,
         statusText: response.statusText,
@@ -405,6 +572,14 @@ export default function Help() {
       };
 
       setTestResult(result);
+      setTestResponse({
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: responseData,
+        timestamp: new Date().toISOString(),
+        requestPayload: testPayload
+      });
       
       if (response.ok) {
         toast({
@@ -1402,7 +1577,24 @@ export default function Help() {
                       <Play className="w-5 h-5 text-blue-500" />
                       Teste de Webhook
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Selecione o Tipo de Evento
+                        </label>
+                        <select 
+                          value={selectedTestEvent}
+                          onChange={(e) => setSelectedTestEvent(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        >
+                          {getEventExamples().map((event) => (
+                            <option key={event.value} value={event.value}>
+                              {event.category} - {event.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
                       <Button 
                         onClick={testWebhook} 
                         disabled={isTestingWebhook}
@@ -1421,6 +1613,47 @@ export default function Help() {
                           </>
                         )}
                       </Button>
+
+                      {/* VS Code Style Response */}
+                      {testResponse && (
+                        <div className="mt-4">
+                          <h4 className="font-medium mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-green-500" />
+                            Response
+                          </h4>
+                          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                            {/* VS Code Window Header */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-1">
+                                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                </div>
+                                <span className="text-sm font-mono text-gray-600 dark:text-gray-400">response.json</span>
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {testResponse.status} {testResponse.statusText}
+                              </div>
+                            </div>
+                            
+                            {/* Response Content */}
+                            <div className="p-4 font-mono text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-x-auto max-h-96 overflow-y-auto">
+                              <pre className="whitespace-pre-wrap">
+                                {JSON.stringify({
+                                  status: testResponse.status,
+                                  statusText: testResponse.statusText,
+                                  headers: testResponse.headers,
+                                  body: testResponse.body,
+                                  timestamp: testResponse.timestamp,
+                                  requestPayload: testResponse.requestPayload
+                                }, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="text-sm">
                         <p className="font-medium mb-1">Último teste:</p>
                         {testResult ? (
