@@ -547,7 +547,7 @@ export default function DockerContainers() {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-1">
                   {container.status === "running" ? (
                     <>
                       <Button
@@ -555,27 +555,30 @@ export default function DockerContainers() {
                         variant="outline"
                         onClick={() => stopMutation.mutate(container.id)}
                         disabled={stopMutation.isPending}
+                        className="p-2"
+                        title="Parar container"
                       >
-                        <Square className="w-3 h-3 mr-1" />
-                        Parar
+                        <Square className="w-3 h-3" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => restartMutation.mutate(container.id)}
                         disabled={restartMutation.isPending}
+                        className="p-2"
+                        title="Reiniciar container"
                       >
-                        <RotateCcw className="w-3 h-3 mr-1" />
-                        Reiniciar
+                        <RotateCcw className="w-3 h-3" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => pauseMutation.mutate(container.id)}
                         disabled={pauseMutation.isPending}
+                        className="p-2"
+                        title="Pausar container"
                       >
-                        <Pause className="w-3 h-3 mr-1" />
-                        Pausar
+                        <Pause className="w-3 h-3" />
                       </Button>
                     </>
                   ) : (
@@ -584,9 +587,10 @@ export default function DockerContainers() {
                       variant="outline"
                       onClick={() => startMutation.mutate(container.id)}
                       disabled={startMutation.isPending}
+                      className="p-2"
+                      title="Iniciar container"
                     >
-                      <Play className="w-3 h-3 mr-1" />
-                      Iniciar
+                      <Play className="w-3 h-3" />
                     </Button>
                   )}
                 </div>

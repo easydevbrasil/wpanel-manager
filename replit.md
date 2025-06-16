@@ -200,6 +200,13 @@ Changelog:
 - June 16, 2025. Added SHA512 password hashing in base64 format compatible with Postfix authentication
 - June 16, 2025. File automatically updated on email account create, edit, delete operations in format: email@domain|{SHA512}base64hash
 - June 16, 2025. Generated initial mail_accounts.cf file on server startup with existing email accounts
+- June 16, 2025. Implemented complete Docker containers management system with PostgreSQL backend integration
+- June 16, 2025. Created docker_containers table with comprehensive fields (ports, volumes, environment, CPU/memory limits)
+- June 16, 2025. Built responsive Docker page with 3 cards per row layout and custom Docker SVG icon
+- June 16, 2025. Added full CRUD operations and container control (start, stop, restart, pause) with real-time WebSocket updates
+- June 16, 2025. Created 6 sample containers (nginx, mysql, redis, node, postgres, mongodb) with realistic configurations
+- June 16, 2025. Added "Docker" navigation item with Container icon to sidebar
+- June 16, 2025. Optimized control buttons to display only icons (play, stop, restart, pause) with tooltips for compact interface
 ```
 
 ## User Preferences
