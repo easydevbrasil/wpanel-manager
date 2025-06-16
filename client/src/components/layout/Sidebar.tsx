@@ -108,7 +108,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const renderIcon = (iconName: string) => {
     const Icon = iconMap[iconName as keyof typeof iconMap];
-    return Icon ? <Icon className="w-6 h-6" /> : <LayoutDashboard className="w-6 h-6" />;
+    return Icon ? <Icon className={collapsed ? "w-7 h-7" : "w-6 h-6"} /> : <LayoutDashboard className={collapsed ? "w-7 h-7" : "w-6 h-6"} />;
   };
 
   const isActive = (href: string | null) => {
@@ -121,7 +121,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <aside
         className={cn(
           "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col",
-          collapsed ? "w-20" : "w-64"
+          collapsed ? "w-24" : "w-64"
         )}
       >
         {/* Main Navigation */}
@@ -159,8 +159,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-between px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
-                          collapsed && "justify-center"
+                          "w-full justify-between text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
+                          collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
                         )}
                       >
                         <div className="flex items-center">
@@ -200,9 +200,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Link key={item.id} href={item.href || "#"}>
                     <div
                       className={cn(
-                        "flex items-center px-3 py-2 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer",
+                        "flex items-center text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer",
                         isActive(item.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white",
-                        collapsed && "justify-center"
+                        collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
                       )}
                     >
                       {renderIcon(item.icon)}
@@ -225,10 +225,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 variant="ghost"
                 className={cn(
                   "w-full text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800",
-                  collapsed ? "justify-center px-2" : "justify-start px-3"
+                  collapsed ? "justify-center px-2 py-3" : "justify-start px-3 py-2"
                 )}
               >
-                <Settings className="w-6 h-6" />
+                <Settings className={collapsed ? "w-7 h-7" : "w-6 h-6"} />
                 {!collapsed && <span className="ml-3">Configurações</span>}
               </Button>
             </DropdownMenuTrigger>
