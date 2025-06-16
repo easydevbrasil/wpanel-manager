@@ -27,7 +27,10 @@ import {
   Zap,
   Settings,
   FileText,
-  GitBranch
+  GitBranch,
+  Download,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ToastSounds } from '@/utils/toast-sounds';
@@ -40,6 +43,8 @@ export default function Help() {
   const { toast } = useToast();
   const [editablePayloads, setEditablePayloads] = useState<{[key: string]: string}>({});
   const [editableIds, setEditableIds] = useState<{[key: string]: string}>({});
+  const [apiResults, setApiResults] = useState<{[key: string]: any}>({});
+  const [showResults, setShowResults] = useState<{[key: string]: boolean}>({});
 
   const showExampleToast = (type: 'success' | 'error' | 'info' | 'warning', title: string, description: string, icon: string) => {
     ToastSounds.playSound(type);
@@ -95,16 +100,52 @@ export default function Help() {
         options.body = JSON.stringify(body);
       }
 
+      const startTime = performance.now();
       const response = await fetch(finalEndpoint, options);
-      const data = await response.json();
+      const endTime = performance.now();
+      const duration = Math.round(endTime - startTime);
+      
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
+
+      const result = {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        data: data,
+        duration: duration,
+        timestamp: new Date().toISOString(),
+        request: {
+          method: method,
+          url: finalEndpoint,
+          headers: options.headers,
+          body: body
+        }
+      };
+
+      // Store result
+      setApiResults(prev => ({
+        ...prev,
+        [endpointKey]: result
+      }));
+
+      // Show result section
+      setShowResults(prev => ({
+        ...prev,
+        [endpointKey]: true
+      }));
 
       if (response.ok) {
         toast({
           title: "✅ API Test Success",
-          description: `${method} ${finalEndpoint} - Status: ${response.status}`,
+          description: `${method} ${finalEndpoint} - Status: ${response.status} (${duration}ms)`,
           variant: "default",
         });
-        console.log('API Response:', data);
       } else {
         toast({
           title: "❌ API Test Failed", 
@@ -113,6 +154,32 @@ export default function Help() {
         });
       }
     } catch (error) {
+      const endpointKey = getEndpointKey(method, endpoint);
+      const errorResult = {
+        status: 0,
+        statusText: 'Network Error',
+        headers: {},
+        data: { error: error instanceof Error ? error.message : String(error) },
+        duration: 0,
+        timestamp: new Date().toISOString(),
+        request: {
+          method: method,
+          url: endpoint,
+          headers: {},
+          body: null
+        }
+      };
+
+      setApiResults(prev => ({
+        ...prev,
+        [endpointKey]: errorResult
+      }));
+
+      setShowResults(prev => ({
+        ...prev,
+        [endpointKey]: true
+      }));
+
       toast({
         title: "❌ API Test Error",
         description: `Failed to test ${method} ${endpoint}`,
@@ -133,6 +200,67 @@ export default function Help() {
       ...prev,
       [endpointKey]: value
     }));
+  };
+
+  const toggleResultVisibility = (endpointKey: string) => {
+    setShowResults(prev => ({
+      ...prev,
+      [endpointKey]: !prev[endpointKey]
+    }));
+  };
+
+  const downloadResult = (endpointKey: string, format: 'json' | 'txt' = 'json') => {
+    const result = apiResults[endpointKey];
+    if (!result) return;
+
+    let content = '';
+    let filename = '';
+    let mimeType = '';
+
+    if (format === 'json') {
+      content = JSON.stringify(result, null, 2);
+      filename = `api-result-${endpointKey}-${new Date().toISOString().slice(0, 19)}.json`;
+      mimeType = 'application/json';
+    } else {
+      content = `API Test Result
+================
+
+Request:
+--------
+Method: ${result.request.method}
+URL: ${result.request.url}
+Headers: ${JSON.stringify(result.request.headers, null, 2)}
+Body: ${result.request.body ? JSON.stringify(result.request.body, null, 2) : 'None'}
+
+Response:
+---------
+Status: ${result.status} ${result.statusText}
+Duration: ${result.duration}ms
+Timestamp: ${result.timestamp}
+Headers: ${JSON.stringify(result.headers, null, 2)}
+
+Data:
+-----
+${typeof result.data === 'object' ? JSON.stringify(result.data, null, 2) : result.data}`;
+      filename = `api-result-${endpointKey}-${new Date().toISOString().slice(0, 19)}.txt`;
+      mimeType = 'text/plain';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "📥 Download Completo",
+      description: `Arquivo ${filename} baixado com sucesso`,
+      variant: "default",
+    });
   };
 
   const getMethodColor = (method: string) => {
@@ -812,6 +940,99 @@ export default function Help() {
                             <div className="rounded overflow-x-auto">
                               {renderJsonWithSyntaxHighlighting(endpoint.testBody)}
                             </div>
+                          </div>
+                        )}
+
+                        {apiResults[endpointKey] && (
+                          <div className="space-y-3 border-t pt-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  apiResults[endpointKey].status >= 200 && apiResults[endpointKey].status < 300 
+                                    ? 'bg-green-500' 
+                                    : apiResults[endpointKey].status >= 400 
+                                    ? 'bg-red-500' 
+                                    : 'bg-yellow-500'
+                                }`} />
+                                <span className="text-sm font-medium">
+                                  Resposta: {apiResults[endpointKey].status} {apiResults[endpointKey].statusText}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {apiResults[endpointKey].duration}ms
+                                </Badge>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => toggleResultVisibility(endpointKey)}
+                                  className="h-6 text-xs"
+                                >
+                                  {showResults[endpointKey] ? (
+                                    <>
+                                      <EyeOff className="w-3 h-3 mr-1" />
+                                      Ocultar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="w-3 h-3 mr-1" />
+                                      Ver
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => downloadResult(endpointKey, 'json')}
+                                  className="h-6 text-xs"
+                                >
+                                  <Download className="w-3 h-3 mr-1" />
+                                  JSON
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => downloadResult(endpointKey, 'txt')}
+                                  className="h-6 text-xs"
+                                >
+                                  <Download className="w-3 h-3 mr-1" />
+                                  TXT
+                                </Button>
+                              </div>
+                            </div>
+
+                            {showResults[endpointKey] && (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                  <div>
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">URL:</span>
+                                    <div className="font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded break-all">
+                                      {apiResults[endpointKey].request.url}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">Timestamp:</span>
+                                    <div className="font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                                      {new Date(apiResults[endpointKey].timestamp).toLocaleString()}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Response Headers:</span>
+                                  <div className="mt-1">
+                                    {renderJsonWithSyntaxHighlighting(apiResults[endpointKey].headers)}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Response Data:</span>
+                                  <div className="mt-1">
+                                    {renderJsonWithSyntaxHighlighting(apiResults[endpointKey].data)}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </CardContent>
