@@ -26,6 +26,11 @@ export const dashboardStats = pgTable("dashboard_stats", {
   cartCount: integer("cart_count").notNull().default(0),
   notificationCount: integer("notification_count").notNull().default(0),
   emailCount: integer("email_count").notNull().default(0),
+  clientsCount: integer("clients_count").notNull().default(0),
+  productsCount: integer("products_count").notNull().default(0),
+  salesCount: integer("sales_count").notNull().default(0),
+  suppliersCount: integer("suppliers_count").notNull().default(0),
+  supportTicketsCount: integer("support_tickets_count").notNull().default(0),
   stats: jsonb("stats"),
 });
 

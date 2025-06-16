@@ -529,12 +529,32 @@ export class DatabaseStorage implements IStorage {
     const notifications = await this.getNotifications(userId);
     const emails = await this.getEmails(userId);
     
+    // Get real counts from database
+    const [
+      clients,
+      products,
+      sales,
+      suppliers,
+      supportTickets
+    ] = await Promise.all([
+      this.getClients(),
+      this.getProducts(),
+      this.getSales(),
+      this.getSuppliers(),
+      this.getSupportTickets()
+    ]);
+    
     return { 
       id: 1, 
       userId, 
       cartCount: cartItems.length, 
       notificationCount: notifications.filter(n => !n.isRead).length, 
       emailCount: emails.filter(e => !e.isRead).length, 
+      clientsCount: clients.length,
+      productsCount: products.length,
+      salesCount: sales.length,
+      suppliersCount: suppliers.length,
+      supportTicketsCount: supportTickets.length,
       stats: {
         totalProjects: 12,
         activeTasks: 24,

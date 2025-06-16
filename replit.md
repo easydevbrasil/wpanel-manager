@@ -166,6 +166,14 @@ Changelog:
 - June 16, 2025. Built EmailAccounts page with single-column card layout (1 card per line) as requested by user
 - June 16, 2025. Added CRUD operations for email accounts with real-time WebSocket synchronization and toast notifications
 - June 16, 2025. Integrated email accounts navigation item and populated database with 3 sample accounts (SMTP, Gmail, Outlook)
+- June 16, 2025. Fixed sidebar navigation icons by adding missing imports (HelpCircle, Mail, Headphones) to iconMap
+- June 16, 2025. Implemented system monitoring dashboard with CPU gauge, RAM/Storage/Swap progress bars at top of homepage
+- June 16, 2025. Created animated CPU gauge with color-coded status (green/yellow/red) and real-time updates every 5 seconds
+- June 16, 2025. Added system information panel showing uptime, platform, Node.js version, and last update timestamp
+- June 16, 2025. Completely redesigned Help page with sidebar navigation organized by categories (clientes, produtos, fornecedores, vendas, suporte, email, sistema)
+- June 16, 2025. Implemented VS Code-style JSON editor with syntax highlighting, line numbers, and window controls (red/yellow/green buttons)
+- June 16, 2025. Created interactive API testing interface with real-time execution, result display, and downloadable responses in JSON/TXT formats
+- June 16, 2025. Enhanced API documentation with color-coded HTTP method badges, editable resource IDs, and comprehensive endpoint coverage
 ```
 
 ## User Preferences

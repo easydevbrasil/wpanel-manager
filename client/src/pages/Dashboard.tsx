@@ -16,6 +16,10 @@ import {
   HardDrive,
   MemoryStick,
   Activity,
+  Package,
+  ShoppingCart,
+  Truck,
+  Headphones,
 } from "lucide-react";
 import type { DashboardStats } from "@shared/schema";
 
@@ -420,6 +424,90 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* Data Counters Section */}
+      <div className="mb-6 md:mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          Resumo dos Dados
+        </h2>
+        
+        <div className="grid grid-cols-5 gap-4 md:gap-6">
+          {/* Clients Counter */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg mb-3 mx-auto w-fit">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {stats?.clientsCount || 0}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Clientes
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Products Counter */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg mb-3 mx-auto w-fit">
+                <Package className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {stats?.productsCount || 0}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Produtos
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Sales Counter */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg mb-3 mx-auto w-fit">
+                <ShoppingCart className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {stats?.salesCount || 0}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Vendas
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Suppliers Counter */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-lg mb-3 mx-auto w-fit">
+                <Truck className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {stats?.suppliersCount || 0}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Fornecedores
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Support Tickets Counter */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="bg-red-100 dark:bg-red-900 p-3 rounded-lg mb-3 mx-auto w-fit">
+                <Headphones className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                {stats?.supportTicketsCount || 0}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Tickets
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Content Cards */}
