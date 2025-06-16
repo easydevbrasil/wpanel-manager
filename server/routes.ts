@@ -866,6 +866,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // Function to broadcast dashboard stats updates
+  async function broadcastDashboardUpdate() {
+    try {
+      const stats = await storage.getDashboardStats(1);
+      broadcastUpdate('dashboard_stats_updated', stats);
+    } catch (error) {
+      console.error('Failed to broadcast dashboard update:', error);
+    }
+  }
+
   // Override API endpoints to broadcast real-time updates
   
   // Clients - broadcast on all operations
@@ -873,6 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const client = await storage.createClient(req.body);
       broadcastUpdate('client_created', client);
+      broadcastDashboardUpdate(); // Update dashboard counters
       res.status(201).json(client);
     } catch (error) {
       res.status(500).json({ message: "Failed to create client" });
@@ -895,6 +906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteClient(id);
       broadcastUpdate('client_deleted', { id });
+      broadcastDashboardUpdate(); // Update dashboard counters
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete client" });
@@ -906,6 +918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const product = await storage.createProduct(req.body);
       broadcastUpdate('product_created', product);
+      broadcastDashboardUpdate();
       res.status(201).json(product);
     } catch (error) {
       res.status(500).json({ message: "Failed to create product" });
@@ -928,6 +941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteProduct(id);
       broadcastUpdate('product_deleted', { id });
+      broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete product" });
@@ -939,6 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const supplier = await storage.createSupplier(req.body);
       broadcastUpdate('supplier_created', supplier);
+      broadcastDashboardUpdate();
       res.status(201).json(supplier);
     } catch (error) {
       res.status(500).json({ message: "Failed to create supplier" });
@@ -961,6 +976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteSupplier(id);
       broadcastUpdate('supplier_deleted', { id });
+      broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete supplier" });
@@ -972,6 +988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const sale = await storage.createSale(req.body);
       broadcastUpdate('sale_created', sale);
+      broadcastDashboardUpdate();
       res.status(201).json(sale);
     } catch (error) {
       res.status(500).json({ message: "Failed to create sale" });
@@ -994,6 +1011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteSale(id);
       broadcastUpdate('sale_deleted', { id });
+      broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete sale" });
