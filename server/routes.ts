@@ -895,6 +895,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Profile routes
+  app.put("/api/users/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const user = await storage.updateUser(id, req.body);
+      broadcastUpdate('user_updated', { user });
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update user profile" });
+    }
+  });
+
+  app.get("/api/users/:id/address", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const address = await storage.getUserAddress(id);
+      res.json(address);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get user address" });
+    }
+  });
+
+  app.put("/api/users/:id/address", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const address = await storage.updateUserAddress(id, req.body);
+      broadcastUpdate('user_address_updated', { userId: id, address });
+      res.json(address);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update user address" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket Server for real-time updates

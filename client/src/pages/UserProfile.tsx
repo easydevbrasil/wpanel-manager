@@ -372,7 +372,7 @@ export default function UserProfile() {
                     </div>
                   ))}
                 </div>
-              ) : permissions.length === 0 ? (
+              ) : !Array.isArray(permissions) || permissions.length === 0 ? (
                 <div className="text-center py-8">
                   <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400">Nenhuma permissão configurada</p>
@@ -380,7 +380,8 @@ export default function UserProfile() {
               ) : (
                 <div className="space-y-6">
                   {Object.entries(moduleLabels).map(([module, label]) => {
-                    const modulePermissions = permissions.find((p: UserPermission) => p.module === module);
+                    const modulePermissions = Array.isArray(permissions) ? 
+                      permissions.find((p: any) => p.module === module) : null;
                     return (
                       <div key={module} className="space-y-3">
                         <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{label}</h3>

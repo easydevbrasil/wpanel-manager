@@ -194,6 +194,10 @@ export interface IStorage {
   getUserPermissions(): Promise<any[]>;
   getUserPermissionsByUserId(userId: number): Promise<any[]>;
   updateUserPermissions(userId: number, permissions: any[]): Promise<any[]>;
+  
+  // User Address
+  getUserAddress(userId: number): Promise<any>;
+  updateUserAddress(userId: number, address: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -509,7 +513,8 @@ export class DatabaseStorage implements IStorage {
       { label: "Contas de Email", icon: "Mail", href: "/email-accounts", order: 7, parentId: null },
       { label: "Admin DB", icon: "Database", href: "/database-admin", order: 8, parentId: null },
       { label: "Permissões", icon: "Shield", href: "/user-permissions", order: 9, parentId: null },
-      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 10, parentId: null }
+      { label: "Perfil", icon: "User", href: "/user-profile", order: 10, parentId: null },
+      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 11, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);
@@ -1447,6 +1452,42 @@ export class DatabaseStorage implements IStorage {
       return newPermissions;
     } catch (error) {
       console.error('Error updating user permissions:', error);
+      throw error;
+    }
+  }
+
+  // User Address methods
+  async getUserAddress(userId: number): Promise<any> {
+    try {
+      (global as any).userAddresses = (global as any).userAddresses || [];
+      return (global as any).userAddresses.find((a: any) => a.userId === userId) || null;
+    } catch (error) {
+      console.error('Error getting user address:', error);
+      return null;
+    }
+  }
+
+  async updateUserAddress(userId: number, address: any): Promise<any> {
+    try {
+      (global as any).userAddresses = (global as any).userAddresses || [];
+      
+      // Remove existing address for this user
+      (global as any).userAddresses = (global as any).userAddresses.filter((a: any) => a.userId !== userId);
+      
+      // Add new address
+      const newAddress = {
+        id: Date.now(),
+        userId,
+        ...address,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      (global as any).userAddresses.push(newAddress);
+      
+      return newAddress;
+    } catch (error) {
+      console.error('Error updating user address:', error);
       throw error;
     }
   }

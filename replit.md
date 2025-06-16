@@ -179,6 +179,13 @@ Changelog:
 - June 16, 2025. Created user management APIs (/api/users) with create, read, update, delete operations
 - June 16, 2025. Fixed dashboard data counters to show real database statistics (clients, products, sales, suppliers, support tickets)
 - June 16, 2025. Corrected data access in dashboard to display authentic counts from PostgreSQL database
+- June 16, 2025. Implemented comprehensive user profile management system with tabbed interface (Perfil, Endereço, Permissões)
+- June 16, 2025. Created UserProfile page with React Tabs component for organized data management
+- June 16, 2025. Added profile editing capabilities with personal information, phone, biography, and avatar URL fields
+- June 16, 2025. Implemented address management with complete Brazilian address structure (street, number, neighborhood, city, state, CEP)
+- June 16, 2025. Added permissions visualization tab showing user access rights for each system module with color-coded badges
+- June 16, 2025. Created user profile and address APIs (/api/users/:id, /api/users/:id/address) with PUT methods for updates
+- June 16, 2025. Added "Perfil" navigation item with User icon and integrated profile page routing at /user-profile
 ```
 
 ## User Preferences
