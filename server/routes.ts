@@ -865,7 +865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Permissions routes
-  app.get("/api/permissions", async (req, res) => {
+  app.get("/api/permissions", authenticateToken, async (req, res) => {
     try {
       const permissions = await storage.getUserPermissions();
       res.json(permissions);
@@ -874,7 +874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:userId/permissions", async (req, res) => {
+  app.get("/api/users/:userId/permissions", authenticateToken, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const permissions = await storage.getUserPermissionsByUserId(userId);
@@ -884,30 +884,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/users/:userId/permissions", async (req, res) => {
+  app.put("/api/users/:userId/permissions", authenticateToken, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const permissions = await storage.updateUserPermissions(userId, req.body);
       broadcastUpdate('user_permissions_updated', { userId, permissions });
       res.json(permissions);
     } catch (error) {
+      console.error('Error updating permissions:', error);
       res.status(400).json({ message: "Failed to update user permissions" });
     }
   });
 
   // User Profile routes
-  app.put("/api/users/:id", async (req, res) => {
+  app.put("/api/users/:id", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.updateUser(id, req.body);
       broadcastUpdate('user_updated', { user });
       res.json(user);
     } catch (error) {
+      console.error('Error updating user profile:', error);
       res.status(400).json({ message: "Failed to update user profile" });
     }
   });
 
-  app.get("/api/users/:id/address", async (req, res) => {
+  app.get("/api/users/:id/address", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const address = await storage.getUserAddress(id);
@@ -917,13 +919,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/users/:id/address", async (req, res) => {
+  app.put("/api/users/:id/address", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const address = await storage.updateUserAddress(id, req.body);
       broadcastUpdate('user_address_updated', { userId: id, address });
       res.json(address);
     } catch (error) {
+      console.error('Error updating user address:', error);
       res.status(400).json({ message: "Failed to update user address" });
     }
   });
