@@ -39,6 +39,7 @@ import {
   HelpCircle,
   Mail,
   Headphones,
+  Database,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -65,6 +66,7 @@ const iconMap = {
   HelpCircle,
   Mail,
   Headphones,
+  Database,
 };
 
 interface SidebarProps {

@@ -13,6 +13,7 @@ import Sales from "@/pages/Sales";
 import Support from "@/pages/Support";
 import Help from "@/pages/Help";
 import EmailAccounts from "@/pages/EmailAccounts";
+import DatabaseAdmin from "@/pages/DatabaseAdmin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/sales" component={Sales} />
         <Route path="/support" component={Support} />
         <Route path="/email-accounts" component={EmailAccounts} />
+        <Route path="/database-admin" component={DatabaseAdmin} />
         <Route path="/help" component={Help} />
         <Route component={NotFound} />
       </Switch>

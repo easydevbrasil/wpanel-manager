@@ -493,7 +493,9 @@ export class DatabaseStorage implements IStorage {
       { label: "Fornecedores", icon: "Truck", href: "/suppliers", order: 4, parentId: null },
       { label: "Vendas", icon: "ShoppingCart", href: "/sales", order: 5, parentId: null },
       { label: "Suporte", icon: "MessageSquare", href: "/support", order: 6, parentId: null },
-      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 7, parentId: null }
+      { label: "Contas de Email", icon: "Mail", href: "/email-accounts", order: 7, parentId: null },
+      { label: "Admin DB", icon: "Database", href: "/database-admin", order: 8, parentId: null },
+      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 9, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);
