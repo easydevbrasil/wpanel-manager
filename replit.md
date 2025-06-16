@@ -227,6 +227,12 @@ Changelog:
 - June 16, 2025. Implemented individual header management system replacing JSON textarea with key-value pair interface
 - June 16, 2025. Added automatic Content-Type header creation and protected header system (Content-Type, X-Hub-Signature)
 - June 16, 2025. Integrated localStorage persistence for webhook configurations and custom headers with auto-loading functionality
+- June 16, 2025. Created comprehensive user preferences system with PostgreSQL backend integration
+- June 16, 2025. Implemented functional sidebar configuration dropdown with theme controls, color customization, and sidebar toggle
+- June 16, 2025. Added user_preferences table with fields for sidebar state, colors (sidebar, header, primary), and auto-collapse settings
+- June 16, 2025. Built interactive color selection submenus with visual color indicators and checkmarks for active selections
+- June 16, 2025. Integrated automatic preference saving to user account with toast notifications and WebSocket synchronization
+- June 16, 2025. Enhanced webhook system to automatically populate X-Hub-Signature header with generated secret key (sha256=key format)
 ```
 
 ## User Preferences
