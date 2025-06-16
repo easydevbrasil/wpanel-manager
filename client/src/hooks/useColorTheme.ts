@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from './useAuth';
 
 interface UserPreferences {
   sidebarCollapsed: boolean;
@@ -18,9 +19,12 @@ const defaultPreferences: UserPreferences = {
 };
 
 export function useColorTheme() {
+  const { isAuthenticated } = useAuth();
+  
   const { data: userPreferences } = useQuery({
     queryKey: ["/api/user/preferences"],
     retry: false,
+    enabled: isAuthenticated, // Only fetch when user is authenticated
   });
 
   const preferences = userPreferences ? { ...defaultPreferences, ...userPreferences } : defaultPreferences;
