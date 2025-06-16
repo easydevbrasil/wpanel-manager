@@ -170,6 +170,14 @@ export interface IStorage {
   createChatwootSettings(settings: InsertChatwootSettings): Promise<ChatwootSettings>;
   updateChatwootSettings(id: number, settings: Partial<InsertChatwootSettings>): Promise<ChatwootSettings>;
   deleteChatwootSettings(id: number): Promise<void>;
+  
+  // Email Accounts
+  getEmailAccounts(): Promise<EmailAccount[]>;
+  getEmailAccount(id: number): Promise<EmailAccount | undefined>;
+  createEmailAccount(account: InsertEmailAccount): Promise<EmailAccount>;
+  updateEmailAccount(id: number, account: Partial<InsertEmailAccount>): Promise<EmailAccount>;
+  deleteEmailAccount(id: number): Promise<void>;
+  setDefaultEmailAccount(id: number): Promise<EmailAccount>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1192,6 +1200,62 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChatwootSettings(id: number): Promise<void> {
     await db.delete(chatwootSettings).where(eq(chatwootSettings.id, id));
+  }
+
+  // Email Accounts
+  async getEmailAccounts(): Promise<EmailAccount[]> {
+    return await db.select().from(emailAccounts).orderBy(emailAccounts.isDefault, emailAccounts.name);
+  }
+
+  async getEmailAccount(id: number): Promise<EmailAccount | undefined> {
+    const [account] = await db.select().from(emailAccounts).where(eq(emailAccounts.id, id));
+    return account || undefined;
+  }
+
+  async createEmailAccount(account: InsertEmailAccount): Promise<EmailAccount> {
+    const now = new Date().toISOString();
+    const [newAccount] = await db
+      .insert(emailAccounts)
+      .values({
+        ...account,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    return newAccount;
+  }
+
+  async updateEmailAccount(id: number, accountData: Partial<InsertEmailAccount>): Promise<EmailAccount> {
+    const now = new Date().toISOString();
+    const [updatedAccount] = await db
+      .update(emailAccounts)
+      .set({
+        ...accountData,
+        updatedAt: now,
+      })
+      .where(eq(emailAccounts.id, id))
+      .returning();
+    return updatedAccount;
+  }
+
+  async deleteEmailAccount(id: number): Promise<void> {
+    await db.delete(emailAccounts).where(eq(emailAccounts.id, id));
+  }
+
+  async setDefaultEmailAccount(id: number): Promise<EmailAccount> {
+    // First, remove default from all accounts
+    await db.update(emailAccounts).set({ isDefault: false });
+    
+    // Then set the selected account as default
+    const [defaultAccount] = await db
+      .update(emailAccounts)
+      .set({ 
+        isDefault: true, 
+        updatedAt: new Date().toISOString() 
+      })
+      .where(eq(emailAccounts.id, id))
+      .returning();
+    return defaultAccount;
   }
 }
 

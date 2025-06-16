@@ -259,6 +259,31 @@ export const chatwootSettings = pgTable("chatwoot_settings", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Email Accounts Management
+export const emailAccounts = pgTable("email_accounts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  provider: text("provider").notNull(), // gmail, outlook, smtp, imap
+  smtpHost: text("smtp_host"),
+  smtpPort: integer("smtp_port"),
+  smtpSecure: boolean("smtp_secure").default(true),
+  imapHost: text("imap_host"),
+  imapPort: integer("imap_port"),
+  imapSecure: boolean("imap_secure").default(true),
+  username: text("username").notNull(),
+  password: text("password").notNull(), // encrypted
+  isDefault: boolean("is_default").default(false),
+  status: text("status").default("active").notNull(),
+  lastSync: text("last_sync"),
+  syncFrequency: integer("sync_frequency").default(300), // seconds
+  signature: text("signature"),
+  autoReply: boolean("auto_reply").default(false),
+  autoReplyMessage: text("auto_reply_message"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -354,6 +379,12 @@ export const insertChatwootSettingsSchema = createInsertSchema(chatwootSettings)
   updatedAt: true,
 });
 
+export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
@@ -390,3 +421,5 @@ export type SupportCategory = typeof supportCategories.$inferSelect;
 export type InsertSupportCategory = z.infer<typeof insertSupportCategorySchema>;
 export type ChatwootSettings = typeof chatwootSettings.$inferSelect;
 export type InsertChatwootSettings = z.infer<typeof insertChatwootSettingsSchema>;
+export type EmailAccount = typeof emailAccounts.$inferSelect;
+export type InsertEmailAccount = z.infer<typeof insertEmailAccountSchema>;
