@@ -40,6 +40,7 @@ import {
   Mail,
   Headphones,
   Database,
+  Container,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -67,6 +68,7 @@ const iconMap = {
   Mail,
   Headphones,
   Database,
+  Container,
 };
 
 interface SidebarProps {
