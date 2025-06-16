@@ -306,17 +306,30 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
 export default function Help() {
   const [selectedCategory, setSelectedCategory] = useState('clients');
   const [activeTab, setActiveTab] = useState('documentation');
-  const [webhookConfig, setWebhookConfig] = useState({
-    url: "https://n8n.easydev.com.br/webhook-test/f5a0ea69-c6c8-4b93-92b2-e26a84f33229",
-    method: "POST",
-    format: "json",
-    headers: '{"Content-Type": "application/json", "Authorization": "Bearer token"}',
-    secretKey: "",
-    events: [] as string[],
-    isActive: true
+  const [webhookConfig, setWebhookConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('webhook_config');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load webhook config from localStorage');
+    }
+    return {
+      url: "https://n8n.easydev.com.br/webhook-test/f5a0ea69-c6c8-4b93-92b2-e26a84f33229",
+      method: "POST",
+      format: "json",
+      headers: '{"Content-Type": "application/json", "Authorization": "Bearer token"}',
+      secretKey: "",
+      events: [] as string[],
+      isActive: true
+    };
   });
   const [testResult, setTestResult] = useState<any>(null);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleEventToggle = (eventName: string) => {
     setWebhookConfig(prev => ({
@@ -328,13 +341,34 @@ export default function Help() {
   };
 
   const testWebhook = async () => {
+    if (!webhookConfig.url.trim()) {
+      toast({
+        title: "❌ URL obrigatória",
+        description: "Por favor, configure uma URL para o webhook",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingWebhook(true);
+    
+    toast({
+      title: "📡 Enviando webhook...",
+      description: "Testando conexão com o endpoint configurado",
+    });
+
     try {
       const testPayload = {
         event: "webhook.test",
         timestamp: new Date().toISOString(),
         data: {
           message: "Test webhook from ProjectHub Dashboard",
-          test_id: Date.now()
+          test_id: Date.now(),
+          config: {
+            method: webhookConfig.method,
+            format: webhookConfig.format,
+            events_count: webhookConfig.events.length
+          }
         },
         user: {
           id: 1,
@@ -342,12 +376,23 @@ export default function Help() {
         }
       };
 
+      let headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Parse custom headers safely
+      try {
+        if (webhookConfig.headers.trim()) {
+          const customHeaders = JSON.parse(webhookConfig.headers);
+          headers = { ...headers, ...customHeaders };
+        }
+      } catch (e) {
+        console.warn('Invalid JSON in headers, using default headers');
+      }
+
       const response = await fetch(webhookConfig.url, {
         method: webhookConfig.method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...JSON.parse(webhookConfig.headers || '{}')
-        },
+        headers,
         body: JSON.stringify(testPayload)
       });
 
@@ -355,45 +400,104 @@ export default function Help() {
         status: response.status,
         statusText: response.statusText,
         success: response.ok,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        url: webhookConfig.url
       };
 
       setTestResult(result);
       
       if (response.ok) {
         toast({
-          title: "✅ Webhook enviado",
-          description: `Teste realizado com sucesso (${response.status})`,
+          title: "✅ Webhook enviado com sucesso",
+          description: `Resposta: ${response.status} ${response.statusText}`,
         });
       } else {
         toast({
           title: "❌ Erro no webhook",
-          description: `Falha no teste (${response.status})`,
+          description: `Falha: ${response.status} ${response.statusText}`,
           variant: "destructive",
         });
       }
     } catch (error) {
       const result = {
         status: 'Error',
-        statusText: error instanceof Error ? error.message : 'Unknown error',
+        statusText: error instanceof Error ? error.message : 'Connection failed',
         success: false,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        url: webhookConfig.url
       };
       setTestResult(result);
       
       toast({
         title: "❌ Erro de conexão",
-        description: "Não foi possível conectar ao webhook",
+        description: "Não foi possível conectar ao webhook. Verifique a URL.",
         variant: "destructive",
       });
+    } finally {
+      setIsTestingWebhook(false);
     }
   };
 
-  const saveWebhookConfig = () => {
+  const saveWebhookConfig = async () => {
+    if (!webhookConfig.url.trim()) {
+      toast({
+        title: "❌ URL obrigatória",
+        description: "Por favor, configure uma URL para o webhook",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
     toast({
-      title: "💾 Configuração salva",
-      description: "Webhook configurado com sucesso!",
+      title: "💾 Salvando configuração...",
+      description: "Aguarde enquanto salvamos as configurações",
     });
+
+    try {
+      // Validate JSON headers
+      if (webhookConfig.headers.trim()) {
+        try {
+          JSON.parse(webhookConfig.headers);
+        } catch (e) {
+          toast({
+            title: "❌ Headers inválidos",
+            description: "O JSON dos headers não é válido",
+            variant: "destructive",
+          });
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const configToSave = {
+        ...webhookConfig,
+        id: Date.now(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Save to localStorage for now (can be changed to API later)
+      localStorage.setItem('webhook_config', JSON.stringify(configToSave));
+
+      toast({
+        title: "✅ Configuração salva",
+        description: `Webhook configurado com ${webhookConfig.events.length} eventos`,
+      });
+
+      // Simulate some processing time
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+    } catch (error) {
+      toast({
+        title: "❌ Erro ao salvar",
+        description: "Não foi possível salvar a configuração do webhook",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getEndpointsForCategory = (category: string): Array<{
@@ -1214,9 +1318,23 @@ export default function Help() {
                       Teste de Webhook
                     </h3>
                     <div className="space-y-3">
-                      <Button onClick={testWebhook} className="w-full" variant="outline">
-                        <Play className="w-4 h-4 mr-2" />
-                        Enviar Evento de Teste
+                      <Button 
+                        onClick={testWebhook} 
+                        disabled={isTestingWebhook}
+                        className="w-full" 
+                        variant="outline"
+                      >
+                        {isTestingWebhook ? (
+                          <>
+                            <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 mr-2" />
+                            Enviar Evento de Teste
+                          </>
+                        )}
                       </Button>
                       <div className="text-sm">
                         <p className="font-medium mb-1">Último teste:</p>
@@ -1254,8 +1372,18 @@ export default function Help() {
                   })}>
                     Cancelar
                   </Button>
-                  <Button onClick={saveWebhookConfig}>
-                    Salvar Configuração
+                  <Button 
+                    onClick={saveWebhookConfig}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-white"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      'Salvar Configuração'
+                    )}
                   </Button>
                 </div>
               </CardContent>
