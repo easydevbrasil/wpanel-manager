@@ -137,6 +137,27 @@ export default function UserProfile() {
     enabled: !!user?.id
   });
 
+  // Update permissions mutation
+  const updatePermissionsMutation = useMutation({
+    mutationFn: async (updatedPermissions: any[]) => {
+      return await apiRequest(`/api/users/${user?.id}/permissions`, "PUT", updatedPermissions);
+    },
+    onSuccess: () => {
+      toast({
+        title: "🔐 Permissões atualizadas",
+        description: "As permissões foram salvas com sucesso!",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/permissions`] });
+    },
+    onError: () => {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao atualizar as permissões. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -185,6 +206,24 @@ export default function UserProfile() {
 
   const handleAddressSave = () => {
     updateAddressMutation.mutate(addressData);
+  };
+
+  // Toggle permission function
+  const togglePermission = (module: string, permissionType: 'canView' | 'canCreate' | 'canEdit' | 'canDelete') => {
+    if (!Array.isArray(permissions)) return;
+    
+    const updatedPermissions = permissions.map((permission: any) => {
+      if (permission.module === module) {
+        return {
+          ...permission,
+          [permissionType]: !permission[permissionType]
+        };
+      }
+      return permission;
+    });
+
+    // Save immediately
+    updatePermissionsMutation.mutate(updatedPermissions);
   };
 
   // Initialize address data when loaded
@@ -412,8 +451,14 @@ export default function UserProfile() {
                 Permissões do Sistema
               </CardTitle>
               <CardDescription>
-                Visualize suas permissões de acesso aos módulos do sistema
+                Clique nos badges para alterar permissões. As mudanças são salvas automaticamente.
               </CardDescription>
+              {updatePermissionsMutation.isPending && (
+                <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                  <div className="w-4 h-4 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                  Salvando permissões...
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {permissionsLoading ? (
@@ -449,25 +494,49 @@ export default function UserProfile() {
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
                                   <span className="text-sm font-medium">Visualizar</span>
-                                  <Badge variant={modulePermissions?.canView ? "default" : "secondary"}>
+                                  <Badge 
+                                    variant={modulePermissions?.canView ? "default" : "secondary"}
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                      updatePermissionsMutation.isPending ? 'opacity-50' : ''
+                                    }`}
+                                    onClick={() => togglePermission(module, 'canView')}
+                                  >
                                     {modulePermissions?.canView ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
                                   <span className="text-sm font-medium">Criar</span>
-                                  <Badge variant={modulePermissions?.canCreate ? "default" : "secondary"}>
+                                  <Badge 
+                                    variant={modulePermissions?.canCreate ? "default" : "secondary"}
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                      updatePermissionsMutation.isPending ? 'opacity-50' : ''
+                                    }`}
+                                    onClick={() => togglePermission(module, 'canCreate')}
+                                  >
                                     {modulePermissions?.canCreate ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
                                   <span className="text-sm font-medium">Editar</span>
-                                  <Badge variant={modulePermissions?.canEdit ? "default" : "secondary"}>
+                                  <Badge 
+                                    variant={modulePermissions?.canEdit ? "default" : "secondary"}
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                      updatePermissionsMutation.isPending ? 'opacity-50' : ''
+                                    }`}
+                                    onClick={() => togglePermission(module, 'canEdit')}
+                                  >
                                     {modulePermissions?.canEdit ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
                                   <span className="text-sm font-medium">Excluir</span>
-                                  <Badge variant={modulePermissions?.canDelete ? "default" : "secondary"}>
+                                  <Badge 
+                                    variant={modulePermissions?.canDelete ? "default" : "secondary"}
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                      updatePermissionsMutation.isPending ? 'opacity-50' : ''
+                                    }`}
+                                    onClick={() => togglePermission(module, 'canDelete')}
+                                  >
                                     {modulePermissions?.canDelete ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
