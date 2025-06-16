@@ -12,6 +12,7 @@ import Suppliers from "@/pages/Suppliers";
 import Sales from "@/pages/Sales";
 import Support from "@/pages/Support";
 import Help from "@/pages/Help";
+import EmailAccounts from "@/pages/EmailAccounts";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/sales" component={Sales} />
         <Route path="/support" component={Support} />
+        <Route path="/email-accounts" component={EmailAccounts} />
         <Route path="/help" component={Help} />
         <Route component={NotFound} />
       </Switch>

@@ -96,7 +96,7 @@ export default function EmailAccounts() {
     },
   });
 
-  const { data: accounts = [], isLoading } = useQuery({
+  const { data: accounts = [], isLoading } = useQuery<EmailAccount[]>({
     queryKey: ['/api/email-accounts'],
   });
 
