@@ -97,6 +97,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Preferences routes
+  app.get("/api/user/preferences", authenticateToken, async (req: any, res) => {
+    try {
+      const preferences = await storage.getUserPreferences(req.user.id);
+      res.json(preferences || {});
+    } catch (error) {
+      console.error("Error fetching user preferences:", error);
+      res.status(500).json({ message: "Falha ao carregar preferências" });
+    }
+  });
+
+  app.put("/api/user/preferences", authenticateToken, async (req: any, res) => {
+    try {
+      const preferences = await storage.updateUserPreferences(req.user.id, req.body);
+      res.json(preferences);
+      
+      // Broadcast preferences update
+      broadcastUpdate('user_preferences_updated', {
+        userId: req.user.id,
+        preferences
+      });
+    } catch (error) {
+      console.error("Error updating user preferences:", error);
+      res.status(500).json({ message: "Falha ao salvar preferências" });
+    }
+  });
+
   // Get navigation items
   app.get("/api/navigation", async (req, res) => {
     try {

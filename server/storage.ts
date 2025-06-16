@@ -1,5 +1,6 @@
 import { 
   users, 
+  userPreferences,
   navigationItems, 
   dashboardStats, 
   cartItems,
@@ -18,6 +19,8 @@ import {
   supportCategories,
   chatwootSettings,
   type User, 
+  type UserPreferences,
+  type InsertUserPreferences,
   type NavigationItem, 
   type DashboardStats, 
   type InsertUser, 
@@ -79,6 +82,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   deleteUser(id: number): Promise<void>;
+  
+  // User Preferences
+  getUserPreferences(userId: number): Promise<UserPreferences | undefined>;
+  updateUserPreferences(userId: number, preferences: Partial<InsertUserPreferences>): Promise<UserPreferences>;
   
   // Navigation
   getNavigationItems(): Promise<NavigationItem[]>;
@@ -756,6 +763,40 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: number): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
+  }
+
+  // User Preferences methods
+  async getUserPreferences(userId: number): Promise<UserPreferences | undefined> {
+    const [preferences] = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId));
+    return preferences || undefined;
+  }
+
+  async updateUserPreferences(userId: number, preferencesData: Partial<InsertUserPreferences>): Promise<UserPreferences> {
+    // Check if preferences exist
+    const existing = await this.getUserPreferences(userId);
+    
+    if (existing) {
+      // Update existing preferences
+      const [updated] = await db
+        .update(userPreferences)
+        .set({
+          ...preferencesData,
+          updatedAt: new Date()
+        })
+        .where(eq(userPreferences.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      // Create new preferences
+      const [created] = await db
+        .insert(userPreferences)
+        .values({
+          userId,
+          ...preferencesData
+        })
+        .returning();
+      return created;
+    }
   }
 
   async getNavigationItems(): Promise<NavigationItem[]> {

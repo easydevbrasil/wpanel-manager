@@ -11,6 +11,18 @@ export const users = pgTable("users", {
   avatar: text("avatar"),
 });
 
+export const userPreferences = pgTable("user_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  sidebarCollapsed: boolean("sidebar_collapsed").notNull().default(false),
+  sidebarColor: text("sidebar_color").notNull().default('default'),
+  headerColor: text("header_color").notNull().default('default'),
+  primaryColor: text("primary_color").notNull().default('blue'),
+  autoCollapse: boolean("auto_collapse").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const navigationItems = pgTable("navigation_items", {
   id: serial("id").primaryKey(),
   label: text("label").notNull(),
@@ -392,8 +404,16 @@ export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
 
 // Authentication schemas will be added later
 
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type NavigationItem = typeof navigationItems.$inferSelect;
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type InsertNavigationItem = z.infer<typeof insertNavigationItemSchema>;
