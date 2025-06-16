@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -348,8 +348,19 @@ export default function Help() {
   const queryClient = useQueryClient();
 
   // Auto-update HMAC header when secret key changes
-  React.useEffect(() => {
-    updateHMACHeader();
+  useEffect(() => {
+    if (webhookConfig.secretKey.trim()) {
+      const hmacHeaderExists = customHeaders.find(h => h.key === 'X-Hub-Signature');
+      if (!hmacHeaderExists) {
+        setCustomHeaders(prev => [...prev, { 
+          key: 'X-Hub-Signature', 
+          value: 'sha256=[será gerado automaticamente]', 
+          id: Date.now() 
+        }]);
+      }
+    } else {
+      setCustomHeaders(prev => prev.filter(header => header.key !== 'X-Hub-Signature'));
+    }
   }, [webhookConfig.secretKey]);
 
   const handleEventToggle = (eventName: string) => {
