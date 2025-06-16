@@ -3,11 +3,68 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 
+// Authentication middleware
+const authenticateToken = async (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1] || req.headers['session-token'];
+
+  if (!token) {
+    return res.status(401).json({ message: "Token de acesso requerido" });
+  }
+
+  try {
+    const session = await storage.validateSession(token);
+    if (!session) {
+      return res.status(401).json({ message: "Sessão inválida ou expirada" });
+    }
+    req.user = session.user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: "Token inválido" });
+  }
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Get current user (mocked for demo)
-  app.get("/api/user", async (req, res) => {
+  // Authentication routes (no auth required)
+  app.post("/api/auth/login", async (req, res) => {
     try {
-      const user = await storage.getUser(1); // Mock user ID
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Usuário e senha são obrigatórios" });
+      }
+
+      const result = await storage.authenticateUser(username, password);
+      if (!result) {
+        return res.status(401).json({ message: "Credenciais inválidas" });
+      }
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/auth/logout", authenticateToken, async (req: any, res) => {
+    try {
+      const token = req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
+      if (token) {
+        await storage.invalidateSession(token);
+      }
+      res.json({ message: "Logout realizado com sucesso" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao fazer logout" });
+    }
+  });
+
+  app.get("/api/auth/verify", authenticateToken, (req: any, res) => {
+    res.json({ user: req.user, valid: true });
+  });
+
+  // Protected routes (require authentication)
+  app.get("/api/user", authenticateToken, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }

@@ -61,6 +61,11 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
+  // Authentication
+  authenticateUser(username: string, password: string): Promise<{ user: any; sessionToken: string } | null>;
+  validateSession(sessionToken: string): Promise<{ user: any } | null>;
+  invalidateSession(sessionToken: string): Promise<void>;
+  
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
@@ -502,6 +507,101 @@ export class DatabaseStorage implements IStorage {
     ];
 
     await db.insert(navigationItems).values(navItems);
+  }
+
+  // Authentication methods
+  async authenticateUser(username: string, password: string): Promise<{ user: any; sessionToken: string } | null> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      
+      if (!user || user.password !== password || !user.isActive) {
+        return null;
+      }
+
+      // Generate session token
+      const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
+      // Create session
+      await db.insert(userSessions).values({
+        userId: user.id,
+        sessionToken,
+        expiresAt,
+        createdAt: new Date().toISOString()
+      });
+
+      // Update last login
+      await db.update(users).set({
+        lastLogin: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).where(eq(users.id, user.id));
+
+      return {
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar
+        },
+        sessionToken
+      };
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return null;
+    }
+  }
+
+  async validateSession(sessionToken: string): Promise<{ user: any } | null> {
+    try {
+      const [session] = await db.select({
+        sessionId: userSessions.id,
+        userId: userSessions.userId,
+        expiresAt: userSessions.expiresAt,
+        username: users.username,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        avatar: users.avatar,
+        isActive: users.isActive
+      })
+      .from(userSessions)
+      .innerJoin(users, eq(userSessions.userId, users.id))
+      .where(eq(userSessions.sessionToken, sessionToken));
+
+      if (!session || !session.isActive) {
+        return null;
+      }
+
+      // Check if session is expired
+      if (new Date(session.expiresAt) < new Date()) {
+        await db.delete(userSessions).where(eq(userSessions.sessionToken, sessionToken));
+        return null;
+      }
+
+      return {
+        user: {
+          id: session.userId,
+          username: session.username,
+          name: session.name,
+          email: session.email,
+          role: session.role,
+          avatar: session.avatar
+        }
+      };
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return null;
+    }
+  }
+
+  async invalidateSession(sessionToken: string): Promise<void> {
+    try {
+      await db.delete(userSessions).where(eq(userSessions.sessionToken, sessionToken));
+    } catch (error) {
+      console.error('Session invalidation error:', error);
+    }
   }
 
   // Database implementation methods
