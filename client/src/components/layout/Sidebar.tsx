@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -43,7 +43,9 @@ import {
   Container,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { NavigationItem } from "@shared/schema";
 
 const iconMap = {
@@ -71,6 +73,22 @@ const iconMap = {
   Container,
 };
 
+interface UserPreferences {
+  sidebarCollapsed: boolean;
+  sidebarColor: string;
+  headerColor: string;
+  primaryColor: string;
+  autoCollapse: boolean;
+}
+
+const defaultPreferences: UserPreferences = {
+  sidebarCollapsed: false,
+  sidebarColor: 'default',
+  headerColor: 'default', 
+  primaryColor: 'blue',
+  autoCollapse: false
+};
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
@@ -80,10 +98,72 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [location] = useLocation();
   const [openItems, setOpenItems] = useState<Set<number>>(new Set([])); // Start with all collapsed
   const { theme, setTheme, actualTheme } = useTheme();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>(defaultPreferences);
 
   const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
     queryKey: ["/api/navigation"],
   });
+
+  // Load user preferences
+  const { data: preferencesData } = useQuery({
+    queryKey: ["/api/user/preferences"],
+    retry: false,
+  });
+
+  // Update preferences mutation
+  const updatePreferencesMutation = useMutation({
+    mutationFn: async (preferences: Partial<UserPreferences>) => {
+      return await apiRequest("PUT", "/api/user/preferences", preferences);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/preferences"] });
+      toast({
+        title: "Configurações salvas",
+        description: "Suas preferências foram atualizadas com sucesso",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Falha ao salvar configurações",
+      });
+    },
+  });
+
+  // Update preferences state when data loads
+  useEffect(() => {
+    if (preferencesData) {
+      setUserPreferences({ ...defaultPreferences, ...preferencesData });
+    }
+  }, [preferencesData]);
+
+  // Functions to update preferences
+  const updatePreference = async (key: keyof UserPreferences, value: any) => {
+    const newPreferences = { ...userPreferences, [key]: value };
+    setUserPreferences(newPreferences);
+    await updatePreferencesMutation.mutateAsync({ [key]: value });
+  };
+
+  const toggleSidebarMode = async () => {
+    const newCollapsed = !collapsed;
+    onToggle();
+    await updatePreference('sidebarCollapsed', newCollapsed);
+  };
+
+  const updateSidebarColor = async (color: string) => {
+    await updatePreference('sidebarColor', color);
+  };
+
+  const updateHeaderColor = async (color: string) => {
+    await updatePreference('headerColor', color);
+  };
+
+  const updatePrimaryColor = async (color: string) => {
+    await updatePreference('primaryColor', color);
+  };
 
   // Group items by parent
   const parentItems = navigationItems.filter(item => !item.parentId);
@@ -269,22 +349,127 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <div className="px-3 py-2">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Aparência</p>
               </div>
-              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                <Palette className="w-4 h-4 mr-3" />
-                Cores do Sidebar
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+              
+              {/* Sidebar Colors */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <Palette className="w-4 h-4 mr-3" />
+                    Cores do Sidebar
+                    <ChevronRight className="w-3 h-3 ml-auto" />
+                  </DropdownMenuItem>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" className="w-48">
+                  <DropdownMenuItem onClick={() => updateSidebarColor('default')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
+                    Padrão
+                    {userPreferences.sidebarColor === 'default' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSidebarColor('blue')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
+                    Azul
+                    {userPreferences.sidebarColor === 'blue' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSidebarColor('green')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                    Verde
+                    {userPreferences.sidebarColor === 'green' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSidebarColor('purple')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-purple-500 mr-3"></div>
+                    Roxo
+                    {userPreferences.sidebarColor === 'purple' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSidebarColor('red')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-red-500 mr-3"></div>
+                    Vermelho
+                    {userPreferences.sidebarColor === 'red' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Sidebar Mode Toggle */}
+              <DropdownMenuItem 
+                onClick={toggleSidebarMode}
+                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
                 <SidebarIcon className="w-4 h-4 mr-3" />
-                Modo Inicial: {collapsed ? "Recolhido" : "Expandido"}
+                Alternar Sidebar
+                <span className="ml-auto text-xs text-gray-500">
+                  {collapsed ? "Expandir" : "Recolher"}
+                </span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                <Eye className="w-4 h-4 mr-3" />
-                Cores do Header
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                <LayoutDashboard className="w-4 h-4 mr-3" />
-                Cores Principais
-              </DropdownMenuItem>
+
+              {/* Header Colors */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <Eye className="w-4 h-4 mr-3" />
+                    Cores do Header
+                    <ChevronRight className="w-3 h-3 ml-auto" />
+                  </DropdownMenuItem>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" className="w-48">
+                  <DropdownMenuItem onClick={() => updateHeaderColor('default')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
+                    Padrão
+                    {userPreferences.headerColor === 'default' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateHeaderColor('blue')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
+                    Azul
+                    {userPreferences.headerColor === 'blue' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateHeaderColor('green')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                    Verde
+                    {userPreferences.headerColor === 'green' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateHeaderColor('dark')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-gray-800 mr-3"></div>
+                    Escuro
+                    {userPreferences.headerColor === 'dark' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Primary Colors */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <LayoutDashboard className="w-4 h-4 mr-3" />
+                    Cores Principais
+                    <ChevronRight className="w-3 h-3 ml-auto" />
+                  </DropdownMenuItem>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" className="w-48">
+                  <DropdownMenuItem onClick={() => updatePrimaryColor('blue')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-blue-600 mr-3"></div>
+                    Azul
+                    {userPreferences.primaryColor === 'blue' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updatePrimaryColor('green')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-green-600 mr-3"></div>
+                    Verde
+                    {userPreferences.primaryColor === 'green' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updatePrimaryColor('purple')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-purple-600 mr-3"></div>
+                    Roxo
+                    {userPreferences.primaryColor === 'purple' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updatePrimaryColor('orange')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-orange-600 mr-3"></div>
+                    Laranja
+                    {userPreferences.primaryColor === 'orange' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updatePrimaryColor('red')} className="flex items-center">
+                    <div className="w-3 h-3 rounded-full bg-red-600 mr-3"></div>
+                    Vermelho
+                    {userPreferences.primaryColor === 'red' && <span className="ml-auto text-xs">✓</span>}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
