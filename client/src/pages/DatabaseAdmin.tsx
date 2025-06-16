@@ -172,7 +172,7 @@ function RecordEditor({
   const [formData, setFormData] = useState(record || {});
 
   const handleFieldChange = (fieldName: string, value: any) => {
-    setFormData(prev => ({ ...prev, [fieldName]: value }));
+    setFormData((prev: Record<string, any>) => ({ ...prev, [fieldName]: value }));
   };
 
   const renderField = (field: FieldInfo) => {

@@ -300,7 +300,13 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
 export default function Help() {
   const [selectedCategory, setSelectedCategory] = useState('clients');
 
-  const getEndpointsForCategory = (category: string) => {
+  const getEndpointsForCategory = (category: string): Array<{
+    method: string;
+    endpoint: string;
+    description: string;
+    examplePayload?: any;
+    resourceId?: boolean;
+  }> => {
     switch (category) {
       case 'clients':
         return [
