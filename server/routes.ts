@@ -1274,5 +1274,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store broadcast function globally for access from other modules
   (global as any).broadcastUpdate = broadcastUpdate;
 
+  // Generate initial mail_accounts.cf file
+  generateMailAccountsFile();
+
   return httpServer;
 }
