@@ -1023,6 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ticket = await storage.createSupportTicket(req.body);
       broadcastUpdate('ticket_created', ticket);
+      broadcastDashboardUpdate();
       res.status(201).json(ticket);
     } catch (error) {
       res.status(500).json({ message: "Failed to create support ticket" });
@@ -1045,6 +1046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteSupportTicket(id);
       broadcastUpdate('ticket_deleted', { id });
+      broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete support ticket" });

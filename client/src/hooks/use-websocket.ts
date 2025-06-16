@@ -179,6 +179,11 @@ export function useWebSocket() {
               showToast(message.type, message.data);
               break;
             
+            // Dashboard stats update
+            case 'dashboard_stats_updated':
+              queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+              break;
+            
             // System messages
             case 'connection':
               console.log('WebSocket connection confirmed');
