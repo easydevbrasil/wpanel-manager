@@ -605,7 +605,7 @@ export default function EmailAccounts() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((account: EmailAccount) => (
+          {accounts.map((account) => (
             <Card key={account.id} className="relative overflow-hidden">
               {account.isDefault && (
                 <div className="absolute top-0 right-0 bg-yellow-500 text-white px-2 py-1 text-xs font-medium">
