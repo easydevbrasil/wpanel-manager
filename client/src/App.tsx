@@ -18,6 +18,7 @@ import EmailAccounts from "@/pages/EmailAccounts";
 import DatabaseAdmin from "@/pages/DatabaseAdmin";
 import UserPermissions from "@/pages/UserPermissions";
 import UserProfile from "@/pages/UserProfile";
+import DockerContainers from "@/pages/DockerContainers";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -52,6 +53,7 @@ function AuthenticatedRouter() {
         <Route path="/database-admin" component={DatabaseAdmin} />
         <Route path="/user-permissions" component={UserPermissions} />
         <Route path="/user-profile" component={UserProfile} />
+        <Route path="/docker-containers" component={DockerContainers} />
         <Route path="/help" component={Help} />
         <Route component={NotFound} />
       </Switch>
