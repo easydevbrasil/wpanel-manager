@@ -12,9 +12,16 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const sessionToken = localStorage.getItem("sessionToken");
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  
+  if (sessionToken) {
+    headers["session-token"] = sessionToken;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });

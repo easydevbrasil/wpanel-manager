@@ -528,7 +528,7 @@ export class DatabaseStorage implements IStorage {
           id: user.id,
           username: user.username,
           name: user.name,
-          email: user.email || `${user.username}@sistema.com`,
+          email: `${user.username}@sistema.com`,
           role: user.role,
           avatar: user.avatar
         },
@@ -540,7 +540,7 @@ export class DatabaseStorage implements IStorage {
           id: user.id,
           username: user.username,
           name: user.name,
-          email: user.email || `${user.username}@sistema.com`,
+          email: `${user.username}@sistema.com`,
           role: user.role,
           avatar: user.avatar
         },
@@ -554,8 +554,8 @@ export class DatabaseStorage implements IStorage {
 
   async validateSession(sessionToken: string): Promise<{ user: any } | null> {
     try {
-      global.userSessions = global.userSessions || {};
-      const session = global.userSessions[sessionToken];
+      (global as any).userSessions = (global as any).userSessions || {};
+      const session = (global as any).userSessions[sessionToken];
 
       if (!session) {
         return null;
@@ -563,7 +563,7 @@ export class DatabaseStorage implements IStorage {
 
       // Check if session is expired
       if (Date.now() > session.expiresAt) {
-        delete global.userSessions[sessionToken];
+        delete (global as any).userSessions[sessionToken];
         return null;
       }
 
@@ -578,8 +578,8 @@ export class DatabaseStorage implements IStorage {
 
   async invalidateSession(sessionToken: string): Promise<void> {
     try {
-      global.userSessions = global.userSessions || {};
-      delete global.userSessions[sessionToken];
+      (global as any).userSessions = (global as any).userSessions || {};
+      delete (global as any).userSessions[sessionToken];
     } catch (error) {
       console.error('Session invalidation error:', error);
     }
