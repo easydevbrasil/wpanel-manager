@@ -452,7 +452,7 @@ export default function Help() {
                 endpoint={endpoint.endpoint}
                 description={endpoint.description}
                 examplePayload={endpoint.examplePayload}
-                resourceId={endpoint.resourceId}
+                resourceId={endpoint.resourceId || false}
               />
             ))}
           </div>
