@@ -39,6 +39,7 @@ import { SiWhatsapp, SiTelegram } from "react-icons/si";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/components/ThemeProvider";
+import { useAuth } from "@/hooks/useAuth";
 import type { User, DashboardStats, CartItem, Notification, Email } from "@shared/schema";
 
 // Helper function to get service icon
@@ -68,11 +69,8 @@ interface HeaderProps {
 export function Header({ onToggleSidebar }: HeaderProps) {
   const queryClient = useQueryClient();
   const { theme, setTheme, actualTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  const { data: user } = useQuery<User>({
-    queryKey: ["/api/user"],
-  });
 
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -95,11 +93,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   // Cart mutations
   const updateCartQuantity = useMutation({
     mutationFn: ({ id, quantity }: { id: number; quantity: number }) =>
-      apiRequest(`/api/cart/${id}/quantity`, {
-        method: "PATCH",
-        body: JSON.stringify({ quantity }),
-        headers: { "Content-Type": "application/json" },
-      }),
+      apiRequest("PATCH", `/api/cart/${id}/quantity`, { quantity }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -107,7 +101,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   });
 
   const deleteCartItem = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/cart/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/cart/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -115,7 +109,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   });
 
   const clearCart = useMutation({
-    mutationFn: () => apiRequest("/api/cart", { method: "DELETE" }),
+    mutationFn: () => apiRequest("DELETE", "/api/cart"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -124,7 +118,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
   // Notification mutations
   const markNotificationRead = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/notifications/${id}/read`, { method: "PATCH" }),
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/notifications/${id}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -132,7 +126,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   });
 
   const deleteNotification = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/notifications/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/notifications/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -140,7 +134,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   });
 
   const clearNotifications = useMutation({
-    mutationFn: () => apiRequest("/api/notifications", { method: "DELETE" }),
+    mutationFn: () => apiRequest("DELETE", "/api/notifications"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -149,7 +143,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
   // Email mutations
   const markEmailRead = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/emails/${id}/read`, { method: "PATCH" }),
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/emails/${id}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -157,7 +151,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   });
 
   const deleteEmail = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/emails/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/emails/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -165,7 +159,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   });
 
   const clearEmails = useMutation({
-    mutationFn: () => apiRequest("/api/emails", { method: "DELETE" }),
+    mutationFn: () => apiRequest("DELETE", "/api/emails"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
