@@ -1107,19 +1107,39 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('product.created')}
+                            onChange={() => handleEventToggle('product.created')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('product.updated')}
+                            onChange={() => handleEventToggle('product.updated')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.updated</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('product.deleted')}
+                            onChange={() => handleEventToggle('product.deleted')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.deleted</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('product.stock_low')}
+                            onChange={() => handleEventToggle('product.stock_low')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.stock_low</code>
                         </label>
                       </div>
@@ -1133,19 +1153,39 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('sale.created')}
+                            onChange={() => handleEventToggle('sale.created')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('sale.completed')}
+                            onChange={() => handleEventToggle('sale.completed')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.completed</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('sale.cancelled')}
+                            onChange={() => handleEventToggle('sale.cancelled')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.cancelled</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('sale.refunded')}
+                            onChange={() => handleEventToggle('sale.refunded')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.refunded</code>
                         </label>
                       </div>
@@ -1159,15 +1199,30 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('ticket.created')}
+                            onChange={() => handleEventToggle('ticket.created')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('ticket.updated')}
+                            onChange={() => handleEventToggle('ticket.updated')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.updated</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('ticket.resolved')}
+                            onChange={() => handleEventToggle('ticket.resolved')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.resolved</code>
                         </label>
                       </div>
@@ -1181,15 +1236,30 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('user.login')}
+                            onChange={() => handleEventToggle('user.login')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">user.login</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('user.logout')}
+                            onChange={() => handleEventToggle('user.logout')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">user.logout</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('backup.completed')}
+                            onChange={() => handleEventToggle('backup.completed')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">backup.completed</code>
                         </label>
                       </div>
@@ -1203,15 +1273,30 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('container.started')}
+                            onChange={() => handleEventToggle('container.started')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.started</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('container.stopped')}
+                            onChange={() => handleEventToggle('container.stopped')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.stopped</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('container.error')}
+                            onChange={() => handleEventToggle('container.error')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.error</code>
                         </label>
                       </div>
