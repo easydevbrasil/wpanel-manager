@@ -18,7 +18,14 @@ import {
   Check,
   X,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Code,
+  Play,
+  Copy,
+  Database,
+  Server,
+  Zap,
+  Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ToastSounds } from '@/utils/toast-sounds';
@@ -33,6 +40,45 @@ export default function Help() {
       description: description,
       variant: type === 'error' ? 'destructive' : 'default',
     });
+  };
+
+  const testApiEndpoint = async (method: string, endpoint: string, body?: any) => {
+    try {
+      const options: RequestInit = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      if (body && (method === 'POST' || method === 'PUT')) {
+        options.body = JSON.stringify(body);
+      }
+
+      const response = await fetch(endpoint, options);
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "✅ API Test Success",
+          description: `${method} ${endpoint} - Status: ${response.status}`,
+          variant: "default",
+        });
+        console.log('API Response:', data);
+      } else {
+        toast({
+          title: "❌ API Test Failed", 
+          description: `${method} ${endpoint} - Status: ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ API Test Error",
+        description: `Failed to test ${method} ${endpoint}`,
+        variant: "destructive",
+      });
+    }
   };
 
   const features = [
@@ -183,6 +229,86 @@ export default function Help() {
     }
   ];
 
+  const apiEndpoints = [
+    {
+      category: 'Autenticação & Sistema',
+      endpoints: [
+        { method: 'GET', path: '/api/user', description: 'Obter dados do usuário atual', testBody: null },
+        { method: 'GET', path: '/api/navigation', description: 'Listar itens de navegação', testBody: null },
+        { method: 'GET', path: '/api/dashboard/stats', description: 'Estatísticas do dashboard', testBody: null },
+      ]
+    },
+    {
+      category: 'Clientes',
+      endpoints: [
+        { method: 'GET', path: '/api/clients', description: 'Listar todos os clientes', testBody: null },
+        { method: 'POST', path: '/api/clients', description: 'Criar novo cliente', 
+          testBody: { name: 'Teste API', email: 'teste@api.com', phone: '(11) 99999-9999', company: 'API Test Corp', position: 'Testador', status: 'active' } },
+        { method: 'PUT', path: '/api/clients/1', description: 'Atualizar cliente específico', 
+          testBody: { name: 'Cliente Atualizado', status: 'inactive' } },
+        { method: 'DELETE', path: '/api/clients/1', description: 'Excluir cliente específico', testBody: null },
+      ]
+    },
+    {
+      category: 'Produtos',
+      endpoints: [
+        { method: 'GET', path: '/api/products', description: 'Listar todos os produtos', testBody: null },
+        { method: 'GET', path: '/api/categories', description: 'Listar categorias de produtos', testBody: null },
+        { method: 'GET', path: '/api/manufacturers', description: 'Listar fabricantes', testBody: null },
+        { method: 'GET', path: '/api/product-groups', description: 'Listar grupos de produtos', testBody: null },
+        { method: 'POST', path: '/api/products', description: 'Criar novo produto', 
+          testBody: { name: 'Produto API Test', sku: 'API-001', description: 'Produto criado via API', price: '199.99', categoryId: 1, manufacturerId: 1, productGroupId: 1, status: 'active' } },
+        { method: 'PUT', path: '/api/products/1', description: 'Atualizar produto específico', 
+          testBody: { name: 'Produto Atualizado', price: '249.99' } },
+        { method: 'DELETE', path: '/api/products/1', description: 'Excluir produto específico', testBody: null },
+      ]
+    },
+    {
+      category: 'Fornecedores',
+      endpoints: [
+        { method: 'GET', path: '/api/suppliers', description: 'Listar todos os fornecedores', testBody: null },
+        { method: 'POST', path: '/api/suppliers', description: 'Criar novo fornecedor', 
+          testBody: { name: 'Fornecedor API', email: 'fornecedor@api.com', phone: '(11) 88888-8888', address: 'Rua API, 123', city: 'São Paulo', state: 'SP', country: 'Brasil', status: 'active' } },
+        { method: 'PUT', path: '/api/suppliers/1', description: 'Atualizar fornecedor específico', 
+          testBody: { name: 'Fornecedor Atualizado', status: 'inactive' } },
+        { method: 'DELETE', path: '/api/suppliers/1', description: 'Excluir fornecedor específico', testBody: null },
+      ]
+    },
+    {
+      category: 'Vendas',
+      endpoints: [
+        { method: 'GET', path: '/api/sales', description: 'Listar todas as vendas', testBody: null },
+        { method: 'GET', path: '/api/sales/1/items', description: 'Listar itens de uma venda específica', testBody: null },
+        { method: 'POST', path: '/api/sales', description: 'Criar nova venda', 
+          testBody: { saleNumber: 'API-001', clientId: 1, userId: 1, totalAmount: '299.99', paymentMethod: 'credit_card', paymentStatus: 'paid', saleStatus: 'completed', deliveryMethod: 'pickup', deliveryStatus: 'delivered' } },
+        { method: 'PUT', path: '/api/sales/1', description: 'Atualizar venda específica', 
+          testBody: { paymentStatus: 'paid', saleStatus: 'completed' } },
+        { method: 'DELETE', path: '/api/sales/1', description: 'Excluir venda específica', testBody: null },
+      ]
+    },
+    {
+      category: 'Suporte',
+      endpoints: [
+        { method: 'GET', path: '/api/support/tickets', description: 'Listar todos os tickets', testBody: null },
+        { method: 'GET', path: '/api/support/categories', description: 'Listar categorias de suporte', testBody: null },
+        { method: 'GET', path: '/api/support/tickets/1/messages', description: 'Listar mensagens de um ticket', testBody: null },
+        { method: 'POST', path: '/api/support/tickets', description: 'Criar novo ticket', 
+          testBody: { ticketNumber: 'API-TCK-001', clientId: 1, userId: 1, title: 'Ticket via API', description: 'Teste de criação via API', priority: 'medium', status: 'open', categoryId: 1 } },
+        { method: 'PUT', path: '/api/support/tickets/1', description: 'Atualizar ticket específico', 
+          testBody: { status: 'in_progress', priority: 'high' } },
+        { method: 'DELETE', path: '/api/support/tickets/1', description: 'Excluir ticket específico', testBody: null },
+      ]
+    },
+    {
+      category: 'Interface',
+      endpoints: [
+        { method: 'GET', path: '/api/cart', description: 'Obter itens do carrinho', testBody: null },
+        { method: 'GET', path: '/api/notifications', description: 'Listar notificações', testBody: null },
+        { method: 'GET', path: '/api/emails', description: 'Listar emails', testBody: null },
+      ]
+    }
+  ];
+
   const toastExamples = [
     {
       type: 'success' as const,
@@ -241,9 +367,10 @@ export default function Help() {
       </div>
 
       <Tabs defaultValue="features" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="features">Funcionalidades</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
+          <TabsTrigger value="api">API Reference</TabsTrigger>
         </TabsList>
 
         <TabsContent value="features" className="space-y-6">
@@ -424,6 +551,203 @@ export default function Help() {
                     <div>
                       <p className="font-medium">Cache Atualizado</p>
                       <p className="text-muted-foreground">Dados são automaticamente atualizados em todas as páginas abertas</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="api" className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Code className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-2xl font-bold">API Reference</h2>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              Documentação completa das APIs do sistema com funcionalidade de teste interativo.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="col-span-full">
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <Server className="w-5 h-5 text-green-600" />
+                  <CardTitle>Informações do Servidor</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Base URL:</span>
+                    <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                      {window.location.origin}
+                    </code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Content-Type:</span>
+                    <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                      application/json
+                    </code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">WebSocket:</span>
+                    <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                      ws://localhost:5000/ws
+                    </code>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {apiEndpoints.map((category, categoryIndex) => (
+            <div key={categoryIndex} className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Database className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-xl font-semibold">{category.category}</h3>
+              </div>
+              
+              <div className="grid gap-4">
+                {category.endpoints.map((endpoint, endpointIndex) => (
+                  <Card key={endpointIndex} className="border-l-4 border-l-blue-500">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Badge 
+                            variant={endpoint.method === 'GET' ? 'secondary' : 
+                                   endpoint.method === 'POST' ? 'default' : 
+                                   endpoint.method === 'PUT' ? 'outline' : 'destructive'}
+                            className={`font-mono text-xs ${
+                              endpoint.method === 'GET' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                              endpoint.method === 'POST' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
+                              endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                            }`}
+                          >
+                            {endpoint.method}
+                          </Badge>
+                          <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">
+                            {endpoint.path}
+                          </code>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testApiEndpoint(endpoint.method, endpoint.path, endpoint.testBody)}
+                          className="flex items-center space-x-1"
+                        >
+                          <Play className="w-3 h-3" />
+                          <span>Testar</span>
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                        {endpoint.description}
+                      </p>
+                    </CardHeader>
+                    
+                    {endpoint.testBody && (
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Settings className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm font-medium">Exemplo de Payload:</span>
+                          </div>
+                          <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-x-auto">
+                            <pre className="text-xs text-gray-700 dark:text-gray-300">
+                              {JSON.stringify(endpoint.testBody, null, 2)}
+                            </pre>
+                          </div>
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <Zap className="w-5 h-5 text-purple-600" />
+                <CardTitle>Testes de API</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Use os botões "Testar" em cada endpoint para executar requisições em tempo real.
+                  Os resultados aparecerão nas notificações toast e no console do navegador.
+                </p>
+                
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Códigos de Status HTTP:</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span>200 OK</span>
+                        <span className="text-green-600">Sucesso</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>201 Created</span>
+                        <span className="text-green-600">Criado</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>400 Bad Request</span>
+                        <span className="text-red-600">Erro de Validação</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>404 Not Found</span>
+                        <span className="text-red-600">Não Encontrado</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>500 Server Error</span>
+                        <span className="text-red-600">Erro do Servidor</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Funcionalidades de Teste:</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center space-x-1">
+                        <Check className="w-3 h-3 text-green-600" />
+                        <span>Requisições em tempo real</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Check className="w-3 h-3 text-green-600" />
+                        <span>Validação de payloads JSON</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Check className="w-3 h-3 text-green-600" />
+                        <span>Notificações de resultado</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Check className="w-3 h-3 text-green-600" />
+                        <span>Logs detalhados no console</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Check className="w-3 h-3 text-green-600" />
+                        <span>Integração com WebSocket</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+                
+                <div className="bg-blue-50 dark:bg-blue-950 rounded p-3">
+                  <div className="flex items-start space-x-2">
+                    <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-800 dark:text-blue-200">Dica para Desenvolvedores</p>
+                      <p className="text-blue-700 dark:text-blue-300 mt-1">
+                        Abra o Console do Navegador (F12) para ver as respostas detalhadas das APIs.
+                        Todas as operações CRUD disparam atualizações via WebSocket em tempo real.
+                      </p>
                     </div>
                   </div>
                 </div>
