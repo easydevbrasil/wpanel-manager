@@ -36,6 +36,9 @@ import {
   Truck,
   ShoppingCart,
   MessageSquare,
+  HelpCircle,
+  Mail,
+  Headphones,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery } from "@tanstack/react-query";
@@ -59,6 +62,9 @@ const iconMap = {
   Sliders,
   Shield,
   Bell,
+  HelpCircle,
+  Mail,
+  Headphones,
 };
 
 interface SidebarProps {
