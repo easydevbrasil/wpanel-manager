@@ -165,6 +165,52 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     await updatePreference('primaryColor', color);
   };
 
+  // Color theme functions
+  const getSidebarColorClasses = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800';
+      case 'green':
+        return 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800';
+      case 'purple':
+        return 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800';
+      case 'red':
+        return 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800';
+      default:
+        return 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700';
+    }
+  };
+
+  const getSidebarItemClasses = (color: string, isActive: boolean) => {
+    if (isActive) {
+      switch (color) {
+        case 'blue':
+          return 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100';
+        case 'green':
+          return 'bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-100';
+        case 'purple':
+          return 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100';
+        case 'red':
+          return 'bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-100';
+        default:
+          return 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white';
+      }
+    }
+    
+    switch (color) {
+      case 'blue':
+        return 'text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900';
+      case 'green':
+        return 'text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900';
+      case 'purple':
+        return 'text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900';
+      case 'red':
+        return 'text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900';
+      default:
+        return 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800';
+    }
+  };
+
   // Group items by parent
   const parentItems = navigationItems.filter(item => !item.parentId);
   const childItems = navigationItems.filter(item => item.parentId);
@@ -200,7 +246,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <>
       <aside
         className={cn(
-          "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col",
+          "border-r transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col",
+          getSidebarColorClasses(userPreferences.sidebarColor),
           collapsed ? "w-24" : "w-64"
         )}
       >
@@ -239,7 +286,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-between text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
+                          "w-full justify-between",
+                          getSidebarItemClasses(userPreferences.sidebarColor, false),
                           collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
                         )}
                       >
@@ -264,8 +312,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         <Link key={child.id} href={child.href || "#"}>
                           <div
                             className={cn(
-                              "block ml-8 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer",
-                              isActive(child.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                              "block ml-8 px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                              getSidebarItemClasses(userPreferences.sidebarColor, isActive(child.href))
                             )}
                           >
                             {child.label}
@@ -280,8 +328,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Link key={item.id} href={item.href || "#"}>
                     <div
                       className={cn(
-                        "flex items-center text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer",
-                        isActive(item.href) && "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white",
+                        "flex items-center rounded-lg transition-colors cursor-pointer",
+                        getSidebarItemClasses(userPreferences.sidebarColor, isActive(item.href)),
                         collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
                       )}
                     >

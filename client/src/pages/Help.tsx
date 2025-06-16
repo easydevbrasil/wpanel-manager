@@ -354,14 +354,14 @@ export default function Help() {
       if (!hmacHeaderExists) {
         setCustomHeaders(prev => [...prev, { 
           key: 'X-Hub-Signature', 
-          value: `sha256=${webhookConfig.secretKey}`, 
+          value: webhookConfig.secretKey, 
           id: Date.now() 
         }]);
       } else {
         // Update existing HMAC header with new secret key
         setCustomHeaders(prev => prev.map(header => 
           header.key === 'X-Hub-Signature' 
-            ? { ...header, value: `sha256=${webhookConfig.secretKey}` }
+            ? { ...header, value: webhookConfig.secretKey }
             : header
         ));
       }

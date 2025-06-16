@@ -232,7 +232,7 @@ Changelog:
 - June 16, 2025. Added user_preferences table with fields for sidebar state, colors (sidebar, header, primary), and auto-collapse settings
 - June 16, 2025. Built interactive color selection submenus with visual color indicators and checkmarks for active selections
 - June 16, 2025. Integrated automatic preference saving to user account with toast notifications and WebSocket synchronization
-- June 16, 2025. Enhanced webhook system to automatically populate X-Hub-Signature header with generated secret key (sha256=key format)
+- June 16, 2025. Enhanced webhook system to automatically populate X-Hub-Signature header with generated secret key (without sha256= prefix)
 ```
 
 ## User Preferences
