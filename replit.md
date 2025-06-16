@@ -191,6 +191,11 @@ Changelog:
 - June 16, 2025. Enhanced permissions interface with categorized display showing specific CRUD operations for each module
 - June 16, 2025. Added detailed permissions for sub-modules including categories, manufacturers, product groups, sale items, support tickets, and system functionalities
 - June 16, 2025. Integrated "Perfil" link in user dropdown menu in header for easy access to profile management
+- June 16, 2025. Fixed API request parameter ordering issue in permission mutations (PUT method first, URL second, data third)
+- June 16, 2025. Made user profile page fully responsive with adaptive layout for mobile (1 column), tablet (2 columns), and desktop (4 columns)
+- June 16, 2025. Enhanced tab navigation with responsive text labels (abbreviated on mobile, full on desktop)
+- June 16, 2025. Optimized permission badges and grid layout for mobile devices with smaller text and spacing
+- June 16, 2025. Verified clickable permission badges working correctly with automatic saving and real-time updates
 ```
 
 ## User Preferences

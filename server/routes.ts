@@ -2,6 +2,29 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as path from "path";
+
+// Function to generate mail_accounts.cf file
+async function generateMailAccountsFile() {
+  try {
+    const accounts = await storage.getEmailAccounts();
+    const lines = accounts.map(account => {
+      // Create SHA512 hash of the password
+      const hash = crypto.createHash('sha512').update(account.password || '').digest('hex');
+      return `${account.email}|{SHA512-CRYPT}${hash}`;
+    });
+    
+    const filePath = path.join(process.cwd(), 'mail_accounts.cf');
+    const content = lines.join('\n') + '\n';
+    
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    console.log(`Generated mail_accounts.cf with ${accounts.length} accounts`);
+  } catch (error) {
+    console.error('Error generating mail_accounts.cf:', error);
+  }
+}
 
 // Authentication middleware
 const authenticateToken = async (req: any, res: any, next: any) => {
@@ -824,6 +847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/email-accounts", async (req, res) => {
     try {
       const account = await storage.createEmailAccount(req.body);
+      await generateMailAccountsFile();
       broadcastUpdate('email_account_created', account);
       res.status(201).json(account);
     } catch (error) {
@@ -835,6 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const account = await storage.updateEmailAccount(id, req.body);
+      await generateMailAccountsFile();
       broadcastUpdate('email_account_updated', account);
       res.json(account);
     } catch (error) {
@@ -846,6 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteEmailAccount(id);
+      await generateMailAccountsFile();
       broadcastUpdate('email_account_deleted', { id });
       res.status(204).send();
     } catch (error) {
@@ -857,6 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const account = await storage.setDefaultEmailAccount(id);
+      await generateMailAccountsFile();
       broadcastUpdate('email_account_default_updated', account);
       res.json(account);
     } catch (error) {
