@@ -408,206 +408,298 @@ export default function DockerContainers() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Container</FormLabel>
-                        <FormControl>
-                          <Input placeholder="nginx-web-server" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="image"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Imagem Docker</FormLabel>
-                        <FormControl>
-                          <Input placeholder="nginx" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="info">Informações</TabsTrigger>
+                    <TabsTrigger value="variables">Variáveis</TabsTrigger>
+                    <TabsTrigger value="volumes">Volumes</TabsTrigger>
+                  </TabsList>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="tag"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tag</FormLabel>
-                        <FormControl>
-                          <Input placeholder="latest" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="networkMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Modo de Rede</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  {/* Informações Tab */}
+                  <TabsContent value="info" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nome do Container</FormLabel>
+                            <FormControl>
+                              <Input placeholder="nginx-web-server" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="image"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Imagem Docker</FormLabel>
+                            <FormControl>
+                              <Input placeholder="nginx" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="tag"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tag</FormLabel>
+                            <FormControl>
+                              <Input placeholder="latest" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="networkMode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Modo de Rede</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o modo de rede" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="bridge">Bridge</SelectItem>
+                                <SelectItem value="host">Host</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="restartPolicy"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Política de Restart</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="no">No</SelectItem>
+                                <SelectItem value="always">Always</SelectItem>
+                                <SelectItem value="unless-stopped">Unless Stopped</SelectItem>
+                                <SelectItem value="on-failure">On Failure</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="cpuLimit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Limite de CPU</FormLabel>
+                            <FormControl>
+                              <Input placeholder="0.5" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="memoryLimit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Limite de Memória</FormLabel>
+                            <FormControl>
+                              <Input placeholder="512m" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="command"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Comando (Opcional)</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o modo de rede" />
-                            </SelectTrigger>
+                            <Input placeholder="npm start" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="bridge">Bridge</SelectItem>
-                            <SelectItem value="host">Host</SelectItem>
-                            <SelectItem value="none">None</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="restartPolicy"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Política de Restart</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descrição</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
+                            <Textarea 
+                              placeholder="Descreva a finalidade deste container..."
+                              {...field}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="no">No</SelectItem>
-                            <SelectItem value="always">Always</SelectItem>
-                            <SelectItem value="unless-stopped">Unless Stopped</SelectItem>
-                            <SelectItem value="on-failure">On Failure</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="cpuLimit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Limite de CPU</FormLabel>
-                        <FormControl>
-                          <Input placeholder="0.5" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="memoryLimit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Limite de Memória</FormLabel>
-                        <FormControl>
-                          <Input placeholder="512m" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </TabsContent>
 
-                <FormField
-                  control={form.control}
-                  name="command"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Comando (Opcional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="npm start" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Descreva a finalidade deste container..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Environment Variables Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Variáveis de Ambiente</FormLabel>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addEnvironmentVar}
-                      className="flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Adicionar
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {environmentVars.map((envVar, index) => (
-                      <div key={index} className="flex gap-2 items-center">
-                        <Input
-                          placeholder="CHAVE"
-                          value={envVar.key}
-                          onChange={(e) => updateEnvironmentVar(index, 'key', e.target.value)}
-                          className="flex-1"
-                        />
-                        <span className="text-gray-400">=</span>
-                        <Input
-                          placeholder="valor"
-                          value={envVar.value}
-                          onChange={(e) => updateEnvironmentVar(index, 'value', e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeEnvironmentVar(index)}
-                          className="p-2 text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
+                  {/* Variáveis Tab */}
+                  <TabsContent value="variables" className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium">Variáveis de Ambiente</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Configure as variáveis de ambiente do container
+                        </p>
                       </div>
-                    ))}
-                    {environmentVars.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Nenhuma variável de ambiente configurada
-                      </p>
-                    )}
-                  </div>
-                </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addEnvironmentVar}
+                        className="flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Adicionar
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {environmentVars.map((envVar, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <Input
+                            placeholder="CHAVE"
+                            value={envVar.key}
+                            onChange={(e) => updateEnvironmentVar(index, 'key', e.target.value)}
+                            className="flex-1"
+                          />
+                          <span className="text-gray-400">=</span>
+                          <Input
+                            placeholder="valor"
+                            value={envVar.value}
+                            onChange={(e) => updateEnvironmentVar(index, 'value', e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeEnvironmentVar(index)}
+                            className="p-2 text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      {environmentVars.length === 0 && (
+                        <div className="text-center py-8">
+                          <div className="text-gray-400 mb-2">Nenhuma variável configurada</div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addEnvironmentVar}
+                            className="flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Adicionar primeira variável
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  {/* Volumes Tab */}
+                  <TabsContent value="volumes" className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium">Mapeamento de Volumes</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Configure os volumes e bind mounts do container
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addVolumeMapping}
+                        className="flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Adicionar
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {volumeMappings.map((volume, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <Input
+                            placeholder="/caminho/host"
+                            value={volume.host}
+                            onChange={(e) => updateVolumeMapping(index, 'host', e.target.value)}
+                            className="flex-1"
+                          />
+                          <span className="text-gray-400">:</span>
+                          <Input
+                            placeholder="/caminho/container"
+                            value={volume.container}
+                            onChange={(e) => updateVolumeMapping(index, 'container', e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeVolumeMapping(index)}
+                            className="p-2 text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      {volumeMappings.length === 0 && (
+                        <div className="text-center py-8">
+                          <div className="text-gray-400 mb-2">Nenhum volume configurado</div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addVolumeMapping}
+                            className="flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Adicionar primeiro volume
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
 
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
