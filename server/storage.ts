@@ -214,9 +214,25 @@ export class DatabaseStorage implements IStorage {
         console.log("Database initialized with sample data");
       } else {
         console.log("Database already populated");
+        // Initialize permissions for existing users if not present
+        await this.initializePermissions();
       }
     } catch (error) {
       console.log("Database connection pending...");
+    }
+  }
+
+  private async initializePermissions() {
+    try {
+      // Check if permissions are already initialized
+      if (!(global as any).userPermissions || (global as any).userPermissions.length === 0) {
+        const [adminUser] = await db.select().from(users).where(eq(users.username, "admin"));
+        if (adminUser) {
+          this.createDefaultPermissionsForUser(adminUser);
+        }
+      }
+    } catch (error) {
+      console.log("Error initializing permissions:", error);
     }
   }
 
@@ -519,6 +535,11 @@ export class DatabaseStorage implements IStorage {
 
     await db.insert(navigationItems).values(navItems);
 
+    // Create default permissions for the admin user
+    this.createDefaultPermissionsForUser(user);
+  }
+
+  private createDefaultPermissionsForUser(user: any) {
     // Create default user permissions for admin user based on CRUD operations per page
     const permissionsData = [
       // Dashboard - Visualização de estatísticas e métricas
