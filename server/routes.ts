@@ -699,6 +699,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Email Accounts routes
+  app.get("/api/email-accounts", async (req, res) => {
+    try {
+      const accounts = await storage.getEmailAccounts();
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get email accounts" });
+    }
+  });
+
+  app.get("/api/email-accounts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const account = await storage.getEmailAccount(id);
+      if (!account) {
+        return res.status(404).json({ message: "Email account not found" });
+      }
+      res.json(account);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get email account" });
+    }
+  });
+
+  app.post("/api/email-accounts", async (req, res) => {
+    try {
+      const account = await storage.createEmailAccount(req.body);
+      broadcastUpdate('email_account_created', account);
+      res.status(201).json(account);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create email account" });
+    }
+  });
+
+  app.put("/api/email-accounts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const account = await storage.updateEmailAccount(id, req.body);
+      broadcastUpdate('email_account_updated', account);
+      res.json(account);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update email account" });
+    }
+  });
+
+  app.delete("/api/email-accounts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteEmailAccount(id);
+      broadcastUpdate('email_account_deleted', { id });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete email account" });
+    }
+  });
+
+  app.post("/api/email-accounts/:id/set-default", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const account = await storage.setDefaultEmailAccount(id);
+      broadcastUpdate('email_account_default_updated', account);
+      res.json(account);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to set default email account" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket Server for real-time updates

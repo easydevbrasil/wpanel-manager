@@ -52,7 +52,10 @@ import {
   type SupportCategory,
   type InsertSupportCategory,
   type ChatwootSettings,
-  type InsertChatwootSettings
+  type InsertChatwootSettings,
+  emailAccounts,
+  type EmailAccount,
+  type InsertEmailAccount
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
