@@ -632,8 +632,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                <UserIcon className="w-4 h-4 mr-3" />
-                Perfil
+                <Link href="/user-profile" className="flex items-center w-full">
+                  <UserIcon className="w-4 h-4 mr-3" />
+                  Perfil
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Settings className="w-4 h-4 mr-3" />
