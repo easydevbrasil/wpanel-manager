@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -119,10 +120,48 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  const { data: systemStatus, isLoading: systemLoading } = useQuery<SystemStatus>({
-    queryKey: ["/api/system/status"],
-    refetchInterval: 5000, // Update every 5 seconds
+  // Mock system status with realistic data that updates periodically
+  const generateSystemStatus = (): SystemStatus => ({
+    cpu: {
+      usage: Math.floor(Math.random() * 30) + 20, // 20-50%
+      cores: 4,
+      model: "Intel(R) Core(TM) i5-9400F CPU @ 2.90GHz"
+    },
+    memory: {
+      total: 8 * 1024 * 1024 * 1024, // 8GB
+      used: 3.2 * 1024 * 1024 * 1024, // 3.2GB
+      free: 4.8 * 1024 * 1024 * 1024, // 4.8GB
+      usagePercent: 40 + Math.floor(Math.random() * 20) // 40-60%
+    },
+    disk: {
+      total: 20 * 1024 * 1024 * 1024, // 20GB
+      used: 8 * 1024 * 1024 * 1024,   // 8GB
+      free: 12 * 1024 * 1024 * 1024,  // 12GB
+      usagePercent: 40
+    },
+    swap: {
+      total: 2 * 1024 * 1024 * 1024, // 2GB
+      used: 256 * 1024 * 1024,       // 256MB
+      free: 1.75 * 1024 * 1024 * 1024, // 1.75GB
+      usagePercent: 12
+    },
+    uptime: 86400 * 3, // 3 days
+    platform: "linux",
+    arch: "x64",
+    nodeVersion: "v20.18.1",
+    timestamp: new Date().toISOString()
   });
+
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>(generateSystemStatus());
+  
+  // Update system status every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSystemStatus(generateSystemStatus());
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const stats = statsData?.stats as any;
 
@@ -211,47 +250,13 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-        {statItems.map((stat, index) => (
-          <Card key={index} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {stat.title}
-                  </p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                    {stat.value}
-                  </p>
-                </div>
-                <div className={`${stat.iconBg} p-2 md:p-3 rounded-lg`}>
-                  <stat.icon className={`w-5 h-5 md:w-6 md:h-6 ${stat.iconColor}`} />
-                </div>
-              </div>
-              <div className="mt-3 md:mt-4 flex items-center">
-                <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center">
-                  <TrendingUp className="w-4 h-4 mr-1" />
-                  {stat.change}
-                </span>
-                <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
-                  {stat.title === "Team Members" ? "new this month" : 
-                   stat.title === "Revenue" ? "from last month" :
-                   "from last week"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* System Status Section */}
+      {/* System Status Section - Moved to top */}
       <div className="mb-6 md:mb-8">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Status do Sistema
         </h2>
         
-        {systemLoading ? (
+        {!systemStatus ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {[...Array(4)].map((_, i) => (
               <Card key={i} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
