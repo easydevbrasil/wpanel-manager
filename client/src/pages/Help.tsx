@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import {
   Users,
   Package,
@@ -303,6 +306,95 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
 export default function Help() {
   const [selectedCategory, setSelectedCategory] = useState('clients');
   const [activeTab, setActiveTab] = useState('documentation');
+  const [webhookConfig, setWebhookConfig] = useState({
+    url: "https://n8n.easydev.com.br/webhook-test/f5a0ea69-c6c8-4b93-92b2-e26a84f33229",
+    method: "POST",
+    format: "json",
+    headers: '{"Content-Type": "application/json", "Authorization": "Bearer token"}',
+    secretKey: "",
+    events: [] as string[],
+    isActive: true
+  });
+  const [testResult, setTestResult] = useState<any>(null);
+  const { toast } = useToast();
+
+  const handleEventToggle = (eventName: string) => {
+    setWebhookConfig(prev => ({
+      ...prev,
+      events: prev.events.includes(eventName)
+        ? prev.events.filter(e => e !== eventName)
+        : [...prev.events, eventName]
+    }));
+  };
+
+  const testWebhook = async () => {
+    try {
+      const testPayload = {
+        event: "webhook.test",
+        timestamp: new Date().toISOString(),
+        data: {
+          message: "Test webhook from ProjectHub Dashboard",
+          test_id: Date.now()
+        },
+        user: {
+          id: 1,
+          username: "admin"
+        }
+      };
+
+      const response = await fetch(webhookConfig.url, {
+        method: webhookConfig.method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...JSON.parse(webhookConfig.headers || '{}')
+        },
+        body: JSON.stringify(testPayload)
+      });
+
+      const result = {
+        status: response.status,
+        statusText: response.statusText,
+        success: response.ok,
+        timestamp: new Date().toISOString()
+      };
+
+      setTestResult(result);
+      
+      if (response.ok) {
+        toast({
+          title: "✅ Webhook enviado",
+          description: `Teste realizado com sucesso (${response.status})`,
+        });
+      } else {
+        toast({
+          title: "❌ Erro no webhook",
+          description: `Falha no teste (${response.status})`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const result = {
+        status: 'Error',
+        statusText: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
+        timestamp: new Date().toISOString()
+      };
+      setTestResult(result);
+      
+      toast({
+        title: "❌ Erro de conexão",
+        description: "Não foi possível conectar ao webhook",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const saveWebhookConfig = () => {
+    toast({
+      title: "💾 Configuração salva",
+      description: "Webhook configurado com sucesso!",
+    });
+  };
 
   const getEndpointsForCategory = (category: string): Array<{
     method: string;
@@ -801,10 +893,12 @@ export default function Help() {
                       <div className="flex gap-2">
                         <input
                           type="url"
+                          value={webhookConfig.url}
+                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, url: e.target.value }))}
                           placeholder="https://sua-api.com/webhooks/projecthub"
                           className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                         />
-                        <Button className="flex items-center gap-2">
+                        <Button onClick={testWebhook} className="flex items-center gap-2">
                           <Play className="w-4 h-4" />
                           Testar
                         </Button>
@@ -816,7 +910,11 @@ export default function Help() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Método HTTP
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                        <select 
+                          value={webhookConfig.method}
+                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, method: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        >
                           <option value="POST">POST</option>
                           <option value="PUT">PUT</option>
                           <option value="PATCH">PATCH</option>
@@ -827,7 +925,11 @@ export default function Help() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Formato de Dados
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                        <select 
+                          value={webhookConfig.format}
+                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, format: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        >
                           <option value="json">JSON</option>
                           <option value="form">Form Data</option>
                           <option value="xml">XML</option>
@@ -840,6 +942,8 @@ export default function Help() {
                         Headers Personalizados
                       </label>
                       <textarea
+                        value={webhookConfig.headers}
+                        onChange={(e) => setWebhookConfig(prev => ({ ...prev, headers: e.target.value }))}
                         placeholder='{"Authorization": "Bearer sua-chave", "X-Custom-Header": "valor"}'
                         className="w-full h-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm"
                       />
@@ -862,15 +966,30 @@ export default function Help() {
                       </h4>
                       <div className="space-y-1 text-sm">
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('client.created')}
+                            onChange={() => handleEventToggle('client.created')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.created</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('client.updated')}
+                            onChange={() => handleEventToggle('client.updated')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.updated</code>
                         </label>
                         <label className="flex items-center gap-2">
-                          <input type="checkbox" className="rounded" />
+                          <input 
+                            type="checkbox" 
+                            checked={webhookConfig.events.includes('client.deleted')}
+                            onChange={() => handleEventToggle('client.deleted')}
+                            className="rounded" 
+                          />
                           <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.deleted</code>
                         </label>
                       </div>
