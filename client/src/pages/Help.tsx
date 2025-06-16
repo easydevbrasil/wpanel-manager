@@ -1193,6 +1193,8 @@ export default function Help() {
                         </label>
                         <input
                           type="password"
+                          value={webhookConfig.secretKey}
+                          onChange={(e) => setWebhookConfig(prev => ({ ...prev, secretKey: e.target.value }))}
                           placeholder="sua-chave-secreta-hmac"
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                         />
@@ -1212,13 +1214,19 @@ export default function Help() {
                       Teste de Webhook
                     </h3>
                     <div className="space-y-3">
-                      <Button className="w-full" variant="outline">
+                      <Button onClick={testWebhook} className="w-full" variant="outline">
                         <Play className="w-4 h-4 mr-2" />
                         Enviar Evento de Teste
                       </Button>
                       <div className="text-sm">
                         <p className="font-medium mb-1">Último teste:</p>
-                        <p className="text-gray-600 dark:text-gray-400">✅ 200 OK - 16/06 18:00</p>
+                        {testResult ? (
+                          <p className={`${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                            {testResult.success ? '✅' : '❌'} {testResult.status} {testResult.statusText} - {new Date(testResult.timestamp).toLocaleString('pt-BR')}
+                          </p>
+                        ) : (
+                          <p className="text-gray-600 dark:text-gray-400">Nenhum teste realizado</p>
+                        )}
                       </div>
                       <div className="text-sm">
                         <p className="font-medium mb-1">Estatísticas (24h):</p>
@@ -1235,10 +1243,18 @@ export default function Help() {
 
                 {/* Save Configuration */}
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => setWebhookConfig({
+                    url: "https://n8n.easydev.com.br/webhook-test/f5a0ea69-c6c8-4b93-92b2-e26a84f33229",
+                    method: "POST",
+                    format: "json",
+                    headers: '{"Content-Type": "application/json", "Authorization": "Bearer token"}',
+                    secretKey: "",
+                    events: [],
+                    isActive: true
+                  })}>
                     Cancelar
                   </Button>
-                  <Button>
+                  <Button onClick={saveWebhookConfig}>
                     Salvar Configuração
                   </Button>
                 </div>
