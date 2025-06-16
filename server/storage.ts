@@ -58,7 +58,10 @@ import {
   type InsertEmailAccount,
   dockerContainers,
   type DockerContainer,
-  type InsertDockerContainer
+  type InsertDockerContainer,
+  webhookConfigs,
+  type WebhookConfig,
+  type InsertWebhookConfig
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -209,6 +212,14 @@ export interface IStorage {
   updateDockerContainer(id: number, container: Partial<InsertDockerContainer>): Promise<DockerContainer>;
   deleteDockerContainer(id: number): Promise<void>;
   updateContainerStatus(id: number, status: string): Promise<DockerContainer>;
+  
+  // Webhooks
+  getWebhookConfigs(): Promise<WebhookConfig[]>;
+  getWebhookConfig(id: number): Promise<WebhookConfig | undefined>;
+  createWebhookConfig(config: InsertWebhookConfig): Promise<WebhookConfig>;
+  updateWebhookConfig(id: number, config: Partial<InsertWebhookConfig>): Promise<WebhookConfig>;
+  deleteWebhookConfig(id: number): Promise<void>;
+  updateWebhookTestResult(id: number, status: string): Promise<WebhookConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1676,6 +1687,81 @@ export class DatabaseStorage implements IStorage {
       return container;
     } catch (error) {
       console.error('Error updating container status:', error);
+      throw error;
+    }
+  }
+
+  // Webhook Configuration Methods
+  async getWebhookConfigs(): Promise<any[]> {
+    try {
+      const configs = await db.select().from(webhookConfigs);
+      return configs;
+    } catch (error) {
+      console.error('Error getting webhook configs:', error);
+      throw error;
+    }
+  }
+
+  async getWebhookConfig(id: number): Promise<any | undefined> {
+    try {
+      const [config] = await db.select().from(webhookConfigs).where(eq(webhookConfigs.id, id));
+      return config;
+    } catch (error) {
+      console.error('Error getting webhook config:', error);
+      throw error;
+    }
+  }
+
+  async createWebhookConfig(configData: any): Promise<any> {
+    try {
+      const [config] = await db.insert(webhookConfigs).values(configData).returning();
+      return config;
+    } catch (error) {
+      console.error('Error creating webhook config:', error);
+      throw error;
+    }
+  }
+
+  async updateWebhookConfig(id: number, configData: any): Promise<any> {
+    try {
+      const [config] = await db
+        .update(webhookConfigs)
+        .set({
+          ...configData,
+          updatedAt: new Date()
+        })
+        .where(eq(webhookConfigs.id, id))
+        .returning();
+      return config;
+    } catch (error) {
+      console.error('Error updating webhook config:', error);
+      throw error;
+    }
+  }
+
+  async deleteWebhookConfig(id: number): Promise<void> {
+    try {
+      await db.delete(webhookConfigs).where(eq(webhookConfigs.id, id));
+    } catch (error) {
+      console.error('Error deleting webhook config:', error);
+      throw error;
+    }
+  }
+
+  async updateWebhookTestResult(id: number, status: string): Promise<any> {
+    try {
+      const [config] = await db
+        .update(webhookConfigs)
+        .set({
+          lastTest: new Date(),
+          lastTestStatus: status,
+          updatedAt: new Date()
+        })
+        .where(eq(webhookConfigs.id, id))
+        .returning();
+      return config;
+    } catch (error) {
+      console.error('Error updating webhook test result:', error);
       throw error;
     }
   }

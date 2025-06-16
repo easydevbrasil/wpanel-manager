@@ -462,4 +462,34 @@ export const insertDockerContainerSchema = createInsertSchema(dockerContainers).
 export type DockerContainer = typeof dockerContainers.$inferSelect;
 export type InsertDockerContainer = z.infer<typeof insertDockerContainerSchema>;
 
+// Webhooks Configuration Table
+export const webhookConfigs = pgTable("webhook_configs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  method: text("method").notNull().default("POST"),
+  format: text("format").notNull().default("json"), // json, form, xml
+  headers: jsonb("headers"), // Custom headers as JSON object
+  secretKey: text("secret_key"), // HMAC secret
+  isActive: boolean("is_active").notNull().default(true),
+  events: jsonb("events").notNull(), // Array of event names
+  retryCount: integer("retry_count").notNull().default(3),
+  timeout: integer("timeout").notNull().default(10), // seconds
+  lastTest: timestamp("last_test"),
+  lastTestStatus: text("last_test_status"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWebhookConfigSchema = createInsertSchema(webhookConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastTest: true,
+  lastTestStatus: true,
+});
+
+export type WebhookConfig = typeof webhookConfigs.$inferSelect;
+export type InsertWebhookConfig = z.infer<typeof insertWebhookConfigSchema>;
+
 // Auth types will be added later when tables are properly defined
