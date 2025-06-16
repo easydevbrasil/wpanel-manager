@@ -390,6 +390,8 @@ export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
   updatedAt: true,
 });
 
+// Authentication schemas will be added later
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
@@ -428,3 +430,4 @@ export type ChatwootSettings = typeof chatwootSettings.$inferSelect;
 export type InsertChatwootSettings = z.infer<typeof insertChatwootSettingsSchema>;
 export type EmailAccount = typeof emailAccounts.$inferSelect;
 export type InsertEmailAccount = z.infer<typeof insertEmailAccountSchema>;
+// Auth types will be added later when tables are properly defined
