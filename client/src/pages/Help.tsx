@@ -25,7 +25,9 @@ import {
   Database,
   Server,
   Zap,
-  Settings
+  Settings,
+  FileText,
+  GitBranch
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ToastSounds } from '@/utils/toast-sounds';
@@ -131,6 +133,37 @@ export default function Help() {
       ...prev,
       [endpointKey]: value
     }));
+  };
+
+  const getMethodColor = (method: string) => {
+    switch (method) {
+      case 'GET': return 'green';
+      case 'POST': return 'blue';
+      case 'PUT': return 'yellow';
+      case 'DELETE': return 'red';
+      default: return 'gray';
+    }
+  };
+
+  const renderJsonWithSyntaxHighlighting = (jsonObj: any) => {
+    const jsonString = JSON.stringify(jsonObj, null, 2);
+    return (
+      <pre className="text-xs overflow-x-auto bg-[#1e1e1e] dark:bg-[#1e1e1e] p-3 rounded">
+        <code 
+          dangerouslySetInnerHTML={{
+            __html: jsonString
+              .replace(/"([^"]+)":/g, '<span style="color: #9cdcfe;">"$1"</span><span style="color: #d4d4d4;">:</span>')
+              .replace(/: "([^"]+)"/g, '<span style="color: #d4d4d4;">: </span><span style="color: #ce9178;">"$1"</span>')
+              .replace(/: (\d+)/g, '<span style="color: #d4d4d4;">: </span><span style="color: #b5cea8;">$1</span>')
+              .replace(/: (true|false)/g, '<span style="color: #d4d4d4;">: </span><span style="color: #569cd6;">$1</span>')
+              .replace(/: null/g, '<span style="color: #d4d4d4;">: </span><span style="color: #569cd6;">null</span>')
+              .replace(/([{}])/g, '<span style="color: #ffd700;">$1</span>')
+              .replace(/([[\]])/g, '<span style="color: #ffd700;">$1</span>')
+              .replace(/,/g, '<span style="color: #d4d4d4;">,</span>')
+          }}
+        />
+      </pre>
+    );
   };
 
   const features = [
@@ -420,9 +453,27 @@ export default function Help() {
 
       <Tabs defaultValue="features" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="features">Funcionalidades</TabsTrigger>
-          <TabsTrigger value="notifications">Notificações</TabsTrigger>
-          <TabsTrigger value="api">API Reference</TabsTrigger>
+          <TabsTrigger 
+            value="features" 
+            className="flex items-center space-x-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Funcionalidades</span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="notifications" 
+            className="flex items-center space-x-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
+            <Bell className="w-4 h-4" />
+            <span>Notificações</span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="api" 
+            className="flex items-center space-x-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+          >
+            <Code className="w-4 h-4" />
+            <span>API Reference</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="features" className="space-y-6">
@@ -667,21 +718,25 @@ export default function Help() {
                   const endpointKey = getEndpointKey(endpoint.method, endpoint.path);
                   const needsId = endpoint.path.includes('/1') || endpoint.path.includes('/:id');
                   const hasPayload = endpoint.testBody && (endpoint.method === 'POST' || endpoint.method === 'PUT');
+                  const methodColor = getMethodColor(endpoint.method);
                   
                   return (
-                    <Card key={endpointIndex} className="border-l-4 border-l-blue-500">
+                    <Card key={endpointIndex} className={`border-l-4 ${
+                      methodColor === 'green' ? 'border-l-green-500' :
+                      methodColor === 'blue' ? 'border-l-blue-500' :
+                      methodColor === 'yellow' ? 'border-l-yellow-500' :
+                      methodColor === 'red' ? 'border-l-red-500' : 'border-l-gray-500'
+                    }`}>
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <Badge 
-                              variant={endpoint.method === 'GET' ? 'secondary' : 
-                                     endpoint.method === 'POST' ? 'default' : 
-                                     endpoint.method === 'PUT' ? 'outline' : 'destructive'}
-                              className={`font-mono text-xs ${
-                                endpoint.method === 'GET' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                                endpoint.method === 'POST' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
-                                endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
-                                'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                              className={`font-mono text-xs font-semibold px-3 py-1 ${
+                                endpoint.method === 'GET' ? 'bg-green-500 text-white hover:bg-green-600' :
+                                endpoint.method === 'POST' ? 'bg-blue-500 text-white hover:bg-blue-600' :
+                                endpoint.method === 'PUT' ? 'bg-yellow-500 text-white hover:bg-yellow-600' :
+                                endpoint.method === 'DELETE' ? 'bg-red-500 text-white hover:bg-red-600' :
+                                'bg-gray-500 text-white hover:bg-gray-600'
                               }`}
                             >
                               {endpoint.method}
@@ -754,10 +809,8 @@ export default function Help() {
                               <Settings className="w-4 h-4 text-gray-500" />
                               <span className="text-sm font-medium">Exemplo de Payload:</span>
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-x-auto">
-                              <pre className="text-xs text-gray-700 dark:text-gray-300">
-                                {JSON.stringify(endpoint.testBody, null, 2)}
-                              </pre>
+                            <div className="rounded overflow-x-auto">
+                              {renderJsonWithSyntaxHighlighting(endpoint.testBody)}
                             </div>
                           </div>
                         )}
