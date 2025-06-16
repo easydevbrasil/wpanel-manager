@@ -140,7 +140,7 @@ export default function UserProfile() {
   // Update permissions mutation
   const updatePermissionsMutation = useMutation({
     mutationFn: async (updatedPermissions: any[]) => {
-      return await apiRequest(`/api/users/${user?.id}/permissions`, "PUT", updatedPermissions);
+      return await apiRequest("PUT", `/api/users/${user?.id}/permissions`, updatedPermissions);
     },
     onSuccess: () => {
       toast({
@@ -161,7 +161,7 @@ export default function UserProfile() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/users/${user?.id}`, "PUT", data);
+      return await apiRequest("PUT", `/api/users/${user?.id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -182,7 +182,7 @@ export default function UserProfile() {
   // Update address mutation
   const updateAddressMutation = useMutation({
     mutationFn: async (data: UserAddress) => {
-      return await apiRequest(`/api/users/${user?.id}/address`, "PUT", data);
+      return await apiRequest("PUT", `/api/users/${user?.id}/address`, data);
     },
     onSuccess: () => {
       toast({
@@ -232,17 +232,17 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Perfil do Usuário</h1>
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Perfil do Usuário</h1>
           <p className="text-gray-600 dark:text-gray-400">Gerencie suas informações pessoais e configurações</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-center sm:justify-start space-x-3">
           <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
             {user?.name?.charAt(0).toUpperCase() || "U"}
           </div>
-          <div>
+          <div className="text-center sm:text-left">
             <p className="font-medium text-gray-900 dark:text-white">{user?.name}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user?.username}</p>
           </div>
@@ -251,17 +251,20 @@ export default function UserProfile() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="profile" className="flex items-center gap-2">
-            <User className="w-4 h-4" />
-            Perfil
+          <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <User className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Perfil</span>
+            <span className="sm:hidden">P</span>
           </TabsTrigger>
-          <TabsTrigger value="address" className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Endereço
+          <TabsTrigger value="address" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Endereço</span>
+            <span className="sm:hidden">E</span>
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Permissões
+          <TabsTrigger value="permissions" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Permissões</span>
+            <span className="sm:hidden">Per</span>
           </TabsTrigger>
         </TabsList>
 
@@ -491,12 +494,12 @@ export default function UserProfile() {
                           return (
                             <div key={module} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
                               <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{label}</h3>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                                  <span className="text-sm font-medium">Visualizar</span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                                <div className="flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-xs sm:text-sm font-medium">Visualizar</span>
                                   <Badge 
                                     variant={modulePermissions?.canView ? "default" : "secondary"}
-                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 text-xs ${
                                       updatePermissionsMutation.isPending ? 'opacity-50' : ''
                                     }`}
                                     onClick={() => togglePermission(module, 'canView')}
@@ -504,11 +507,11 @@ export default function UserProfile() {
                                     {modulePermissions?.canView ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                                  <span className="text-sm font-medium">Criar</span>
+                                <div className="flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-xs sm:text-sm font-medium">Criar</span>
                                   <Badge 
                                     variant={modulePermissions?.canCreate ? "default" : "secondary"}
-                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 text-xs ${
                                       updatePermissionsMutation.isPending ? 'opacity-50' : ''
                                     }`}
                                     onClick={() => togglePermission(module, 'canCreate')}
@@ -516,11 +519,11 @@ export default function UserProfile() {
                                     {modulePermissions?.canCreate ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                                  <span className="text-sm font-medium">Editar</span>
+                                <div className="flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-xs sm:text-sm font-medium">Editar</span>
                                   <Badge 
                                     variant={modulePermissions?.canEdit ? "default" : "secondary"}
-                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 text-xs ${
                                       updatePermissionsMutation.isPending ? 'opacity-50' : ''
                                     }`}
                                     onClick={() => togglePermission(module, 'canEdit')}
@@ -528,11 +531,11 @@ export default function UserProfile() {
                                     {modulePermissions?.canEdit ? "✓ Sim" : "✗ Não"}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                                  <span className="text-sm font-medium">Excluir</span>
+                                <div className="flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-xs sm:text-sm font-medium">Excluir</span>
                                   <Badge 
                                     variant={modulePermissions?.canDelete ? "default" : "secondary"}
-                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                    className={`cursor-pointer transition-all duration-200 hover:scale-105 text-xs ${
                                       updatePermissionsMutation.isPending ? 'opacity-50' : ''
                                     }`}
                                     onClick={() => togglePermission(module, 'canDelete')}
