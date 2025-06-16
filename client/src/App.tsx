@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { useAuth } from "@/hooks/useAuth";
+import { useColorTheme } from "@/hooks/useColorTheme";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
@@ -24,6 +25,7 @@ import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
   const { isAuthenticated, isLoading } = useAuth();
+  useColorTheme(); // Apply color theme based on user preferences
 
   if (isLoading) {
     return (

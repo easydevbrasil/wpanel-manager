@@ -40,7 +40,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
-import type { User, DashboardStats, CartItem, Notification, Email } from "@shared/schema";
+import { cn } from "@/lib/utils";
+import type { User, DashboardStats, CartItem, Notification, Email, UserPreferences } from "@shared/schema";
 
 // Helper function to get service icon
 function getServiceIcon(serviceType: string) {
@@ -89,6 +90,50 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     queryKey: ["/api/emails"],
     staleTime: 30000, // Refresh every 30 seconds
   });
+
+  // Load user preferences
+  const { data: userPreferences } = useQuery({
+    queryKey: ["/api/user/preferences"],
+    retry: false,
+  });
+
+  // Default preferences
+  const defaultPreferences = {
+    sidebarCollapsed: false,
+    sidebarColor: 'default',
+    headerColor: 'default', 
+    primaryColor: 'blue',
+    autoCollapse: false
+  };
+
+  const preferences = userPreferences ? { ...defaultPreferences, ...userPreferences } : defaultPreferences;
+
+  // Color theme functions for header
+  const getHeaderColorClasses = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800';
+      case 'green':
+        return 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800';
+      case 'dark':
+        return 'bg-gray-800 dark:bg-gray-950 border-gray-700 dark:border-gray-800';
+      default:
+        return 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700';
+    }
+  };
+
+  const getHeaderTextClasses = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return 'text-blue-900 dark:text-blue-100';
+      case 'green':
+        return 'text-green-900 dark:text-green-100';
+      case 'dark':
+        return 'text-white dark:text-gray-100';
+      default:
+        return 'text-gray-900 dark:text-white';
+    }
+  };
 
   // Cart mutations
   const updateCartQuantity = useMutation({
@@ -183,7 +228,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-4 fixed w-full top-0 z-40">
+    <header className={cn(
+      "border-b px-4 lg:px-6 py-4 fixed w-full top-0 z-40",
+      getHeaderColorClasses(preferences.headerColor)
+    )}>
       <div className="flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
@@ -192,7 +240,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               A
             </div>
           </div>
-          <span className="ml-3 text-xl font-semibold text-gray-900 dark:text-white hidden sm:block">
+          <span className={cn(
+            "ml-3 text-xl font-semibold hidden sm:block",
+            getHeaderTextClasses(preferences.headerColor)
+          )}>
             AppName
           </span>
         </div>
