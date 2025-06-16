@@ -210,6 +210,11 @@ Changelog:
 - June 16, 2025. Implemented dynamic environment variables management in Docker container forms
 - June 16, 2025. Added ability to add, update, and delete environment variables with key-value pairs interface
 - June 16, 2025. Environment variables automatically loaded when editing existing containers and properly saved to database
+- June 16, 2025. Created comprehensive tabbed interface for Docker container forms with three organized sections (Informações, Variáveis, Volumes)
+- June 16, 2025. Implemented complete volume mapping management with host:container path configuration in Docker forms
+- June 16, 2025. Enhanced Docker container editing with improved UX including empty state messages and better organization
+- June 16, 2025. Restored complete Help page with all previous sections: Documentation, Interactive Examples, and API Reference
+- June 16, 2025. Maintained comprehensive help system with VS Code-style API testing interface and complete feature documentation
 ```
 
 ## User Preferences

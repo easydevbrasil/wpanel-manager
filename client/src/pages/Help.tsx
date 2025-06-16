@@ -299,6 +299,7 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
 
 export default function Help() {
   const [selectedCategory, setSelectedCategory] = useState('clients');
+  const [activeTab, setActiveTab] = useState('documentation');
 
   const getEndpointsForCategory = (category: string): Array<{
     method: string;
@@ -427,37 +428,346 @@ export default function Help() {
   const endpoints = getEndpointsForCategory(selectedCategory);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <CategorySidebar 
-        selectedCategory={selectedCategory} 
-        onSelectCategory={setSelectedCategory} 
-      />
-      
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Documentação da API
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Teste interativo das rotas da API com editor estilo VS Code
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            {endpoints.map((endpoint, index) => (
-              <APIEndpointCard
-                key={index}
-                method={endpoint.method}
-                endpoint={endpoint.endpoint}
-                description={endpoint.description}
-                examplePayload={endpoint.examplePayload}
-                resourceId={endpoint.resourceId || false}
-              />
-            ))}
-          </div>
-        </div>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Central de Ajuda
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Documentação completa, exemplos interativos e referência da API
+        </p>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="documentation">Documentação</TabsTrigger>
+          <TabsTrigger value="examples">Exemplos</TabsTrigger>
+          <TabsTrigger value="api-reference">Referência da API</TabsTrigger>
+        </TabsList>
+
+        {/* Documentação Tab */}
+        <TabsContent value="documentation" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Visão Geral */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Visão Geral do Sistema
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  O ProjectHub Dashboard é uma plataforma completa de gestão empresarial com:
+                </p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-500" />
+                    <span>Gestão de clientes e relacionamentos</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-green-500" />
+                    <span>Controle completo de produtos e estoque</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4 text-purple-500" />
+                    <span>Sistema de vendas e faturamento</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Headphones className="w-4 h-4 text-orange-500" />
+                    <span>Suporte ao cliente integrado</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-red-500" />
+                    <span>Gestão de contas de email</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Funcionalidades CRUD */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Code className="w-5 h-5" />
+                  Operações CRUD
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Todas as entidades suportam operações completas:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-green-700 bg-green-50">CREATE</Badge>
+                    <span>Criar registros</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-blue-700 bg-blue-50">READ</Badge>
+                    <span>Consultar dados</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-orange-700 bg-orange-50">UPDATE</Badge>
+                    <span>Atualizar informações</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-red-700 bg-red-50">DELETE</Badge>
+                    <span>Remover registros</span>
+                  </div>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <h4 className="font-medium">Recursos Avançados:</h4>
+                  <ul className="text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                    <li>• Sincronização em tempo real via WebSocket</li>
+                    <li>• Notificações toast para todas as ações</li>
+                    <li>• Validação de dados automática</li>
+                    <li>• Cache inteligente com invalidação</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sistema de Notificações */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sistema de Notificações</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Feedback visual e sonoro para todas as operações:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <span className="text-lg">✅</span>
+                    <div>
+                      <div className="font-medium text-green-800 dark:text-green-300">Sucesso</div>
+                      <div className="text-sm text-green-600 dark:text-green-400">Ações concluídas com êxito</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <span className="text-lg">❌</span>
+                    <div>
+                      <div className="font-medium text-red-800 dark:text-red-300">Erro</div>
+                      <div className="text-sm text-red-600 dark:text-red-400">Falhas e problemas</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <span className="text-lg">ℹ️</span>
+                    <div>
+                      <div className="font-medium text-blue-800 dark:text-blue-300">Informação</div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400">Atualizações e alertas</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* WebSocket */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sincronização em Tempo Real</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Sistema WebSocket para atualizações instantâneas:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm">Conexão ativa e monitorada</span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <strong>Funcionalidades:</strong>
+                    <ul className="mt-2 space-y-1 ml-4">
+                      <li>• Broadcast automático de mudanças</li>
+                      <li>• Invalidação de cache inteligente</li>
+                      <li>• Reconexão automática</li>
+                      <li>• Indicador visual de status</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Exemplos Tab */}
+        <TabsContent value="examples" className="mt-6">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Exemplos Interativos</CardTitle>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Demonstrações práticas das funcionalidades do sistema
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Exemplo Clientes */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-500" />
+                    Gestão de Clientes
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Criar Cliente</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Nome:</span>
+                          <span className="text-gray-600">João Silva</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Email:</span>
+                          <span className="text-gray-600">joao@email.com</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Telefone:</span>
+                          <span className="text-gray-600">(11) 99999-9999</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Resultado</h4>
+                      <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded border">
+                        <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
+                          ✅ <span className="font-medium">Cliente criado!</span>
+                        </div>
+                        <div className="text-sm text-green-600 dark:text-green-400 mt-1">
+                          ID: 15 | Status: Ativo
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Exemplo Produtos */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-green-500" />
+                    Controle de Produtos
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Produto</h4>
+                      <div className="space-y-1 text-sm">
+                        <div>iPhone 14 Pro</div>
+                        <div className="text-gray-600">SKU: IPH-14-PRO</div>
+                        <div className="text-gray-600">Estoque: 25 unidades</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Atualização</h4>
+                      <div className="space-y-1 text-sm">
+                        <div>Preço: R$ 8.999,00</div>
+                        <div className="text-gray-600">Categoria: Eletrônicos</div>
+                        <div className="text-gray-600">Fornecedor: Apple</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Notificação</h4>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border">
+                        <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                          📦 <span className="font-medium">Produto atualizado!</span>
+                        </div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                          Preço alterado com sucesso
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Exemplo Vendas */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-purple-500" />
+                    Processamento de Vendas
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Itens da Venda</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            <span>2x MacBook Air M2</span>
+                            <span>R$ 20.000,00</span>
+                          </div>
+                          <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            <span>1x Mouse Magic</span>
+                            <span>R$ 599,00</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Pagamento</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>R$ 20.599,00</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Desconto:</span>
+                            <span>R$ 599,00</span>
+                          </div>
+                          <div className="flex justify-between font-medium">
+                            <span>Total:</span>
+                            <span>R$ 20.000,00</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded border">
+                      <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
+                        🛒 <span className="font-medium">Venda finalizada!</span>
+                      </div>
+                      <div className="text-sm text-purple-600 dark:text-purple-400 mt-1">
+                        Número: VDA-009 | Forma: Cartão de Crédito
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* API Reference Tab */}
+        <TabsContent value="api-reference" className="mt-6">
+          <div className="flex h-screen overflow-hidden -m-6">
+            <CategorySidebar 
+              selectedCategory={selectedCategory} 
+              onSelectCategory={setSelectedCategory} 
+            />
+            
+            <div className="flex-1 overflow-auto">
+              <div className="p-6">
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    Documentação da API
+                  </h1>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Teste interativo das rotas da API com editor estilo VS Code
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {endpoints.map((endpoint, index) => (
+                    <APIEndpointCard
+                      key={index}
+                      method={endpoint.method}
+                      endpoint={endpoint.endpoint}
+                      description={endpoint.description}
+                      examplePayload={endpoint.examplePayload}
+                      resourceId={endpoint.resourceId || false}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
