@@ -215,6 +215,11 @@ Changelog:
 - June 16, 2025. Enhanced Docker container editing with improved UX including empty state messages and better organization
 - June 16, 2025. Restored complete Help page with all previous sections: Documentation, Interactive Examples, and API Reference
 - June 16, 2025. Maintained comprehensive help system with VS Code-style API testing interface and complete feature documentation
+- June 16, 2025. Enhanced sidebar collapsed state with larger icons (w-7 h-7), better spacing (px-2 py-3), and increased width (w-24)
+- June 16, 2025. Improved sidebar icon visibility and organization when collapsed for better user experience
+- June 16, 2025. Created comprehensive Webhooks configuration tab in Help page with complete event management system
+- June 16, 2025. Implemented webhook interface with URL configuration, 20+ categorized events, payload examples, security settings, and testing capabilities
+- June 16, 2025. Added webhook events for all system modules: clients, products, sales, support, system, and Docker containers
 ```
 
 ## User Preferences

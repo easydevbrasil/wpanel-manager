@@ -19,6 +19,9 @@ import {
   FileText,
   Settings,
   ChevronRight,
+  Bell,
+  Container,
+  Shield,
 } from "lucide-react";
 
 // VS Code style editor component
@@ -439,10 +442,11 @@ export default function Help() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="documentation">Documentação</TabsTrigger>
           <TabsTrigger value="examples">Exemplos</TabsTrigger>
           <TabsTrigger value="api-reference">Referência da API</TabsTrigger>
+          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
         </TabsList>
 
         {/* Documentação Tab */}
@@ -765,6 +769,362 @@ export default function Help() {
                 </div>
               </div>
             </div>
+          </div>
+        </TabsContent>
+
+        {/* Webhooks Tab */}
+        <TabsContent value="webhooks" className="mt-6">
+          <div className="space-y-6">
+            {/* Webhook Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Configuração de Webhooks
+                </CardTitle>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Configure webhooks para receber notificações em tempo real sobre eventos do sistema
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Webhook URL Configuration */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <Code className="w-5 h-5 text-blue-500" />
+                    URL de Webhook
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        URL do Endpoint
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          placeholder="https://sua-api.com/webhooks/projecthub"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                        <Button className="flex items-center gap-2">
+                          <Play className="w-4 h-4" />
+                          Testar
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Método HTTP
+                        </label>
+                        <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                          <option value="POST">POST</option>
+                          <option value="PUT">PUT</option>
+                          <option value="PATCH">PATCH</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Formato de Dados
+                        </label>
+                        <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                          <option value="json">JSON</option>
+                          <option value="form">Form Data</option>
+                          <option value="xml">XML</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Headers Personalizados
+                      </label>
+                      <textarea
+                        placeholder='{"Authorization": "Bearer sua-chave", "X-Custom-Header": "valor"}'
+                        className="w-full h-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Available Events */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-orange-500" />
+                    Eventos Disponíveis
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Clients Events */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        Clientes
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.created</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.updated</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">client.deleted</code>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Products Events */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <Package className="w-4 h-4" />
+                        Produtos
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.created</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.updated</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.deleted</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">product.stock_low</code>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Sales Events */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                        <ShoppingCart className="w-4 h-4" />
+                        Vendas
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.created</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.completed</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.cancelled</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">sale.refunded</code>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Support Events */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                        <Headphones className="w-4 h-4" />
+                        Suporte
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.created</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.updated</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">ticket.resolved</code>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* System Events */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                        <Settings className="w-4 h-4" />
+                        Sistema
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">user.login</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">user.logout</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">backup.completed</code>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Docker Events */}
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+                        <Container className="w-4 h-4" />
+                        Docker
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.started</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.stopped</code>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" className="rounded" />
+                          <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">container.error</code>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payload Examples */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-500" />
+                    Exemplos de Payload
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Evento: client.created</h4>
+                      <CodeEditor
+                        value={JSON.stringify({
+                          "event": "client.created",
+                          "timestamp": "2025-06-16T18:00:00Z",
+                          "data": {
+                            "id": 15,
+                            "name": "João Silva",
+                            "email": "joao@email.com",
+                            "phone": "(11) 99999-9999",
+                            "created_at": "2025-06-16T18:00:00Z"
+                          },
+                          "user": {
+                            "id": 1,
+                            "username": "admin"
+                          }
+                        }, null, 2)}
+                        onChange={() => {}}
+                        language="json"
+                      />
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Evento: sale.completed</h4>
+                      <CodeEditor
+                        value={JSON.stringify({
+                          "event": "sale.completed",
+                          "timestamp": "2025-06-16T18:00:00Z",
+                          "data": {
+                            "id": 25,
+                            "sale_number": "VDA-010",
+                            "client_id": 15,
+                            "total_amount": 2599.99,
+                            "payment_method": "credit_card",
+                            "status": "completed",
+                            "items": [
+                              {
+                                "product_id": 8,
+                                "product_name": "MacBook Air M2",
+                                "quantity": 1,
+                                "unit_price": 2599.99
+                              }
+                            ]
+                          },
+                          "user": {
+                            "id": 1,
+                            "username": "admin"
+                          }
+                        }, null, 2)}
+                        onChange={() => {}}
+                        language="json"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security & Testing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-red-500" />
+                      Segurança
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Secret Key (HMAC)
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="sua-chave-secreta-hmac"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <p>• Todos os webhooks incluem header <code>X-Hub-Signature-256</code></p>
+                        <p>• Use HMAC SHA256 para verificar autenticidade</p>
+                        <p>• Timeout padrão: 10 segundos</p>
+                        <p>• Retry automático: 3 tentativas</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                      <Play className="w-5 h-5 text-blue-500" />
+                      Teste de Webhook
+                    </h3>
+                    <div className="space-y-3">
+                      <Button className="w-full" variant="outline">
+                        <Play className="w-4 h-4 mr-2" />
+                        Enviar Evento de Teste
+                      </Button>
+                      <div className="text-sm">
+                        <p className="font-medium mb-1">Último teste:</p>
+                        <p className="text-gray-600 dark:text-gray-400">✅ 200 OK - 16/06 18:00</p>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium mb-1">Estatísticas (24h):</p>
+                        <div className="grid grid-cols-2 gap-2 text-gray-600 dark:text-gray-400">
+                          <p>Enviados: 47</p>
+                          <p>Sucesso: 45</p>
+                          <p>Falhas: 2</p>
+                          <p>Taxa: 95.7%</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Configuration */}
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline">
+                    Cancelar
+                  </Button>
+                  <Button>
+                    Salvar Configuração
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
