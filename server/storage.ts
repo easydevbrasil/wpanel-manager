@@ -513,6 +513,21 @@ export class DatabaseStorage implements IStorage {
     ];
 
     await db.insert(navigationItems).values(navItems);
+
+    // Create default user permissions for admin user
+    const permissionsData = [
+      { userId: user.id, module: "dashboard", canView: true, canCreate: false, canEdit: false, canDelete: false },
+      { userId: user.id, module: "clients", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      { userId: user.id, module: "products", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      { userId: user.id, module: "suppliers", canView: true, canCreate: true, canEdit: true, canDelete: false },
+      { userId: user.id, module: "sales", canView: true, canCreate: true, canEdit: true, canDelete: false },
+      { userId: user.id, module: "support", canView: true, canCreate: true, canEdit: true, canDelete: false },
+      { userId: user.id, module: "email", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      { userId: user.id, module: "admin", canView: true, canCreate: true, canEdit: true, canDelete: true }
+    ];
+
+    // Note: We'll store permissions in memory for now since the schema needs to be updated
+    (global as any).userPermissions = permissionsData;
   }
 
   // Authentication methods  
@@ -1384,6 +1399,56 @@ export class DatabaseStorage implements IStorage {
       .where(eq(emailAccounts.id, id))
       .returning();
     return defaultAccount;
+  }
+
+  // User Permissions methods
+  async getUserPermissions(): Promise<any[]> {
+    try {
+      (global as any).userPermissions = (global as any).userPermissions || [];
+      return (global as any).userPermissions;
+    } catch (error) {
+      console.error('Error getting user permissions:', error);
+      return [];
+    }
+  }
+
+  async getUserPermissionsByUserId(userId: number): Promise<any[]> {
+    try {
+      (global as any).userPermissions = (global as any).userPermissions || [];
+      return (global as any).userPermissions.filter((p: any) => p.userId === userId);
+    } catch (error) {
+      console.error('Error getting user permissions by user ID:', error);
+      return [];
+    }
+  }
+
+  async updateUserPermissions(userId: number, permissions: any[]): Promise<any[]> {
+    try {
+      (global as any).userPermissions = (global as any).userPermissions || [];
+      
+      // Remove existing permissions for this user
+      (global as any).userPermissions = (global as any).userPermissions.filter((p: any) => p.userId !== userId);
+      
+      // Add new permissions
+      const newPermissions = permissions.map(permission => ({
+        id: Date.now() + Math.random(),
+        userId,
+        module: permission.module,
+        canView: permission.canView || false,
+        canCreate: permission.canCreate || false,
+        canEdit: permission.canEdit || false,
+        canDelete: permission.canDelete || false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+
+      (global as any).userPermissions.push(...newPermissions);
+      
+      return newPermissions;
+    } catch (error) {
+      console.error('Error updating user permissions:', error);
+      throw error;
+    }
   }
 }
 
