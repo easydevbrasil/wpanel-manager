@@ -644,7 +644,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 Cobrança
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-600" />
-              <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <DropdownMenuItem 
+                className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+                onClick={logout}
+              >
                 <LogOut className="w-4 h-4 mr-3" />
                 Sair
               </DropdownMenuItem>
