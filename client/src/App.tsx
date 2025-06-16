@@ -16,6 +16,7 @@ import Support from "@/pages/Support";
 import Help from "@/pages/Help";
 import EmailAccounts from "@/pages/EmailAccounts";
 import DatabaseAdmin from "@/pages/DatabaseAdmin";
+import UserPermissions from "@/pages/UserPermissions";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -48,6 +49,7 @@ function AuthenticatedRouter() {
         <Route path="/support" component={Support} />
         <Route path="/email-accounts" component={EmailAccounts} />
         <Route path="/database-admin" component={DatabaseAdmin} />
+        <Route path="/user-permissions" component={UserPermissions} />
         <Route path="/help" component={Help} />
         <Route component={NotFound} />
       </Switch>

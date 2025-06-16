@@ -189,6 +189,11 @@ export interface IStorage {
   updateEmailAccount(id: number, account: Partial<InsertEmailAccount>): Promise<EmailAccount>;
   deleteEmailAccount(id: number): Promise<void>;
   setDefaultEmailAccount(id: number): Promise<EmailAccount>;
+  
+  // User Permissions
+  getUserPermissions(): Promise<any[]>;
+  getUserPermissionsByUserId(userId: number): Promise<any[]>;
+  updateUserPermissions(userId: number, permissions: any[]): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -503,7 +508,8 @@ export class DatabaseStorage implements IStorage {
       { label: "Suporte", icon: "MessageSquare", href: "/support", order: 6, parentId: null },
       { label: "Contas de Email", icon: "Mail", href: "/email-accounts", order: 7, parentId: null },
       { label: "Admin DB", icon: "Database", href: "/database-admin", order: 8, parentId: null },
-      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 9, parentId: null }
+      { label: "Permissões", icon: "Shield", href: "/user-permissions", order: 9, parentId: null },
+      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 10, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);

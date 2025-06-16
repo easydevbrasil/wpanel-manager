@@ -864,6 +864,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Permissions routes
+  app.get("/api/permissions", async (req, res) => {
+    try {
+      const permissions = await storage.getUserPermissions();
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get user permissions" });
+    }
+  });
+
+  app.get("/api/users/:userId/permissions", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const permissions = await storage.getUserPermissionsByUserId(userId);
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get user permissions" });
+    }
+  });
+
+  app.put("/api/users/:userId/permissions", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const permissions = await storage.updateUserPermissions(userId, req.body);
+      broadcastUpdate('user_permissions_updated', { userId, permissions });
+      res.json(permissions);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update user permissions" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket Server for real-time updates
