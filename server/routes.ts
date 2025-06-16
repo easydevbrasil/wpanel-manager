@@ -958,6 +958,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Docker Containers routes
+  app.get("/api/docker-containers", authenticateToken, async (req, res) => {
+    try {
+      const containers = await storage.getDockerContainers();
+      res.json(containers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get docker containers" });
+    }
+  });
+
+  app.get("/api/docker-containers/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const container = await storage.getDockerContainer(id);
+      if (!container) {
+        return res.status(404).json({ message: "Docker container not found" });
+      }
+      res.json(container);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get docker container" });
+    }
+  });
+
+  app.post("/api/docker-containers", authenticateToken, async (req, res) => {
+    try {
+      const container = await storage.createDockerContainer(req.body);
+      broadcastUpdate('docker_container_created', container);
+      res.status(201).json(container);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create docker container" });
+    }
+  });
+
+  app.put("/api/docker-containers/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const container = await storage.updateDockerContainer(id, req.body);
+      broadcastUpdate('docker_container_updated', container);
+      res.json(container);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update docker container" });
+    }
+  });
+
+  app.delete("/api/docker-containers/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteDockerContainer(id);
+      broadcastUpdate('docker_container_deleted', { id });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete docker container" });
+    }
+  });
+
+  // Docker container control routes
+  app.post("/api/docker-containers/:id/start", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const container = await storage.updateContainerStatus(id, "running");
+      broadcastUpdate('docker_container_started', container);
+      res.json(container);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to start docker container" });
+    }
+  });
+
+  app.post("/api/docker-containers/:id/stop", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const container = await storage.updateContainerStatus(id, "stopped");
+      broadcastUpdate('docker_container_stopped', container);
+      res.json(container);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to stop docker container" });
+    }
+  });
+
+  app.post("/api/docker-containers/:id/restart", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const container = await storage.updateContainerStatus(id, "restarting");
+      // Simulate restart process - set to running after a moment
+      setTimeout(async () => {
+        await storage.updateContainerStatus(id, "running");
+        broadcastUpdate('docker_container_restarted', await storage.getDockerContainer(id));
+      }, 1000);
+      res.json(container);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to restart docker container" });
+    }
+  });
+
+  app.post("/api/docker-containers/:id/pause", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const container = await storage.updateContainerStatus(id, "paused");
+      broadcastUpdate('docker_container_paused', container);
+      res.json(container);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to pause docker container" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket Server for real-time updates

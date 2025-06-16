@@ -430,4 +430,36 @@ export type ChatwootSettings = typeof chatwootSettings.$inferSelect;
 export type InsertChatwootSettings = z.infer<typeof insertChatwootSettingsSchema>;
 export type EmailAccount = typeof emailAccounts.$inferSelect;
 export type InsertEmailAccount = z.infer<typeof insertEmailAccountSchema>;
+
+// Docker Containers Table
+export const dockerContainers = pgTable("docker_containers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  image: text("image").notNull(),
+  tag: text("tag").notNull().default("latest"),
+  status: text("status").notNull().default("stopped"), // running, stopped, paused, restarting
+  ports: jsonb("ports"), // Port mappings: [{"host": 8080, "container": 80}]
+  volumes: jsonb("volumes"), // Volume mappings: [{"host": "/data", "container": "/app/data"}]
+  environment: jsonb("environment"), // Environment variables: {"NODE_ENV": "production"}
+  command: text("command"), // Override command
+  description: text("description"),
+  containerId: text("container_id"), // Actual Docker container ID
+  networkMode: text("network_mode").default("bridge"),
+  restartPolicy: text("restart_policy").default("unless-stopped"),
+  cpuLimit: decimal("cpu_limit"), // CPU limit (e.g., 0.5 for 50%)
+  memoryLimit: text("memory_limit"), // Memory limit (e.g., "512m", "1g")
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Docker Containers Schema
+export const insertDockerContainerSchema = createInsertSchema(dockerContainers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export type DockerContainer = typeof dockerContainers.$inferSelect;
+export type InsertDockerContainer = z.infer<typeof insertDockerContainerSchema>;
+
 // Auth types will be added later when tables are properly defined

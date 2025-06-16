@@ -55,7 +55,10 @@ import {
   type InsertChatwootSettings,
   emailAccounts,
   type EmailAccount,
-  type InsertEmailAccount
+  type InsertEmailAccount,
+  dockerContainers,
+  type DockerContainer,
+  type InsertDockerContainer
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -198,6 +201,14 @@ export interface IStorage {
   // User Address
   getUserAddress(userId: number): Promise<any>;
   updateUserAddress(userId: number, address: any): Promise<any>;
+  
+  // Docker Containers
+  getDockerContainers(): Promise<DockerContainer[]>;
+  getDockerContainer(id: number): Promise<DockerContainer | undefined>;
+  createDockerContainer(container: InsertDockerContainer): Promise<DockerContainer>;
+  updateDockerContainer(id: number, container: Partial<InsertDockerContainer>): Promise<DockerContainer>;
+  deleteDockerContainer(id: number): Promise<void>;
+  updateContainerStatus(id: number, status: string): Promise<DockerContainer>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1584,6 +1595,87 @@ export class DatabaseStorage implements IStorage {
       return newAddress;
     } catch (error) {
       console.error('Error updating user address:', error);
+      throw error;
+    }
+  }
+
+  // Docker Containers methods
+  async getDockerContainers(): Promise<DockerContainer[]> {
+    try {
+      const containers = await db.select().from(dockerContainers);
+      return containers;
+    } catch (error) {
+      console.error('Error getting docker containers:', error);
+      return [];
+    }
+  }
+
+  async getDockerContainer(id: number): Promise<DockerContainer | undefined> {
+    try {
+      const [container] = await db.select().from(dockerContainers).where(eq(dockerContainers.id, id));
+      return container;
+    } catch (error) {
+      console.error('Error getting docker container:', error);
+      return undefined;
+    }
+  }
+
+  async createDockerContainer(containerData: InsertDockerContainer): Promise<DockerContainer> {
+    try {
+      const [container] = await db
+        .insert(dockerContainers)
+        .values({
+          ...containerData,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      return container;
+    } catch (error) {
+      console.error('Error creating docker container:', error);
+      throw error;
+    }
+  }
+
+  async updateDockerContainer(id: number, containerData: Partial<InsertDockerContainer>): Promise<DockerContainer> {
+    try {
+      const [container] = await db
+        .update(dockerContainers)
+        .set({
+          ...containerData,
+          updatedAt: new Date()
+        })
+        .where(eq(dockerContainers.id, id))
+        .returning();
+      return container;
+    } catch (error) {
+      console.error('Error updating docker container:', error);
+      throw error;
+    }
+  }
+
+  async deleteDockerContainer(id: number): Promise<void> {
+    try {
+      await db.delete(dockerContainers).where(eq(dockerContainers.id, id));
+    } catch (error) {
+      console.error('Error deleting docker container:', error);
+      throw error;
+    }
+  }
+
+  async updateContainerStatus(id: number, status: string): Promise<DockerContainer> {
+    try {
+      const [container] = await db
+        .update(dockerContainers)
+        .set({
+          status,
+          updatedAt: new Date()
+        })
+        .where(eq(dockerContainers.id, id))
+        .returning();
+      return container;
+    } catch (error) {
+      console.error('Error updating container status:', error);
       throw error;
     }
   }
