@@ -196,6 +196,10 @@ Changelog:
 - June 16, 2025. Enhanced tab navigation with responsive text labels (abbreviated on mobile, full on desktop)
 - June 16, 2025. Optimized permission badges and grid layout for mobile devices with smaller text and spacing
 - June 16, 2025. Verified clickable permission badges working correctly with automatic saving and real-time updates
+- June 16, 2025. Implemented automatic mail_accounts.cf file generation for Postfix integration
+- June 16, 2025. Added SHA512 password hashing in base64 format compatible with Postfix authentication
+- June 16, 2025. File automatically updated on email account create, edit, delete operations in format: email@domain|{SHA512}base64hash
+- June 16, 2025. Generated initial mail_accounts.cf file on server startup with existing email accounts
 ```
 
 ## User Preferences
