@@ -186,6 +186,11 @@ Changelog:
 - June 16, 2025. Added permissions visualization tab showing user access rights for each system module with color-coded badges
 - June 16, 2025. Created user profile and address APIs (/api/users/:id, /api/users/:id/address) with PUT methods for updates
 - June 16, 2025. Added "Perfil" navigation item with User icon and integrated profile page routing at /user-profile
+- June 16, 2025. Implemented granular CRUD-based permissions system with 30+ module-specific permissions
+- June 16, 2025. Organized permissions by functional categories (Páginas Principais, Gestão de Produtos, Gestão de Vendas, Sistema de Suporte, Administração, Funcionalidades do Sistema)
+- June 16, 2025. Enhanced permissions interface with categorized display showing specific CRUD operations for each module
+- June 16, 2025. Added detailed permissions for sub-modules including categories, manufacturers, product groups, sale items, support tickets, and system functionalities
+- June 16, 2025. Integrated "Perfil" link in user dropdown menu in header for easy access to profile management
 ```
 
 ## User Preferences

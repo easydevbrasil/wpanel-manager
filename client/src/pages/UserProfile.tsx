@@ -36,14 +36,67 @@ interface UserPermission {
 }
 
 const moduleLabels = {
+  // Páginas principais
   dashboard: "Dashboard",
   clients: "Clientes",
   products: "Produtos",
   suppliers: "Fornecedores",
   sales: "Vendas",
   support: "Suporte",
-  email: "Email",
-  admin: "Administração"
+  email_accounts: "Contas de Email",
+  database_admin: "Administração do BD",
+  user_permissions: "Permissões de Usuários",
+  user_profile: "Perfil do Usuário",
+  help: "Sistema/Ajuda",
+  
+  // Sub-módulos de Produtos
+  categories: "Categorias",
+  manufacturers: "Fabricantes",
+  product_groups: "Grupos de Produtos",
+  
+  // Sub-módulos de Vendas
+  sale_items: "Itens de Venda",
+  receipts: "Cupons Fiscais",
+  
+  // Sub-módulos de Suporte
+  support_tickets: "Tickets de Suporte",
+  support_messages: "Mensagens de Suporte",
+  support_categories: "Categorias de Suporte",
+  chatwoot_settings: "Configurações Chatwoot",
+  
+  // Sub-módulos de Admin
+  users: "Usuários",
+  user_address: "Endereço do Usuário",
+  
+  // Funcionalidades do Sistema
+  cart: "Carrinho de Compras",
+  notifications: "Notificações",
+  emails: "Emails",
+  navigation: "Navegação",
+  system_monitoring: "Monitoramento do Sistema",
+  email_default: "Email Padrão"
+};
+
+const moduleCategories = {
+  "Páginas Principais": [
+    "dashboard", "clients", "products", "suppliers", "sales", "support", 
+    "email_accounts", "database_admin", "user_permissions", "user_profile", "help"
+  ],
+  "Gestão de Produtos": [
+    "categories", "manufacturers", "product_groups"
+  ],
+  "Gestão de Vendas": [
+    "sale_items", "receipts"
+  ],
+  "Sistema de Suporte": [
+    "support_tickets", "support_messages", "support_categories", "chatwoot_settings"
+  ],
+  "Administração": [
+    "users", "user_address"
+  ],
+  "Funcionalidades do Sistema": [
+    "cart", "notifications", "emails", "navigation", "system_monitoring", "email_default"
+  ]
 };
 
 export default function UserProfile() {
@@ -378,43 +431,53 @@ export default function UserProfile() {
                   <p className="text-gray-500 dark:text-gray-400">Nenhuma permissão configurada</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {Object.entries(moduleLabels).map(([module, label]) => {
-                    const modulePermissions = Array.isArray(permissions) ? 
-                      permissions.find((p: any) => p.module === module) : null;
-                    return (
-                      <div key={module} className="space-y-3">
-                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{label}</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <span className="text-sm">Visualizar</span>
-                            <Badge variant={modulePermissions?.canView ? "default" : "secondary"}>
-                              {modulePermissions?.canView ? "Permitido" : "Negado"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <span className="text-sm">Criar</span>
-                            <Badge variant={modulePermissions?.canCreate ? "default" : "secondary"}>
-                              {modulePermissions?.canCreate ? "Permitido" : "Negado"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <span className="text-sm">Editar</span>
-                            <Badge variant={modulePermissions?.canEdit ? "default" : "secondary"}>
-                              {modulePermissions?.canEdit ? "Permitido" : "Negado"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <span className="text-sm">Excluir</span>
-                            <Badge variant={modulePermissions?.canDelete ? "default" : "secondary"}>
-                              {modulePermissions?.canDelete ? "Permitido" : "Negado"}
-                            </Badge>
-                          </div>
-                        </div>
-                        <Separator />
+                <div className="space-y-8">
+                  {Object.entries(moduleCategories).map(([categoryName, modules]) => (
+                    <div key={categoryName} className="space-y-4">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white border-b pb-2">
+                        {categoryName}
+                      </h2>
+                      <div className="space-y-6">
+                        {modules.map((module) => {
+                          const modulePermissions = Array.isArray(permissions) ? 
+                            permissions.find((p: any) => p.module === module) : null;
+                          const label = moduleLabels[module as keyof typeof moduleLabels] || module;
+                          
+                          return (
+                            <div key={module} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+                              <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{label}</h3>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-sm font-medium">Visualizar</span>
+                                  <Badge variant={modulePermissions?.canView ? "default" : "secondary"}>
+                                    {modulePermissions?.canView ? "✓ Sim" : "✗ Não"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-sm font-medium">Criar</span>
+                                  <Badge variant={modulePermissions?.canCreate ? "default" : "secondary"}>
+                                    {modulePermissions?.canCreate ? "✓ Sim" : "✗ Não"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-sm font-medium">Editar</span>
+                                  <Badge variant={modulePermissions?.canEdit ? "default" : "secondary"}>
+                                    {modulePermissions?.canEdit ? "✓ Sim" : "✗ Não"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border">
+                                  <span className="text-sm font-medium">Excluir</span>
+                                  <Badge variant={modulePermissions?.canDelete ? "default" : "secondary"}>
+                                    {modulePermissions?.canDelete ? "✓ Sim" : "✗ Não"}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

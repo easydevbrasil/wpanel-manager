@@ -519,16 +519,91 @@ export class DatabaseStorage implements IStorage {
 
     await db.insert(navigationItems).values(navItems);
 
-    // Create default user permissions for admin user
+    // Create default user permissions for admin user based on CRUD operations per page
     const permissionsData = [
+      // Dashboard - Visualização de estatísticas e métricas
       { userId: user.id, module: "dashboard", canView: true, canCreate: false, canEdit: false, canDelete: false },
+      
+      // Clientes - CRUD completo
       { userId: user.id, module: "clients", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Produtos - CRUD completo
       { userId: user.id, module: "products", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      { userId: user.id, module: "suppliers", canView: true, canCreate: true, canEdit: true, canDelete: false },
-      { userId: user.id, module: "sales", canView: true, canCreate: true, canEdit: true, canDelete: false },
-      { userId: user.id, module: "support", canView: true, canCreate: true, canEdit: true, canDelete: false },
-      { userId: user.id, module: "email", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      { userId: user.id, module: "admin", canView: true, canCreate: true, canEdit: true, canDelete: true }
+      
+      // Categorias - CRUD completo (sub-módulo de produtos)
+      { userId: user.id, module: "categories", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Fabricantes - CRUD completo (sub-módulo de produtos)
+      { userId: user.id, module: "manufacturers", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Grupos de Produtos - CRUD completo (sub-módulo de produtos)
+      { userId: user.id, module: "product_groups", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Fornecedores - CRUD completo
+      { userId: user.id, module: "suppliers", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Vendas - CRUD completo
+      { userId: user.id, module: "sales", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Itens de Venda - CRUD completo (sub-módulo de vendas)
+      { userId: user.id, module: "sale_items", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Cupons Fiscais - Geração e download
+      { userId: user.id, module: "receipts", canView: true, canCreate: true, canEdit: false, canDelete: false },
+      
+      // Suporte - CRUD completo
+      { userId: user.id, module: "support", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Tickets de Suporte - CRUD completo (sub-módulo de suporte)
+      { userId: user.id, module: "support_tickets", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Mensagens de Suporte - CRUD completo (sub-módulo de suporte)
+      { userId: user.id, module: "support_messages", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Categorias de Suporte - CRUD completo (sub-módulo de suporte)
+      { userId: user.id, module: "support_categories", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Configurações Chatwoot - CRUD completo (sub-módulo de suporte)
+      { userId: user.id, module: "chatwoot_settings", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Contas de Email - CRUD completo
+      { userId: user.id, module: "email_accounts", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Configuração de Email Padrão - Apenas edição
+      { userId: user.id, module: "email_default", canView: true, canCreate: false, canEdit: true, canDelete: false },
+      
+      // Administração do Banco de Dados - CRUD completo
+      { userId: user.id, module: "database_admin", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Usuários - CRUD completo (sub-módulo de admin)
+      { userId: user.id, module: "users", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Permissões de Usuários - Visualização e edição
+      { userId: user.id, module: "user_permissions", canView: true, canCreate: false, canEdit: true, canDelete: false },
+      
+      // Perfil do Usuário - Visualização e edição própria
+      { userId: user.id, module: "user_profile", canView: true, canCreate: false, canEdit: true, canDelete: false },
+      
+      // Endereço do Usuário - Visualização e edição própria
+      { userId: user.id, module: "user_address", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Carrinho de Compras - CRUD completo
+      { userId: user.id, module: "cart", canView: true, canCreate: true, canEdit: true, canDelete: true },
+      
+      // Notificações - Visualização, marcação como lida e exclusão
+      { userId: user.id, module: "notifications", canView: true, canCreate: false, canEdit: true, canDelete: true },
+      
+      // Emails - Visualização, marcação como lida e exclusão
+      { userId: user.id, module: "emails", canView: true, canCreate: false, canEdit: true, canDelete: true },
+      
+      // Navegação - Apenas visualização
+      { userId: user.id, module: "navigation", canView: true, canCreate: false, canEdit: false, canDelete: false },
+      
+      // Sistema/Ajuda - Apenas visualização
+      { userId: user.id, module: "help", canView: true, canCreate: false, canEdit: false, canDelete: false },
+      
+      // Monitoramento do Sistema - Apenas visualização
+      { userId: user.id, module: "system_monitoring", canView: true, canCreate: false, canEdit: false, canDelete: false }
     ];
 
     // Note: We'll store permissions in memory for now since the schema needs to be updated
