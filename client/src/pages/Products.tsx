@@ -87,7 +87,7 @@ const productFormSchema = z.object({
   maxStock: z.number().optional(),
   status: z.enum(["active", "inactive", "discontinued"]).default("active"),
   featured: z.boolean().default(false),
-  images: z.array(z.string().url()).default([]),
+  images: z.array(z.string()).default([]),
   defaultImageIndex: z.number().default(0),
   tags: z.array(z.string()).default([]),
 });
@@ -97,7 +97,7 @@ const categoryFormSchema = z.object({
   description: z.string().optional(),
   parentId: z.number().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
-  image: z.string().url().optional(),
+  image: z.string().optional(),
 });
 
 const manufacturerFormSchema = z.object({
@@ -106,7 +106,7 @@ const manufacturerFormSchema = z.object({
   website: z.string().url().optional(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
-  image: z.string().url().optional(),
+  image: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
 });
 
@@ -125,9 +125,9 @@ export default function Products() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingManufacturer, setEditingManufacturer] = useState<Manufacturer | null>(null);
   const [productImages, setProductImages] = useState<string[]>([]);
-  const [categoryImages, setCategoryImages] = useState<string[]>([]);
+  const [categoryImages, setCategoryImages] = useState<string[]>([]); // Não utilizado atualmente, mas mantido para consistência
   const [categoryImage, setCategoryImage] = useState<string>("");
-  const [manufacturerImages, setManufacturerImages] = useState<string[]>([]);
+  const [manufacturerImages, setManufacturerImages] = useState<string[]>([]); // Não utilizado atualmente, mas mantido para consistência
   const [manufacturerImage, setManufacturerImage] = useState<string>("");
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -531,20 +531,20 @@ export default function Products() {
   };
 
   // Image handling functions
-  const addImage = (imageUrl: string, type: 'product' | 'category' | 'manufacturer') => {
-    if (!imageUrl.trim()) return;
+  const addImage = (imageData: string, type: 'product' | 'category' | 'manufacturer') => {
+    if (!imageData.trim()) return;
 
     switch (type) {
       case 'product':
-        if (!productImages.includes(imageUrl)) {
-          setProductImages([...productImages, imageUrl]);
+        if (!productImages.includes(imageData)) {
+          setProductImages([...productImages, imageData]);
         }
         break;
       case 'category':
-        setCategoryImage(imageUrl);
+        setCategoryImage(imageData);
         break;
       case 'manufacturer':
-        setManufacturerImage(imageUrl);
+        setManufacturerImage(imageData);
         break;
     }
   };
@@ -575,46 +575,130 @@ export default function Products() {
     type: 'product' | 'category' | 'manufacturer';
   }) => {
     const [newImageUrl, setNewImageUrl] = useState("");
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Erro",
+          description: "Por favor, selecione apenas arquivos de imagem.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validar tamanho (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Erro",
+          description: "A imagem deve ter no máximo 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsUploading(true);
+
+      try {
+        // Converter para base64
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          onAddImage(base64);
+          toast({
+            title: "Sucesso",
+            description: "Imagem carregada com sucesso!",
+          });
+        };
+        reader.readAsDataURL(file);
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar a imagem.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploading(false);
+        // Reset input
+        event.target.value = '';
+      }
+    };
 
     return (
-      <div className="space-y-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder="URL da imagem"
-            value={newImageUrl}
-            onChange={(e) => setNewImageUrl(e.target.value)}
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            onClick={() => {
-              onAddImage(newImageUrl);
-              setNewImageUrl("");
-            }}
-            size="sm"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
+      <div className="space-y-3">
+        <FormLabel className="text-sm font-medium text-gray-900 dark:text-white">
+          {type === 'product' ? 'Imagens do Produto' : type === 'category' ? 'Imagem da Categoria' : 'Imagem do Fabricante'}
+        </FormLabel>
+
+        <div className="space-y-2">
+          {/* Upload via arquivo */}
+          <div className="flex items-center space-x-2">
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              className="flex-1"
+            />
+            {isUploading && <div className="text-sm text-gray-500">Carregando...</div>}
+          </div>
+
+          {/* Upload via URL (opcional) */}
+          <div className="flex space-x-2">
+            <Input
+              type="text"
+              placeholder="Ou insira URL da imagem (opcional)"
+              value={newImageUrl}
+              onChange={(e) => setNewImageUrl(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              onClick={() => {
+                if (newImageUrl.trim()) {
+                  onAddImage(newImageUrl);
+                  setNewImageUrl("");
+                }
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {images.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2">
             {images.map((image, index) => (
               <div key={index} className="relative group">
                 <img
                   src={image}
                   alt={`${type} ${index + 1}`}
-                  className="w-full h-24 object-cover rounded-lg border"
+                  className="w-full h-20 object-cover rounded border"
+                  onError={(e) => {
+                    // Fallback para imagens com erro
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA5VjEzTTEyIDE3SDEyLjAwNU0yMiAxMkMxMiAxNy41MjI4IDY0Ljc3NzIgMTIgMTJTMS40NzcyIDYuNDc3IDEgMTIiIHN0cm9rZT0iI0Q1NTAwRCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
+                  }}
                 />
                 <Button
                   type="button"
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => onRemoveImage(index)}
+                  size="sm"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="h-3 w-3" />
                 </Button>
+                {type === 'product' && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b">
+                    {index === 0 ? 'Principal' : `Img ${index + 1}`}
+                  </div>
+                )}
               </div>
             ))}
           </div>

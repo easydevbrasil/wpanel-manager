@@ -1041,67 +1041,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rotas da API Docker real
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
     try {
-      const dockerUri = process.env.DOCKER_URI || '/var/run/docker.sock';
+      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
+      
+      console.log(`Connecting to Docker API at: ${dockerUri}`);
 
-      // Simular resposta da API Docker para desenvolvimento
-      // Em produção, conectar com a API real do Docker
+      // Fazer chamada real para a API Docker
+      const response = await fetch(`${dockerUri}/containers/json?all=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000, // 10 segundos timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`Docker API returned ${response.status}: ${response.statusText}`);
+      }
+
+      const containers = await response.json();
+      res.json(containers);
+    } catch (error) {
+      console.error('Docker API error:', error);
+      
+      // Fallback para containers mock se a API Docker não estiver disponível
       const mockContainers = [
         {
-          Id: "1a2b3c4d5e6f",
-          Names: ["/nginx-server"],
-          Image: "nginx:alpine",
-          ImageID: "sha256:abcd1234",
-          Command: "nginx -g 'daemon off;'",
-          Created: Math.floor(Date.now() / 1000) - 3600,
-          Ports: [
-            { PrivatePort: 80, PublicPort: 8080, Type: "tcp", IP: "0.0.0.0" }
-          ],
-          Labels: {},
-          State: "running",
-          Status: "Up 1 hour",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: {} },
-          Mounts: []
-        },
-        {
-          Id: "2b3c4d5e6f7g",
-          Names: ["/postgres-db"],
-          Image: "postgres:15",
-          ImageID: "sha256:efgh5678",
-          Command: "docker-entrypoint.sh postgres",
-          Created: Math.floor(Date.now() / 1000) - 7200,
-          Ports: [
-            { PrivatePort: 5432, PublicPort: 5432, Type: "tcp", IP: "0.0.0.0" }
-          ],
-          Labels: {},
-          State: "running",
-          Status: "Up 2 hours",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: {} },
-          Mounts: [
-            {
-              Type: "volume",
-              Source: "postgres_data",
-              Destination: "/var/lib/postgresql/data",
-              Mode: "",
-              RW: true,
-              Propagation: ""
-            }
-          ]
-        },
-        {
-          Id: "3c4d5e6f7g8h",
-          Names: ["/redis-cache"],
-          Image: "redis:alpine",
-          ImageID: "sha256:ijkl9012",
-          Command: "redis-server",
-          Created: Math.floor(Date.now() / 1000) - 1800,
-          Ports: [
-            { PrivatePort: 6379, Type: "tcp" }
-          ],
+          Id: "error-fallback",
+          Names: ["/docker-api-unavailable"],
+          Image: "api-error",
+          ImageID: "sha256:error",
+          Command: "Docker API não disponível",
+          Created: Math.floor(Date.now() / 1000),
+          Ports: [],
           Labels: {},
           State: "exited",
-          Status: "Exited (0) 30 minutes ago",
+          Status: `Docker API indisponível em ${process.env.DOCKER_URI || 'http://localhost:2375'}`,
           HostConfig: { NetworkMode: "bridge" },
           NetworkSettings: { Networks: {} },
           Mounts: []
@@ -1109,9 +1083,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       res.json(mockContainers);
-    } catch (error) {
-      console.error('Docker API error:', error);
-      res.status(500).json({ message: "Failed to fetch docker containers" });
     }
   });
 
@@ -1119,56 +1090,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/docker/containers/:id/start", authenticateToken, async (req, res) => {
     try {
       const containerId = req.params.id;
-      // Em produção, fazer chamada real para Docker API
-      // docker.getContainer(containerId).start()
+      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
 
-      console.log(`Starting container ${containerId}`);
-      res.json({ message: `Container ${containerId} started successfully` });
+      const response = await fetch(`${dockerUri}/containers/${containerId}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Docker API error: ${response.status}`);
+      }
+
+      console.log(`Started container ${containerId}`);
+      res.json({ message: `Container ${containerId} iniciado com sucesso` });
     } catch (error) {
       console.error('Docker start error:', error);
-      res.status(500).json({ message: "Failed to start container" });
+      res.status(500).json({ message: "Falha ao iniciar container" });
     }
   });
 
   app.post("/api/docker/containers/:id/stop", authenticateToken, async (req, res) => {
     try {
       const containerId = req.params.id;
-      // Em produção, fazer chamada real para Docker API
-      // docker.getContainer(containerId).stop()
+      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
 
-      console.log(`Stopping container ${containerId}`);
-      res.json({ message: `Container ${containerId} stopped successfully` });
+      const response = await fetch(`${dockerUri}/containers/${containerId}/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Docker API error: ${response.status}`);
+      }
+
+      console.log(`Stopped container ${containerId}`);
+      res.json({ message: `Container ${containerId} parado com sucesso` });
     } catch (error) {
       console.error('Docker stop error:', error);
-      res.status(500).json({ message: "Failed to stop container" });
+      res.status(500).json({ message: "Falha ao parar container" });
     }
   });
 
   app.post("/api/docker/containers/:id/restart", authenticateToken, async (req, res) => {
     try {
       const containerId = req.params.id;
-      // Em produção, fazer chamada real para Docker API
-      // docker.getContainer(containerId).restart()
+      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
 
-      console.log(`Restarting container ${containerId}`);
-      res.json({ message: `Container ${containerId} restarted successfully` });
+      const response = await fetch(`${dockerUri}/containers/${containerId}/restart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Docker API error: ${response.status}`);
+      }
+
+      console.log(`Restarted container ${containerId}`);
+      res.json({ message: `Container ${containerId} reiniciado com sucesso` });
     } catch (error) {
       console.error('Docker restart error:', error);
-      res.status(500).json({ message: "Failed to restart container" });
+      res.status(500).json({ message: "Falha ao reiniciar container" });
     }
   });
 
   app.post("/api/docker/containers/:id/pause", authenticateToken, async (req, res) => {
     try {
       const containerId = req.params.id;
-      // Em produção, fazer chamada real para Docker API
-      // docker.getContainer(containerId).pause()
+      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
 
-      console.log(`Pausing container ${containerId}`);
-      res.json({ message: `Container ${containerId} paused successfully` });
+      const response = await fetch(`${dockerUri}/containers/${containerId}/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Docker API error: ${response.status}`);
+      }
+
+      console.log(`Paused container ${containerId}`);
+      res.json({ message: `Container ${containerId} pausado com sucesso` });
     } catch (error) {
       console.error('Docker pause error:', error);
-      res.status(500).json({ message: "Failed to pause container" });
+      res.status(500).json({ message: "Falha ao pausar container" });
     }
   });
 
