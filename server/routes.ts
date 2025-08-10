@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import multer from "multer";
 
 // Function to generate mail_accounts.cf file
 async function generateMailAccountsFile() {
@@ -47,7 +48,66 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   }
 };
 
+// Configurar multer para upload de imagens
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas arquivos de imagem são permitidos!'), false);
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files statically
+  app.use('/uploads', require('express').static(path.join(process.cwd(), 'uploads')));
+
+  // Upload routes
+  app.post("/api/upload/container-logo", authenticateToken, upload.single('image'), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Nenhum arquivo enviado" });
+      }
+      
+      const fileUrl = `/uploads/${req.file.filename}`;
+      res.json({ url: fileUrl, filename: req.file.filename });
+    } catch (error) {
+      res.status(500).json({ message: "Falha no upload da imagem" });
+    }
+  });
+
+  app.post("/api/upload/product-image", authenticateToken, upload.single('image'), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Nenhum arquivo enviado" });
+      }
+      
+      const fileUrl = `/uploads/${req.file.filename}`;
+      res.json({ url: fileUrl, filename: req.file.filename });
+    } catch (error) {
+      res.status(500).json({ message: "Falha no upload da imagem" });
+    }
+  });
+
   // Authentication routes (no auth required)
   app.post("/api/auth/login", async (req, res) => {
     try {

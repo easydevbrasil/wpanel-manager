@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -65,12 +66,18 @@ interface DockerApiContainer {
 export default function DockerContainers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [containerLogos, setContainerLogos] = useState<Record<string, string>>({});
 
   // Fetch containers da API Docker real
-  const { data: containers = [], isLoading } = useQuery<DockerApiContainer[]>({
+  const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
     queryKey: ["/api/docker/containers"],
     refetchInterval: 5000, // Atualiza a cada 5 segundos
   });
+
+  // Filtrar o container docker-socket-proxy
+  const containers = allContainers.filter(container => 
+    !getContainerName(container).toLowerCase().includes('docker-socket-proxy')
+  );
 
   // Container control mutations usando API Docker real
   const startMutation = useMutation({
@@ -201,7 +208,43 @@ export default function DockerContainers() {
     }
   };
 
-  const getImageIcon = (image: string) => {
+  const handleLogoUpload = async (containerId: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await fetch('/api/upload/container-logo', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setContainerLogos(prev => ({
+          ...prev,
+          [containerId]: result.url
+        }));
+        toast({
+          title: "✅ Logo atualizado",
+          description: "Logo do container foi atualizado com sucesso!",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao fazer upload do logo",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getImageIcon = (image: string, containerId: string) => {
+    // Se há logo personalizado, usar ele
+    if (containerLogos[containerId]) {
+      return <img src={containerLogos[containerId]} alt="Logo" className="w-5 h-5 object-contain" />;
+    }
+    
+    // Caso contrário, usar ícone padrão baseado na imagem
     if (image.includes("nginx") || image.includes("apache")) return <Globe className="w-5 h-5" />;
     if (image.includes("mysql") || image.includes("postgres") || image.includes("mongo")) return <Database className="w-5 h-5" />;
     if (image.includes("node") || image.includes("express")) return <Server className="w-5 h-5" />;
@@ -246,9 +289,35 @@ export default function DockerContainers() {
             <Card key={container.Id} className="hover:shadow-lg transition-shadow duration-200 w-full">
               <div className="flex">
                 {/* Ícone lateral esquerdo */}
-                <div className="w-32 flex-shrink-0">
+                <div className="w-32 flex-shrink-0 relative group">
                   <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg">
-                    {getImageIcon(container.Image)}
+                    {containerLogos[container.Id] ? (
+                      <img 
+                        src={containerLogos[container.Id]} 
+                        alt="Logo" 
+                        className="w-16 h-16 object-contain" 
+                      />
+                    ) : (
+                      getImageIcon(container.Image, container.Id)
+                    )}
+                  </div>
+                  
+                  {/* Overlay para upload de logo */}
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-l-lg">
+                    <label className="cursor-pointer text-white text-xs text-center p-2">
+                      <span>Clique para<br />trocar logo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleLogoUpload(container.Id, file);
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
                 </div>
 

@@ -154,44 +154,59 @@ export default function Products() {
     queryKey: ["/api/product-groups"],
   });
 
+  // Product Form State Management (for image handling)
+  const [productFormState, setProductFormState] = useState<ProductFormData>({
+    name: "",
+    description: "",
+    sku: "",
+    barcode: "",
+    price: "",
+    costPrice: "",
+    categoryId: undefined,
+    manufacturerId: undefined,
+    productGroupId: undefined,
+    weight: "",
+    stock: 0,
+    minStock: 0,
+    maxStock: undefined,
+    status: "active",
+    featured: false,
+    images: [],
+    defaultImageIndex: 0,
+    tags: [],
+  });
+
+  // Category Form State Management (for image handling)
+  const [categoryFormState, setCategoryFormState] = useState<CategoryFormData>({
+    name: "",
+    description: "",
+    status: "active",
+    image: "",
+  });
+
+  // Manufacturer Form State Management (for image handling)
+  const [manufacturerFormState, setManufacturerFormState] = useState<ManufacturerFormData>({
+    name: "",
+    description: "",
+    status: "active",
+    image: "",
+  });
+
+
   // Forms
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      sku: "",
-      barcode: "",
-      price: "",
-      costPrice: "",
-      weight: "",
-      stock: 0,
-      minStock: 0,
-      status: "active",
-      featured: false,
-      images: [],
-      tags: [],
-    },
+    defaultValues: productFormState,
   });
 
   const categoryForm = useForm<CategoryFormData>({
     resolver: zodResolver(categoryFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      status: "active",
-      image: "",
-    },
+    defaultValues: categoryFormState,
   });
 
   const manufacturerForm = useForm<ManufacturerFormData>({
     resolver: zodResolver(manufacturerFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      status: "active",
-      image: "",
-    },
+    defaultValues: manufacturerFormState,
   });
 
   // Product mutations
@@ -203,6 +218,12 @@ export default function Products() {
       setEditingProduct(null);
       productForm.reset();
       setProductImages([]);
+      setProductFormState({
+        name: "", description: "", sku: "", barcode: "", price: "", costPrice: "",
+        categoryId: undefined, manufacturerId: undefined, productGroupId: undefined,
+        weight: "", stock: 0, minStock: 0, maxStock: undefined, status: "active",
+        featured: false, images: [], defaultImageIndex: 0, tags: [],
+      });
       toast({
         title: "Produto criado",
         description: "Produto foi criado com sucesso.",
@@ -226,6 +247,12 @@ export default function Products() {
       setEditingProduct(null);
       productForm.reset();
       setProductImages([]);
+      setProductFormState({
+        name: "", description: "", sku: "", barcode: "", price: "", costPrice: "",
+        categoryId: undefined, manufacturerId: undefined, productGroupId: undefined,
+        weight: "", stock: 0, minStock: 0, maxStock: undefined, status: "active",
+        featured: false, images: [], defaultImageIndex: 0, tags: [],
+      });
       toast({
         title: "Produto atualizado",
         description: "Produto foi atualizado com sucesso.",
@@ -267,6 +294,7 @@ export default function Products() {
       setEditingCategory(null);
       categoryForm.reset();
       setCategoryImage("");
+      setCategoryFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Categoria criada",
         description: "Categoria foi criada com sucesso.",
@@ -290,6 +318,7 @@ export default function Products() {
       setEditingCategory(null);
       categoryForm.reset();
       setCategoryImage("");
+      setCategoryFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Categoria atualizada",
         description: "Categoria foi atualizada com sucesso.",
@@ -331,6 +360,7 @@ export default function Products() {
       setEditingManufacturer(null);
       manufacturerForm.reset();
       setManufacturerImage("");
+      setManufacturerFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Fabricante criado",
         description: "Fabricante foi criado com sucesso.",
@@ -354,6 +384,7 @@ export default function Products() {
       setEditingManufacturer(null);
       manufacturerForm.reset();
       setManufacturerImage("");
+      setManufacturerFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Fabricante atualizado",
         description: "Fabricante foi atualizado com sucesso.",
@@ -406,7 +437,7 @@ export default function Products() {
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setProductImages(product.images || []);
-    productForm.reset({
+    setProductFormState({
       name: product.name,
       description: product.description || "",
       sku: product.sku,
@@ -425,6 +456,7 @@ export default function Products() {
       images: product.images || [],
       tags: product.tags || [],
     });
+    productForm.reset(productFormState);
     setIsProductDialogOpen(true);
   };
 
@@ -435,7 +467,13 @@ export default function Products() {
   const handleNewProduct = () => {
     setEditingProduct(null);
     setProductImages([]);
-    productForm.reset();
+    setProductFormState({
+      name: "", description: "", sku: "", barcode: "", price: "", costPrice: "",
+      categoryId: undefined, manufacturerId: undefined, productGroupId: undefined,
+      weight: "", stock: 0, minStock: 0, maxStock: undefined, status: "active",
+      featured: false, images: [], defaultImageIndex: 0, tags: [],
+    });
+    productForm.reset(productFormState);
     setIsProductDialogOpen(true);
   };
 
@@ -463,7 +501,7 @@ export default function Products() {
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
-    categoryForm.reset({
+    setCategoryFormState({
       name: category.name,
       description: category.description || "",
       parentId: category.parentId || undefined,
@@ -471,6 +509,7 @@ export default function Products() {
       image: category.image || "",
     });
     setCategoryImage(category.image || "");
+    categoryForm.reset(categoryFormState);
     setIsCategoryDialogOpen(true);
   };
 
@@ -481,7 +520,8 @@ export default function Products() {
   const handleNewCategory = () => {
     setEditingCategory(null);
     setCategoryImage("");
-    categoryForm.reset();
+    setCategoryFormState({ name: "", description: "", status: "active", image: "" });
+    categoryForm.reset(categoryFormState);
     setIsCategoryDialogOpen(true);
   };
 
@@ -509,13 +549,14 @@ export default function Products() {
 
   const handleEditManufacturer = (manufacturer: Manufacturer) => {
     setEditingManufacturer(manufacturer);
-    manufacturerForm.reset({
+    setManufacturerFormState({
       name: manufacturer.name,
       description: manufacturer.description || "",
       image: manufacturer.image || "",
       status: manufacturer.status as "active" | "inactive",
     });
     setManufacturerImage(manufacturer.image || "");
+    manufacturerForm.reset(manufacturerFormState);
     setIsManufacturerDialogOpen(true);
   };
 
@@ -526,7 +567,8 @@ export default function Products() {
   const handleNewManufacturer = () => {
     setEditingManufacturer(null);
     setManufacturerImage("");
-    manufacturerForm.reset();
+    setManufacturerFormState({ name: "", description: "", status: "active", image: "" });
+    manufacturerForm.reset(manufacturerFormState);
     setIsManufacturerDialogOpen(true);
   };
 
@@ -682,7 +724,7 @@ export default function Products() {
                   className="w-full h-20 object-cover rounded border"
                   onError={(e) => {
                     // Fallback para imagens com erro
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA5VjEzTTEyIDE3SDEyLjAwNU0yMiAxMkMxMiAxNy41MjI4IDY0Ljc3NzIgMTIgMTJTMS40NzcyIDYuNDc3IDEgMTIiIHN0cm9rZT0iI0Q1NTAwRCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K';
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiHElnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iI0YzRjNGOiIvPgo8cGF0aCBkPSJNMTIgOVYxM00xMiAxN0gxMi4wMDVNMjIgMTJDMTEuNDc3MiA2IDYuNDc3MiAxMiAxMiAxNyIgc3Ryb2tlPSIjRDU1MDA0IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
                   }}
                 />
                 <Button
@@ -772,6 +814,63 @@ export default function Products() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
+
+  // State for managing group form (assuming it exists elsewhere or needs to be added)
+  const [groupForm, setGroupForm] = useState({ name: '', description: '', image: '' });
+
+  // Image upload handler for all types
+  const handleImageUpload = async (file: File, type: 'main' | 'additional' | 'category' | 'manufacturer' | 'group') => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/upload/image', { // Assuming a general upload endpoint
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const imageUrl = result.url;
+
+        switch (type) {
+          case 'main':
+            setProductFormState(prev => ({ ...prev, image: imageUrl }));
+            break;
+          case 'additional':
+            setProductFormState(prev => ({
+              ...prev,
+              images: prev.images ? [...prev.images, imageUrl] : [imageUrl]
+            }));
+            break;
+          case 'category':
+            setCategoryFormState(prev => ({ ...prev, image: imageUrl }));
+            break;
+          case 'manufacturer':
+            setManufacturerFormState(prev => ({ ...prev, image: imageUrl }));
+            break;
+          case 'group':
+            setGroupForm(prev => ({ ...prev, image: imageUrl }));
+            break;
+        }
+
+        toast({
+          title: "✅ Imagem enviada",
+          description: "Imagem foi enviada com sucesso!",
+        });
+      } else {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao enviar imagem",
+        variant: "destructive",
+      });
+      console.error("Image upload error:", error);
+    }
+  };
+
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -1093,13 +1192,49 @@ export default function Products() {
                     {/* Product Images */}
                     <div className="space-y-2">
                       <Label className="text-gray-900 dark:text-white">Imagens do Produto</Label>
-                      <ImageUploadSection
-                        images={productImages}
-                        onAddImage={(url) => addImage(url, 'product')}
-                        onRemoveImage={(index) => removeImage(index, 'product')}
-                        type="product"
-                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="image">Imagem Principal</Label>
+                          <Input
+                            id="image"
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file, 'main');
+                              }
+                            }}
+                          />
+                          {productFormState.image && (
+                            <div className="mt-2">
+                              <img src={productFormState.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <Label htmlFor="images">Outras Imagens</Label>
+                          <Input
+                            id="images"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              files.forEach(file => handleImageUpload(file, 'additional'));
+                            }}
+                          />
+                          {productFormState.images && productFormState.images.length > 0 && (
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {productFormState.images.map((img, index) => (
+                                <img key={index} src={img} alt={`Preview ${index}`} className="w-16 h-16 object-cover rounded" />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
+
 
                     <div className="flex justify-end gap-3 pt-4">
                       <Button
@@ -1415,35 +1550,25 @@ export default function Products() {
                     />
 
                     {/* Category Image */}
-                    <FormField
-                      control={categoryForm.control}
-                      name="image"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Imagem (URL)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="https://exemplo.com/imagem.png"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setCategoryImage(e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                          {categoryImage && (
-                            <div className="mt-2">
-                              <img
-                                src={categoryImage}
-                                alt="Preview"
-                                className="w-20 h-20 object-cover rounded border"
-                              />
-                            </div>
-                          )}
-                        </FormItem>
+                    <div>
+                      <Label htmlFor="categoryImage">Imagem da Categoria</Label>
+                      <Input
+                        id="categoryImage"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, 'category');
+                          }
+                        }}
+                      />
+                      {categoryFormState.image && (
+                        <div className="mt-2">
+                          <img src={categoryFormState.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+                        </div>
                       )}
-                    />
+                    </div>
 
                     <div className="flex justify-end gap-3 pt-4">
                       <Button
@@ -1675,35 +1800,25 @@ export default function Products() {
                     />
 
                     {/* Manufacturer Image */}
-                    <FormField
-                      control={manufacturerForm.control}
-                      name="image"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Imagem (URL)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="https://exemplo.com/imagem.png"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setManufacturerImage(e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                          {manufacturerImage && (
-                            <div className="mt-2">
-                              <img
-                                src={manufacturerImage}
-                                alt="Preview"
-                                className="w-20 h-20 object-cover rounded border"
-                              />
-                            </div>
-                          )}
-                        </FormItem>
+                    <div>
+                      <Label htmlFor="manufacturerImage">Imagem</Label>
+                      <Input
+                        id="manufacturerImage"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, 'manufacturer');
+                          }
+                        }}
+                      />
+                      {manufacturerFormState.image && (
+                        <div className="mt-2">
+                          <img src={manufacturerFormState.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+                        </div>
                       )}
-                    />
+                    </div>
 
                     <div className="flex justify-end gap-3 pt-4">
                       <Button
