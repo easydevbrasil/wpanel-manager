@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage } from "./storage";
+import { storage as dbStorage } from "./storage";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -11,7 +11,7 @@ import multer from "multer";
 // Function to generate mail_accounts.cf file
 async function generateMailAccountsFile() {
   try {
-    const accounts = await storage.getEmailAccounts();
+    const accounts = await dbStorage.getEmailAccounts();
     const lines = accounts.map(account => {
       // Create SHA512 hash in base64 format for Postfix compatibility
       const hash = crypto.createHash('sha512').update(account.password || '').digest('base64');
@@ -38,7 +38,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   }
 
   try {
-    const session = await storage.validateSession(token);
+    const session = await dbStorage.validateSession(token);
     if (!session) {
       return res.status(401).json({ message: "Sessão inválida ou expirada" });
     }
@@ -50,7 +50,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 };
 
 // Configurar multer para upload de imagens
-const storage = multer.diskStorage({
+const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadDir)) {
@@ -65,7 +65,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ 
-  storage: storage,
+  storage: multerStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
@@ -118,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Usuário e senha são obrigatórios" });
       }
 
-      const result = await storage.authenticateUser(username, password);
+      const result = await dbStorage.authenticateUser(username, password);
       if (!result) {
         return res.status(401).json({ message: "Credenciais inválidas" });
       }
@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const token = req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
       if (token) {
-        await storage.invalidateSession(token);
+        await dbStorage.invalidateSession(token);
       }
       res.json({ message: "Logout realizado com sucesso" });
     } catch (error) {
@@ -148,7 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Protected routes (require authentication)
   app.get("/api/user", authenticateToken, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.id);
+      const user = await dbStorage.getUser(req.user.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Preferences routes
   app.get("/api/user/preferences", authenticateToken, async (req: any, res) => {
     try {
-      const preferences = await storage.getUserPreferences(req.user.id);
+      const preferences = await dbStorage.getUserPreferences(req.user.id);
       res.json(preferences || {});
     } catch (error) {
       console.error("Error fetching user preferences:", error);
@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/user/preferences", authenticateToken, async (req: any, res) => {
     try {
-      const preferences = await storage.updateUserPreferences(req.user.id, req.body);
+      const preferences = await dbStorage.updateUserPreferences(req.user.id, req.body);
       res.json(preferences);
 
       // Broadcast preferences update
@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get navigation items
   app.get("/api/navigation", async (req, res) => {
     try {
-      const items = await storage.getNavigationItems();
+      const items = await dbStorage.getNavigationItems();
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to get navigation items" });
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get dashboard stats
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats(1); // Mock user ID
+      const stats = await dbStorage.getDashboardStats(1); // Mock user ID
       if (!stats) {
         return res.status(404).json({ message: "Stats not found" });
       }
