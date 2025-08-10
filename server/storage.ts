@@ -74,7 +74,7 @@ export interface IStorage {
   authenticateUser(username: string, password: string): Promise<{ user: any; sessionToken: string } | null>;
   validateSession(sessionToken: string): Promise<{ user: any } | null>;
   invalidateSession(sessionToken: string): Promise<void>;
-  
+
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
@@ -82,119 +82,119 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   deleteUser(id: number): Promise<void>;
-  
+
   // User Preferences
   getUserPreferences(userId: number): Promise<UserPreferences | undefined>;
   updateUserPreferences(userId: number, preferences: Partial<InsertUserPreferences>): Promise<UserPreferences>;
-  
+
   // Navigation
   getNavigationItems(): Promise<NavigationItem[]>;
   createNavigationItem(item: InsertNavigationItem): Promise<NavigationItem>;
-  
+
   // Dashboard Stats
   getDashboardStats(userId: number): Promise<DashboardStats | undefined>;
   updateDashboardStats(userId: number, stats: Partial<InsertDashboardStats>): Promise<DashboardStats>;
-  
+
   // Cart Items
   getCartItems(userId: number): Promise<CartItem[]>;
   updateCartItemQuantity(itemId: number, quantity: number): Promise<CartItem>;
   deleteCartItem(itemId: number): Promise<void>;
   clearCart(userId: number): Promise<void>;
-  
+
   // Notifications
   getNotifications(userId: number, limit?: number): Promise<Notification[]>;
   markNotificationAsRead(notificationId: number): Promise<Notification>;
   deleteNotification(notificationId: number): Promise<void>;
   clearNotifications(userId: number): Promise<void>;
-  
+
   // Emails
   getEmails(userId: number, limit?: number): Promise<Email[]>;
   markEmailAsRead(emailId: number): Promise<Email>;
   deleteEmail(emailId: number): Promise<void>;
   clearEmails(userId: number): Promise<void>;
-  
+
   // Clients
   getClients(): Promise<Client[]>;
   getClient(id: number): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
-  
+
   // Categories
   getCategories(): Promise<Category[]>;
   getCategory(id: number): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category>;
   deleteCategory(id: number): Promise<void>;
-  
+
   // Manufacturers
   getManufacturers(): Promise<Manufacturer[]>;
   getManufacturer(id: number): Promise<Manufacturer | undefined>;
   createManufacturer(manufacturer: InsertManufacturer): Promise<Manufacturer>;
   updateManufacturer(id: number, manufacturer: Partial<InsertManufacturer>): Promise<Manufacturer>;
   deleteManufacturer(id: number): Promise<void>;
-  
+
   // Product Groups
   getProductGroups(): Promise<ProductGroup[]>;
   getProductGroup(id: number): Promise<ProductGroup | undefined>;
   createProductGroup(group: InsertProductGroup): Promise<ProductGroup>;
   updateProductGroup(id: number, group: Partial<InsertProductGroup>): Promise<ProductGroup>;
   deleteProductGroup(id: number): Promise<void>;
-  
+
   // Products
   getProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
-  
+
   // Suppliers
   getSuppliers(): Promise<Supplier[]>;
   getSupplier(id: number): Promise<Supplier | undefined>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier>;
   deleteSupplier(id: number): Promise<void>;
-  
+
   // Sales
   getSales(): Promise<Sale[]>;
   getSale(id: number): Promise<Sale | undefined>;
   createSale(sale: InsertSale): Promise<Sale>;
   updateSale(id: number, sale: Partial<InsertSale>): Promise<Sale>;
   deleteSale(id: number): Promise<void>;
-  
+
   // Sale Items
   getSaleItems(saleId: number): Promise<SaleItem[]>;
   createSaleItem(saleItem: InsertSaleItem): Promise<SaleItem>;
   updateSaleItem(id: number, saleItem: Partial<InsertSaleItem>): Promise<SaleItem>;
   deleteSaleItem(id: number): Promise<void>;
-  
+
   // Support Tickets
   getSupportTickets(): Promise<SupportTicket[]>;
   getSupportTicket(id: number): Promise<SupportTicket | undefined>;
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
   updateSupportTicket(id: number, ticket: Partial<InsertSupportTicket>): Promise<SupportTicket>;
   deleteSupportTicket(id: number): Promise<void>;
-  
+
   // Support Ticket Messages
   getSupportTicketMessages(ticketId: number): Promise<SupportTicketMessage[]>;
   createSupportTicketMessage(message: InsertSupportTicketMessage): Promise<SupportTicketMessage>;
   updateSupportTicketMessage(id: number, message: Partial<InsertSupportTicketMessage>): Promise<SupportTicketMessage>;
   deleteSupportTicketMessage(id: number): Promise<void>;
-  
+
   // Support Categories
   getSupportCategories(): Promise<SupportCategory[]>;
   getSupportCategory(id: number): Promise<SupportCategory | undefined>;
   createSupportCategory(category: InsertSupportCategory): Promise<SupportCategory>;
   updateSupportCategory(id: number, category: Partial<InsertSupportCategory>): Promise<SupportCategory>;
   deleteSupportCategory(id: number): Promise<void>;
-  
+
   // Chatwoot Settings
   getChatwootSettings(): Promise<ChatwootSettings[]>;
   getChatwootSetting(id: number): Promise<ChatwootSettings | undefined>;
   createChatwootSettings(settings: InsertChatwootSettings): Promise<ChatwootSettings>;
   updateChatwootSettings(id: number, settings: Partial<InsertChatwootSettings>): Promise<ChatwootSettings>;
   deleteChatwootSettings(id: number): Promise<void>;
-  
+
   // Email Accounts
   getEmailAccounts(): Promise<EmailAccount[]>;
   getEmailAccount(id: number): Promise<EmailAccount | undefined>;
@@ -202,16 +202,16 @@ export interface IStorage {
   updateEmailAccount(id: number, account: Partial<InsertEmailAccount>): Promise<EmailAccount>;
   deleteEmailAccount(id: number): Promise<void>;
   setDefaultEmailAccount(id: number): Promise<EmailAccount>;
-  
+
   // User Permissions
   getUserPermissions(): Promise<any[]>;
   getUserPermissionsByUserId(userId: number): Promise<any[]>;
   updateUserPermissions(userId: number, permissions: any[]): Promise<any[]>;
-  
+
   // User Address
   getUserAddress(userId: number): Promise<any>;
   updateUserAddress(userId: number, address: any): Promise<any>;
-  
+
   // Docker Containers
   getDockerContainers(): Promise<DockerContainer[]>;
   getDockerContainer(id: number): Promise<DockerContainer | undefined>;
@@ -219,7 +219,7 @@ export interface IStorage {
   updateDockerContainer(id: number, container: Partial<InsertDockerContainer>): Promise<DockerContainer>;
   deleteDockerContainer(id: number): Promise<void>;
   updateContainerStatus(id: number, status: string): Promise<DockerContainer>;
-  
+
   // Webhooks
   getWebhookConfigs(): Promise<WebhookConfig[]>;
   getWebhookConfig(id: number): Promise<WebhookConfig | undefined>;
@@ -267,7 +267,7 @@ export class DatabaseStorage implements IStorage {
 
   private async createSampleData() {
     const now = new Date().toISOString();
-    
+
     // Create sample user
     const [user] = await db.insert(users).values({
       username: "john.smith",
@@ -285,7 +285,7 @@ export class DatabaseStorage implements IStorage {
         phone: "(11) 99999-1111",
         company: "Tech Solutions Brasil",
         position: "Diretora de TI",
-        image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
+        image: "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=150&h=150&fit=crop&crop=face",
         status: "active",
         notes: "Cliente estratégico para soluções empresariais",
         createdAt: now,
@@ -559,7 +559,8 @@ export class DatabaseStorage implements IStorage {
       { label: "Admin DB", icon: "Database", href: "/database-admin", order: 8, parentId: null },
       { label: "Permissões", icon: "Shield", href: "/user-permissions", order: 9, parentId: null },
       { label: "Perfil", icon: "User", href: "/user-profile", order: 10, parentId: null },
-      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 11, parentId: null }
+      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 11, parentId: null },
+      { label: "Containers", icon: "Container", href: "/containers", order: 12, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);
@@ -573,85 +574,85 @@ export class DatabaseStorage implements IStorage {
     const permissionsData = [
       // Dashboard - Visualização de estatísticas e métricas
       { userId: user.id, module: "dashboard", canView: true, canCreate: false, canEdit: false, canDelete: false },
-      
+
       // Clientes - CRUD completo
       { userId: user.id, module: "clients", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Produtos - CRUD completo
       { userId: user.id, module: "products", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Categorias - CRUD completo (sub-módulo de produtos)
       { userId: user.id, module: "categories", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Fabricantes - CRUD completo (sub-módulo de produtos)
       { userId: user.id, module: "manufacturers", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Grupos de Produtos - CRUD completo (sub-módulo de produtos)
       { userId: user.id, module: "product_groups", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Fornecedores - CRUD completo
       { userId: user.id, module: "suppliers", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Vendas - CRUD completo
       { userId: user.id, module: "sales", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Itens de Venda - CRUD completo (sub-módulo de vendas)
       { userId: user.id, module: "sale_items", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Cupons Fiscais - Geração e download
       { userId: user.id, module: "receipts", canView: true, canCreate: true, canEdit: false, canDelete: false },
-      
+
       // Suporte - CRUD completo
       { userId: user.id, module: "support", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Tickets de Suporte - CRUD completo (sub-módulo de suporte)
       { userId: user.id, module: "support_tickets", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Mensagens de Suporte - CRUD completo (sub-módulo de suporte)
       { userId: user.id, module: "support_messages", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Categorias de Suporte - CRUD completo (sub-módulo de suporte)
       { userId: user.id, module: "support_categories", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Configurações Chatwoot - CRUD completo (sub-módulo de suporte)
       { userId: user.id, module: "chatwoot_settings", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Contas de Email - CRUD completo
       { userId: user.id, module: "email_accounts", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Configuração de Email Padrão - Apenas edição
       { userId: user.id, module: "email_default", canView: true, canCreate: false, canEdit: true, canDelete: false },
-      
+
       // Administração do Banco de Dados - CRUD completo
       { userId: user.id, module: "database_admin", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Usuários - CRUD completo (sub-módulo de admin)
       { userId: user.id, module: "users", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Permissões de Usuários - Visualização e edição
       { userId: user.id, module: "user_permissions", canView: true, canCreate: false, canEdit: true, canDelete: false },
-      
+
       // Perfil do Usuário - Visualização e edição própria
       { userId: user.id, module: "user_profile", canView: true, canCreate: false, canEdit: true, canDelete: false },
-      
+
       // Endereço do Usuário - Visualização e edição própria
       { userId: user.id, module: "user_address", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Carrinho de Compras - CRUD completo
       { userId: user.id, module: "cart", canView: true, canCreate: true, canEdit: true, canDelete: true },
-      
+
       // Notificações - Visualização, marcação como lida e exclusão
       { userId: user.id, module: "notifications", canView: true, canCreate: false, canEdit: true, canDelete: true },
-      
+
       // Emails - Visualização, marcação como lida e exclusão
       { userId: user.id, module: "emails", canView: true, canCreate: false, canEdit: true, canDelete: true },
-      
+
       // Navegação - Apenas visualização
       { userId: user.id, module: "navigation", canView: true, canCreate: false, canEdit: false, canDelete: false },
-      
+
       // Sistema/Ajuda - Apenas visualização
       { userId: user.id, module: "help", canView: true, canCreate: false, canEdit: false, canDelete: false },
-      
+
       // Monitoramento do Sistema - Apenas visualização
       { userId: user.id, module: "system_monitoring", canView: true, canCreate: false, canEdit: false, canDelete: false }
     ];
@@ -664,7 +665,7 @@ export class DatabaseStorage implements IStorage {
   async authenticateUser(username: string, password: string): Promise<{ user: any; sessionToken: string } | null> {
     try {
       const [user] = await db.select().from(users).where(eq(users.username, username));
-      
+
       if (!user || user.password !== password) {
         return null;
       }
@@ -774,7 +775,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserPreferences(userId: number, preferencesData: Partial<InsertUserPreferences>): Promise<UserPreferences> {
     // Check if preferences exist
     const existing = await this.getUserPreferences(userId);
-    
+
     if (existing) {
       // Update existing preferences
       const [updated] = await db
@@ -812,7 +813,7 @@ export class DatabaseStorage implements IStorage {
     const cartItems = await this.getCartItems(userId);
     const notifications = await this.getNotifications(userId);
     const emails = await this.getEmails(userId);
-    
+
     // Get real counts from database
     const [
       clients,
@@ -827,7 +828,7 @@ export class DatabaseStorage implements IStorage {
       this.getSuppliers(),
       this.getSupportTickets()
     ]);
-    
+
     return { 
       id: 1, 
       userId, 
@@ -1151,7 +1152,13 @@ export class DatabaseStorage implements IStorage {
 
   // Category CRUD operations
   async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories).orderBy(categories.name);
+    try {
+      const allCategories = await db.select().from(categories);
+      return allCategories;
+    } catch (error) {
+      console.error('Error getting categories:', error);
+      return [];
+    }
   }
 
   async getCategory(id: number): Promise<Category | undefined> {
@@ -1184,7 +1191,13 @@ export class DatabaseStorage implements IStorage {
 
   // Manufacturer CRUD operations
   async getManufacturers(): Promise<Manufacturer[]> {
-    return await db.select().from(manufacturers).orderBy(manufacturers.name);
+    try {
+      const allManufacturers = await db.select().from(manufacturers);
+      return allManufacturers;
+    } catch (error) {
+      console.error('Error getting manufacturers:', error);
+      return [];
+    }
   }
 
   async getManufacturer(id: number): Promise<Manufacturer | undefined> {
@@ -1552,7 +1565,7 @@ export class DatabaseStorage implements IStorage {
   async setDefaultEmailAccount(id: number): Promise<EmailAccount> {
     // First, remove default from all accounts
     await db.update(emailAccounts).set({ isDefault: false });
-    
+
     // Then set the selected account as default
     const [defaultAccount] = await db
       .update(emailAccounts)
@@ -1589,10 +1602,10 @@ export class DatabaseStorage implements IStorage {
   async updateUserPermissions(userId: number, permissions: any[]): Promise<any[]> {
     try {
       (global as any).userPermissions = (global as any).userPermissions || [];
-      
+
       // Remove existing permissions for this user
       (global as any).userPermissions = (global as any).userPermissions.filter((p: any) => p.userId !== userId);
-      
+
       // Add new permissions
       const newPermissions = permissions.map(permission => ({
         id: Date.now() + Math.random(),
@@ -1607,7 +1620,7 @@ export class DatabaseStorage implements IStorage {
       }));
 
       (global as any).userPermissions.push(...newPermissions);
-      
+
       return newPermissions;
     } catch (error) {
       console.error('Error updating user permissions:', error);
@@ -1629,10 +1642,10 @@ export class DatabaseStorage implements IStorage {
   async updateUserAddress(userId: number, address: any): Promise<any> {
     try {
       (global as any).userAddresses = (global as any).userAddresses || [];
-      
+
       // Remove existing address for this user
       (global as any).userAddresses = (global as any).userAddresses.filter((a: any) => a.userId !== userId);
-      
+
       // Add new address
       const newAddress = {
         id: Date.now(),
@@ -1643,7 +1656,7 @@ export class DatabaseStorage implements IStorage {
       };
 
       (global as any).userAddresses.push(newAddress);
-      
+
       return newAddress;
     } catch (error) {
       console.error('Error updating user address:', error);

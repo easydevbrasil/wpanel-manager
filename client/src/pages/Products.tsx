@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -54,9 +61,15 @@ import {
   ShoppingCart,
   Barcode,
   Tag,
+  Building2,
+  FolderPlus,
+  ImagePlus,
+  X,
+  Upload,
+  Globe,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Product, InsertProduct, Category, Manufacturer, ProductGroup } from "@shared/schema";
+import type { Product, InsertProduct, Category, Manufacturer, ProductGroup, InsertCategory, InsertManufacturer } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 const productFormSchema = z.object({
@@ -101,15 +114,17 @@ const manufacturerFormSchema = z.object({
 });
 
 type ProductFormData = z.infer<typeof productFormSchema>;
+type CategoryFormData = z.infer<typeof categoryFormSchema>;
+type ManufacturerFormData = z.infer<typeof manufacturerFormSchema>;
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "discontinued">("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | string>("all");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [isManufacturerDialogOpen, setIsManufacturerDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingManufacturer, setEditingManufacturer] = useState<Manufacturer | null>(null);
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -118,6 +133,7 @@ export default function Products() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [activeTab, setActiveTab] = useState("products");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -127,11 +143,11 @@ export default function Products() {
     queryKey: ["/api/products"],
   });
 
-  const { data: categories = [] } = useQuery<Category[]>({
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
-  const { data: manufacturers = [] } = useQuery<Manufacturer[]>({
+  const { data: manufacturers = [], isLoading: isLoadingManufacturers } = useQuery<Manufacturer[]>({
     queryKey: ["/api/manufacturers"],
   });
 
@@ -139,7 +155,8 @@ export default function Products() {
     queryKey: ["/api/product-groups"],
   });
 
-  const form = useForm<ProductFormData>({
+  // Forms
+  const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: "",
@@ -158,13 +175,35 @@ export default function Products() {
     },
   });
 
+  const categoryForm = useForm<CategoryFormData>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      status: "active",
+      images: [],
+    },
+  });
+
+  const manufacturerForm = useForm<ManufacturerFormData>({
+    resolver: zodResolver(manufacturerFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      status: "active",
+      images: [],
+    },
+  });
+
+  // Product mutations
   const createProductMutation = useMutation({
     mutationFn: (data: InsertProduct) => apiRequest("POST", "/api/products", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      setIsDialogOpen(false);
+      setIsProductDialogOpen(false);
       setEditingProduct(null);
-      form.reset();
+      productForm.reset();
+      setProductImages([]);
       toast({
         title: "Produto criado",
         description: "Produto foi criado com sucesso.",
@@ -184,9 +223,10 @@ export default function Products() {
       apiRequest("PUT", `/api/products/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      setIsDialogOpen(false);
+      setIsProductDialogOpen(false);
       setEditingProduct(null);
-      form.reset();
+      productForm.reset();
+      setProductImages([]);
       toast({
         title: "Produto atualizado",
         description: "Produto foi atualizado com sucesso.",
@@ -219,12 +259,142 @@ export default function Products() {
     },
   });
 
-  const onSubmit = (data: ProductFormData) => {
+  // Category mutations
+  const createCategoryMutation = useMutation({
+    mutationFn: (data: InsertCategory) => apiRequest("POST", "/api/categories", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      setIsCategoryDialogOpen(false);
+      setEditingCategory(null);
+      categoryForm.reset();
+      setCategoryImages([]);
+      toast({
+        title: "Categoria criada",
+        description: "Categoria foi criada com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao criar categoria.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertCategory> }) =>
+      apiRequest("PUT", `/api/categories/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      setIsCategoryDialogOpen(false);
+      setEditingCategory(null);
+      categoryForm.reset();
+      setCategoryImages([]);
+      toast({
+        title: "Categoria atualizada",
+        description: "Categoria foi atualizada com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar categoria.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/categories/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({
+        title: "Categoria excluída",
+        description: "Categoria foi excluída com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir categoria.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Manufacturer mutations
+  const createManufacturerMutation = useMutation({
+    mutationFn: (data: InsertManufacturer) => apiRequest("POST", "/api/manufacturers", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manufacturers"] });
+      setIsManufacturerDialogOpen(false);
+      setEditingManufacturer(null);
+      manufacturerForm.reset();
+      setManufacturerImages([]);
+      toast({
+        title: "Fabricante criado",
+        description: "Fabricante foi criado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao criar fabricante.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateManufacturerMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertManufacturer> }) =>
+      apiRequest("PUT", `/api/manufacturers/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manufacturers"] });
+      setIsManufacturerDialogOpen(false);
+      setEditingManufacturer(null);
+      manufacturerForm.reset();
+      setManufacturerImages([]);
+      toast({
+        title: "Fabricante atualizado",
+        description: "Fabricante foi atualizado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar fabricante.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteManufacturerMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/manufacturers/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manufacturers"] });
+      toast({
+        title: "Fabricante excluído",
+        description: "Fabricante foi excluído com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir fabricante.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Product handlers
+  const onSubmitProduct = (data: ProductFormData) => {
     const productData = {
       ...data,
       categoryId: data.categoryId || null,
       manufacturerId: data.manufacturerId || null,
       productGroupId: data.productGroupId || null,
+      images: productImages,
     };
 
     if (editingProduct) {
@@ -234,9 +404,10 @@ export default function Products() {
     }
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    form.reset({
+    setProductImages(product.images || []);
+    productForm.reset({
       name: product.name,
       description: product.description || "",
       sku: product.sku,
@@ -255,17 +426,197 @@ export default function Products() {
       images: product.images || [],
       tags: product.tags || [],
     });
-    setIsDialogOpen(true);
+    setIsProductDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDeleteProduct = (id: number) => {
     deleteProductMutation.mutate(id);
   };
 
   const handleNewProduct = () => {
     setEditingProduct(null);
-    form.reset();
-    setIsDialogOpen(true);
+    setProductImages([]);
+    productForm.reset();
+    setIsProductDialogOpen(true);
+  };
+
+  // Category handlers
+  const onSubmitCategory = (data: CategoryFormData) => {
+    const categoryData = {
+      ...data,
+      images: categoryImages,
+      image: categoryImages[0] || null,
+    };
+
+    if (editingCategory) {
+      updateCategoryMutation.mutate({ id: editingCategory.id, data: categoryData });
+    } else {
+      createCategoryMutation.mutate(categoryData);
+    }
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryImages(category.images || []);
+    categoryForm.reset({
+      name: category.name,
+      description: category.description || "",
+      parentId: category.parentId || undefined,
+      status: category.status as "active" | "inactive",
+      image: category.image || "",
+      images: category.images || [],
+    });
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleDeleteCategory = (id: number) => {
+    deleteCategoryMutation.mutate(id);
+  };
+
+  const handleNewCategory = () => {
+    setEditingCategory(null);
+    setCategoryImages([]);
+    categoryForm.reset();
+    setIsCategoryDialogOpen(true);
+  };
+
+  // Manufacturer handlers
+  const onSubmitManufacturer = (data: ManufacturerFormData) => {
+    const manufacturerData = {
+      ...data,
+      images: manufacturerImages,
+      logo: manufacturerImages[0] || null,
+    };
+
+    if (editingManufacturer) {
+      updateManufacturerMutation.mutate({ id: editingManufacturer.id, data: manufacturerData });
+    } else {
+      createManufacturerMutation.mutate(manufacturerData);
+    }
+  };
+
+  const handleEditManufacturer = (manufacturer: Manufacturer) => {
+    setEditingManufacturer(manufacturer);
+    setManufacturerImages(manufacturer.images || []);
+    manufacturerForm.reset({
+      name: manufacturer.name,
+      description: manufacturer.description || "",
+      website: manufacturer.website || "",
+      email: manufacturer.email || "",
+      phone: manufacturer.phone || "",
+      status: manufacturer.status as "active" | "inactive",
+      logo: manufacturer.logo || "",
+      images: manufacturer.images || [],
+    });
+    setIsManufacturerDialogOpen(true);
+  };
+
+  const handleDeleteManufacturer = (id: number) => {
+    deleteManufacturerMutation.mutate(id);
+  };
+
+  const handleNewManufacturer = () => {
+    setEditingManufacturer(null);
+    setManufacturerImages([]);
+    manufacturerForm.reset();
+    setIsManufacturerDialogOpen(true);
+  };
+
+  // Image handling functions
+  const addImage = (imageUrl: string, type: 'product' | 'category' | 'manufacturer') => {
+    if (!imageUrl.trim()) return;
+    
+    switch (type) {
+      case 'product':
+        if (!productImages.includes(imageUrl)) {
+          setProductImages([...productImages, imageUrl]);
+        }
+        break;
+      case 'category':
+        if (!categoryImages.includes(imageUrl)) {
+          setCategoryImages([...categoryImages, imageUrl]);
+        }
+        break;
+      case 'manufacturer':
+        if (!manufacturerImages.includes(imageUrl)) {
+          setManufacturerImages([...manufacturerImages, imageUrl]);
+        }
+        break;
+    }
+  };
+
+  const removeImage = (index: number, type: 'product' | 'category' | 'manufacturer') => {
+    switch (type) {
+      case 'product':
+        setProductImages(productImages.filter((_, i) => i !== index));
+        break;
+      case 'category':
+        setCategoryImages(categoryImages.filter((_, i) => i !== index));
+        break;
+      case 'manufacturer':
+        setManufacturerImages(manufacturerImages.filter((_, i) => i !== index));
+        break;
+    }
+  };
+
+  const ImageUploadSection = ({ 
+    images, 
+    onAddImage, 
+    onRemoveImage, 
+    type 
+  }: { 
+    images: string[]; 
+    onAddImage: (url: string) => void; 
+    onRemoveImage: (index: number) => void;
+    type: 'product' | 'category' | 'manufacturer';
+  }) => {
+    const [newImageUrl, setNewImageUrl] = useState("");
+
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            placeholder="URL da imagem"
+            value={newImageUrl}
+            onChange={(e) => setNewImageUrl(e.target.value)}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            onClick={() => {
+              onAddImage(newImageUrl);
+              setNewImageUrl("");
+            }}
+            size="sm"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        {images.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {images.map((image, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={image}
+                  alt={`${type} ${index + 1}`}
+                  className="w-full h-24 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => onRemoveImage(index)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const getCategoryName = (categoryId: number | null) => {
@@ -344,42 +695,588 @@ export default function Products() {
               Produtos
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Gerencie seu catálogo de produtos, categorias e estoque.
+              Gerencie seu catálogo de produtos, categorias e fabricantes.
             </p>
           </div>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleNewProduct} className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Novo Produto
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-gray-900 dark:text-white">
-                  {editingProduct ? "Editar Produto" : "Novo Produto"}
-                </DialogTitle>
-                <DialogDescription className="text-gray-600 dark:text-gray-400">
-                  {editingProduct 
-                    ? "Atualize as informações do produto."
-                    : "Adicione um novo produto ao seu catálogo."
-                  }
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="products" className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Produtos
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <FolderPlus className="w-4 h-4" />
+            Categorias
+          </TabsTrigger>
+          <TabsTrigger value="manufacturers" className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Fabricantes
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Products Tab */}
+        <TabsContent value="products" className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Buscar produtos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive" | "discontinued") => setStatusFilter(value)}>
+                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                  <SelectValue placeholder="Filtrar por status" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="inactive">Inativos</SelectItem>
+                  <SelectItem value="discontinued">Descontinuados</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                  <SelectValue placeholder="Filtrar por categoria" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                  <SelectItem value="all">Todas</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleNewProduct} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Novo Produto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-gray-900 dark:text-white">
+                    {editingProduct ? "Editar Produto" : "Novo Produto"}
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 dark:text-gray-400">
+                    {editingProduct 
+                      ? "Atualize as informações do produto."
+                      : "Adicione um novo produto ao seu catálogo."
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <Form {...productForm}>
+                  <form onSubmit={productForm.handleSubmit(onSubmitProduct)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={productForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel className="text-gray-900 dark:text-white">Nome do Produto</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Nome do produto" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="sku"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">SKU</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="SKU-001" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="barcode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Código de Barras</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="7891234567890" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Preço de Venda</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="99.90" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="costPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Preço de Custo</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="75.00" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="categoryId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Categoria</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
+                              <FormControl>
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                  <SelectValue placeholder="Selecione uma categoria" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                                {categories.map((category) => (
+                                  <SelectItem key={category.id} value={category.id.toString()}>
+                                    {category.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="manufacturerId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Fabricante</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
+                              <FormControl>
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                  <SelectValue placeholder="Selecione um fabricante" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                                {manufacturers.map((manufacturer) => (
+                                  <SelectItem key={manufacturer.id} value={manufacturer.id.toString()}>
+                                    {manufacturer.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="stock"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Estoque Atual</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                placeholder="0" 
+                                {...field} 
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="minStock"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Estoque Mínimo</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number"
+                                placeholder="0" 
+                                {...field} 
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={productForm.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                  <SelectValue placeholder="Selecione o status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                                <SelectItem value="active">Ativo</SelectItem>
+                                <SelectItem value="inactive">Inativo</SelectItem>
+                                <SelectItem value="discontinued">Descontinuado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
                     <FormField
-                      control={form.control}
+                      control={productForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Descrição detalhada do produto..."
+                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Product Images */}
+                    <div className="space-y-2">
+                      <Label className="text-gray-900 dark:text-white">Imagens do Produto</Label>
+                      <ImageUploadSection
+                        images={productImages}
+                        onAddImage={(url) => addImage(url, 'product')}
+                        onRemoveImage={(index) => removeImage(index, 'product')}
+                        type="product"
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsProductDialogOpen(false)}
+                        className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit"
+                        disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                      >
+                        {editingProduct ? "Atualizar" : "Criar"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Products Grid */}
+          {isLoadingProducts ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(9)].map((_, i) => (
+                <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="w-full h-48 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : displayedProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum produto encontrado</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {searchTerm || statusFilter !== "all" || categoryFilter !== "all" 
+                  ? "Tente ajustar os filtros de busca."
+                  : "Comece criando seu primeiro produto."
+                }
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedProducts.map((product) => (
+                  <Card key={product.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        {/* Product Image */}
+                        <div className="relative">
+                          {product.images && product.images.length > 0 ? (
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                              <Package className="w-12 h-12 text-gray-400" />
+                            </div>
+                          )}
+                          {product.featured && (
+                            <Badge className="absolute top-2 left-2 bg-yellow-500 text-white">
+                              <Star className="w-3 h-3 mr-1" />
+                              Destaque
+                            </Badge>
+                          )}
+                          <div className="absolute top-2 right-2 flex items-center space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditProduct(product)}
+                              className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-gray-900 dark:text-white">
+                                    Excluir Produto
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                                    Tem certeza que deseja excluir {product.name}? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                    Cancelar
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteProduct(product.id)}
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
+                              {product.name}
+                            </h3>
+                            <Badge 
+                              variant={product.status === "active" ? "default" : "secondary"}
+                              className={
+                                product.status === "active" 
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                                  : product.status === "discontinued"
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                  : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                              }
+                            >
+                              {product.status === "active" ? "Ativo" : product.status === "discontinued" ? "Descontinuado" : "Inativo"}
+                            </Badge>
+                          </div>
+
+                          <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center">
+                              <Barcode className="w-4 h-4 mr-2" />
+                              <span className="font-mono">{product.sku}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Tag className="w-4 h-4 mr-2" />
+                              <span>{getCategoryName(product.categoryId)}</span>
+                            </div>
+                            {product.manufacturerId && (
+                              <div className="flex items-center">
+                                <Building2 className="w-4 h-4 mr-2" />
+                                <span>{getManufacturerName(product.manufacturerId)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {product.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                              {product.description}
+                            </p>
+                          )}
+
+                          <div className="flex items-center justify-between pt-2">
+                            <div className="space-y-1">
+                              <div className="text-lg font-bold text-gray-900 dark:text-white">
+                                R$ {parseFloat(product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </div>
+                              {product.costPrice && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Custo: R$ {parseFloat(product.costPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="flex items-center text-sm">
+                                <ShoppingCart className="w-4 h-4 mr-1" />
+                                <span className={product.stock <= (product.minStock || 0) ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-900 dark:text-white"}>
+                                  {product.stock}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                em estoque
+                              </div>
+                            </div>
+                          </div>
+
+                          {product.tags && product.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-2">
+                              {product.tags.slice(0, 3).map((tag, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {product.tags.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{product.tags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Loading indicator for infinite scroll */}
+              {isLoadingMore && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-gray-600 dark:text-gray-400">Carregando mais produtos...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* End of results indicator */}
+              {displayedProducts.length >= filteredProducts.length && displayedProducts.length > 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    Todos os produtos foram carregados ({filteredProducts.length} produtos)
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Categorias</h2>
+            <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleNewCategory} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Nova Categoria
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800">
+                <DialogHeader>
+                  <DialogTitle className="text-gray-900 dark:text-white">
+                    {editingCategory ? "Editar Categoria" : "Nova Categoria"}
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 dark:text-gray-400">
+                    {editingCategory 
+                      ? "Atualize as informações da categoria."
+                      : "Adicione uma nova categoria ao sistema."
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <Form {...categoryForm}>
+                  <form onSubmit={categoryForm.handleSubmit(onSubmitCategory)} className="space-y-4">
+                    <FormField
+                      control={categoryForm.control}
                       name="name"
                       render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel className="text-gray-900 dark:text-white">Nome do Produto</FormLabel>
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder="Nome do produto" 
+                              placeholder="Nome da categoria" 
                               {...field} 
                               className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                             />
@@ -390,169 +1287,25 @@ export default function Products() {
                     />
                     
                     <FormField
-                      control={form.control}
-                      name="sku"
+                      control={categoryForm.control}
+                      name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">SKU</FormLabel>
+                          <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="SKU-001" 
-                              {...field} 
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            <Textarea 
+                              placeholder="Descrição da categoria..."
+                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
-                      control={form.control}
-                      name="barcode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Código de Barras</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="7891234567890" 
-                              {...field} 
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Preço de Venda</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="99.90" 
-                              {...field} 
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="costPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Preço de Custo</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="75.00" 
-                              {...field} 
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="categoryId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Categoria</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
-                            <FormControl>
-                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
-                                <SelectValue placeholder="Selecione uma categoria" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                              {categories.map((category) => (
-                                <SelectItem key={category.id} value={category.id.toString()}>
-                                  {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="manufacturerId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Fabricante</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
-                            <FormControl>
-                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
-                                <SelectValue placeholder="Selecione um fabricante" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                              {manufacturers.map((manufacturer) => (
-                                <SelectItem key={manufacturer.id} value={manufacturer.id.toString()}>
-                                  {manufacturer.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="stock"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Estoque Atual</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number"
-                              placeholder="0" 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="minStock"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Estoque Mínimo</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number"
-                              placeholder="0" 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
+                      control={categoryForm.control}
                       name="status"
                       render={({ field }) => (
                         <FormItem>
@@ -566,298 +1319,494 @@ export default function Products() {
                             <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                               <SelectItem value="active">Ativo</SelectItem>
                               <SelectItem value="inactive">Inativo</SelectItem>
-                              <SelectItem value="discontinued">Descontinuado</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Descrição detalhada do produto..."
-                            className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setIsDialogOpen(false)}
-                      className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button 
-                      type="submit"
-                      disabled={createProductMutation.isPending || updateProductMutation.isPending}
-                    >
-                      {editingProduct ? "Atualizar" : "Criar"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Buscar produtos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive" | "discontinued") => setStatusFilter(value)}>
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
-            <SelectValue placeholder="Filtrar por status" />
-          </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">Ativos</SelectItem>
-            <SelectItem value="inactive">Inativos</SelectItem>
-            <SelectItem value="discontinued">Descontinuados</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
-            <SelectValue placeholder="Filtrar por categoria" />
-          </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-            <SelectItem value="all">Todas</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id.toString()}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Products Grid */}
-      {isLoadingProducts ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(9)].map((_, i) => (
-            <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="w-full h-48 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                  <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
-                  <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : displayedProducts.length === 0 ? (
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum produto encontrado</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {searchTerm || statusFilter !== "all" || categoryFilter !== "all" 
-              ? "Tente ajustar os filtros de busca."
-              : "Comece criando seu primeiro produto."
-            }
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {displayedProducts.map((product) => (
-              <Card key={product.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                <div className="space-y-4">
-                  {/* Product Image */}
-                  <div className="relative">
-                    {product.images && product.images.length > 0 ? (
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-full h-48 object-cover rounded-lg"
+                    {/* Category Images */}
+                    <div className="space-y-2">
+                      <Label className="text-gray-900 dark:text-white">Imagens da Categoria</Label>
+                      <ImageUploadSection
+                        images={categoryImages}
+                        onAddImage={(url) => addImage(url, 'category')}
+                        onRemoveImage={(index) => removeImage(index, 'category')}
+                        type="category"
                       />
-                    ) : (
-                      <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                        <Package className="w-12 h-12 text-gray-400" />
-                      </div>
-                    )}
-                    {product.featured && (
-                      <Badge className="absolute top-2 left-2 bg-yellow-500 text-white">
-                        <Star className="w-3 h-3 mr-1" />
-                        Destaque
-                      </Badge>
-                    )}
-                    <div className="absolute top-2 right-2 flex items-center space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(product)}
-                        className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                    </div>
+                    
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsCategoryDialogOpen(false)}
+                        className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       >
-                        <Edit className="w-4 h-4" />
+                        Cancelar
                       </Button>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                      <Button 
+                        type="submit"
+                        disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                      >
+                        {editingCategory ? "Atualizar" : "Criar"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Categories Grid */}
+          {isLoadingCategories ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="w-full h-32 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="text-center py-12">
+              <FolderPlus className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhuma categoria encontrada</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Comece criando sua primeira categoria.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map((category) => (
+                <Card key={category.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Category Image */}
+                      <div className="relative">
+                        {category.images && category.images.length > 0 ? (
+                          <img
+                            src={category.images[0]}
+                            alt={category.name}
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                            <FolderPlus className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 flex items-center space-x-1">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                            onClick={() => handleEditCategory(category)}
+                            className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit className="w-4 h-4" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-gray-900 dark:text-white">
-                              Excluir Produto
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
-                              Tem certeza que deseja excluir {product.name}? Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
-                              Cancelar
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(product.id)}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
-                        {product.name}
-                      </h3>
-                      <Badge 
-                        variant={product.status === "active" ? "default" : "secondary"}
-                        className={
-                          product.status === "active" 
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
-                            : product.status === "discontinued"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                        }
-                      >
-                        {product.status === "active" ? "Ativo" : product.status === "discontinued" ? "Descontinuado" : "Inativo"}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center">
-                        <Barcode className="w-4 h-4 mr-2" />
-                        <span className="font-mono">{product.sku}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Tag className="w-4 h-4 mr-2" />
-                        <span>{getCategoryName(product.categoryId)}</span>
-                      </div>
-                      {product.manufacturerId && (
-                        <div className="flex items-center">
-                          <Package className="w-4 h-4 mr-2" />
-                          <span>{getManufacturerName(product.manufacturerId)}</span>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-gray-900 dark:text-white">
+                                  Excluir Categoria
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                                  Tem certeza que deseja excluir {category.name}? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                  Cancelar
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteCategory(category.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
-                      )}
-                    </div>
+                      </div>
 
-                    {product.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="space-y-1">
-                        <div className="text-lg font-bold text-gray-900 dark:text-white">
-                          R$ {parseFloat(product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {/* Category Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {category.name}
+                          </h3>
+                          <Badge 
+                            variant={category.status === "active" ? "default" : "secondary"}
+                            className={
+                              category.status === "active" 
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                            }
+                          >
+                            {category.status === "active" ? "Ativo" : "Inativo"}
+                          </Badge>
                         </div>
-                        {product.costPrice && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Custo: R$ {parseFloat(product.costPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </div>
+
+                        {category.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                            {category.description}
+                          </p>
                         )}
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center text-sm">
-                          <ShoppingCart className="w-4 h-4 mr-1" />
-                          <span className={product.stock <= (product.minStock || 0) ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-900 dark:text-white"}>
-                            {product.stock}
-                          </span>
-                        </div>
+
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          em estoque
+                          Criado em {new Date(category.createdAt).toLocaleDateString('pt-BR')}
                         </div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-                    {product.tags && product.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-2">
-                        {product.tags.slice(0, 3).map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {product.tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{product.tags.length - 3}
-                          </Badge>
+        {/* Manufacturers Tab */}
+        <TabsContent value="manufacturers" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Fabricantes</h2>
+            <Dialog open={isManufacturerDialogOpen} onOpenChange={setIsManufacturerDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleNewManufacturer} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Novo Fabricante
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800">
+                <DialogHeader>
+                  <DialogTitle className="text-gray-900 dark:text-white">
+                    {editingManufacturer ? "Editar Fabricante" : "Novo Fabricante"}
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 dark:text-gray-400">
+                    {editingManufacturer 
+                      ? "Atualize as informações do fabricante."
+                      : "Adicione um novo fabricante ao sistema."
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <Form {...manufacturerForm}>
+                  <form onSubmit={manufacturerForm.handleSubmit(onSubmitManufacturer)} className="space-y-4">
+                    <FormField
+                      control={manufacturerForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Nome do fabricante" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={manufacturerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email"
+                                placeholder="email@fabricante.com" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      />
+
+                      <FormField
+                        control={manufacturerForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-900 dark:text-white">Telefone</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="(11) 99999-9999" 
+                                {...field} 
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={manufacturerForm.control}
+                      name="website"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Website</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="https://www.fabricante.com" 
+                              {...field} 
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={manufacturerForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Descrição do fabricante..."
+                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={manufacturerForm.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              <SelectItem value="active">Ativo</SelectItem>
+                              <SelectItem value="inactive">Inativo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Manufacturer Images */}
+                    <div className="space-y-2">
+                      <Label className="text-gray-900 dark:text-white">Imagens do Fabricante</Label>
+                      <ImageUploadSection
+                        images={manufacturerImages}
+                        onAddImage={(url) => addImage(url, 'manufacturer')}
+                        onRemoveImage={(index) => removeImage(index, 'manufacturer')}
+                        type="manufacturer"
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsManufacturerDialogOpen(false)}
+                        className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit"
+                        disabled={createManufacturerMutation.isPending || updateManufacturerMutation.isPending}
+                      >
+                        {editingManufacturer ? "Atualizar" : "Criar"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </div>
 
-          {/* Loading indicator for infinite scroll */}
-          {isLoadingMore && (
-            <div className="flex justify-center items-center py-8">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-gray-600 dark:text-gray-400">Carregando mais produtos...</span>
-              </div>
+          {/* Manufacturers Grid */}
+          {isLoadingManufacturers ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="w-full h-32 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          )}
-
-          {/* End of results indicator */}
-          {displayedProducts.length >= filteredProducts.length && displayedProducts.length > 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Todos os produtos foram carregados ({filteredProducts.length} produtos)
+          ) : manufacturers.length === 0 ? (
+            <div className="text-center py-12">
+              <Building2 className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum fabricante encontrado</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Comece criando seu primeiro fabricante.
               </p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {manufacturers.map((manufacturer) => (
+                <Card key={manufacturer.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Manufacturer Logo/Image */}
+                      <div className="relative">
+                        {manufacturer.images && manufacturer.images.length > 0 ? (
+                          <img
+                            src={manufacturer.images[0]}
+                            alt={manufacturer.name}
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                            <Building2 className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 flex items-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditManufacturer(manufacturer)}
+                            className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-gray-900 dark:text-white">
+                                  Excluir Fabricante
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
+                                  Tem certeza que deseja excluir {manufacturer.name}? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                  Cancelar
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteManufacturer(manufacturer.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+
+                      {/* Manufacturer Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {manufacturer.name}
+                          </h3>
+                          <Badge 
+                            variant={manufacturer.status === "active" ? "default" : "secondary"}
+                            className={
+                              manufacturer.status === "active" 
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                            }
+                          >
+                            {manufacturer.status === "active" ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </div>
+
+                        {manufacturer.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                            {manufacturer.description}
+                          </p>
+                        )}
+
+                        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                          {manufacturer.email && (
+                            <div className="flex items-center">
+                              <span className="font-medium">Email:</span>
+                              <span className="ml-2">{manufacturer.email}</span>
+                            </div>
+                          )}
+                          {manufacturer.phone && (
+                            <div className="flex items-center">
+                              <span className="font-medium">Telefone:</span>
+                              <span className="ml-2">{manufacturer.phone}</span>
+                            </div>
+                          )}
+                          {manufacturer.website && (
+                            <div className="flex items-center">
+                              <Globe className="w-4 h-4 mr-1" />
+                              <a 
+                                href={manufacturer.website} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                Website
+                              </a>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Criado em {new Date(manufacturer.createdAt).toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
