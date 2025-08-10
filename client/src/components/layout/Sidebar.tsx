@@ -270,22 +270,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
           
           <nav className="space-y-2">
-            {/* Link fixo para Docker Containers */}
-            <Link href="/docker-containers">
-              <div
-                className={cn(
-                  "flex items-center rounded-lg transition-colors cursor-pointer",
-                  getSidebarItemClasses(userPreferences.sidebarColor, isActive("/docker-containers")),
-                  collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
-                )}
-              >
-                <Container className={collapsed ? "w-7 h-7" : "w-6 h-6"} />
-                {!collapsed && (
-                  <span className="ml-3">Docker Containers</span>
-                )}
-              </div>
-            </Link>
-            
             {parentItems.map((item) => {
               const children = childrenByParent[item.id] || [];
               const hasChildren = children.length > 0;
@@ -358,6 +342,25 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 );
               }
             })}
+            
+            {/* Separador */}
+            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            
+            {/* Link fixo para Docker Containers */}
+            <Link href="/docker-containers">
+              <div
+                className={cn(
+                  "flex items-center rounded-lg transition-colors cursor-pointer",
+                  getSidebarItemClasses(userPreferences.sidebarColor, isActive("/docker-containers")),
+                  collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
+                )}
+              >
+                <Container className={collapsed ? "w-7 h-7" : "w-6 h-6"} />
+                {!collapsed && (
+                  <span className="ml-3">Docker Containers</span>
+                )}
+              </div>
+            </Link>
           </nav>
         </div>
 

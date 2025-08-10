@@ -55,6 +55,7 @@ const containerFormSchema = z.object({
   restartPolicy: z.string().default("unless-stopped"),
   cpuLimit: z.string().optional(),
   memoryLimit: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 type ContainerFormData = z.infer<typeof containerFormSchema>;
@@ -96,6 +97,7 @@ export default function DockerContainers() {
       restartPolicy: "unless-stopped",
       cpuLimit: "",
       memoryLimit: "",
+      imageUrl: "",
     },
   });
 
@@ -334,6 +336,7 @@ export default function DockerContainers() {
       restartPolicy: container.restartPolicy,
       cpuLimit: container.cpuLimit || "",
       memoryLimit: container.memoryLimit || "",
+      imageUrl: container.imageUrl || "",
     });
     setActiveTab("info");
     setIsDialogOpen(true);
@@ -572,6 +575,20 @@ export default function DockerContainers() {
 
                     <FormField
                       control={form.control}
+                      name="imageUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL da Imagem (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://exemplo.com/logo.png" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name="description"
                       render={({ field }) => (
                         <FormItem>
@@ -760,117 +777,137 @@ export default function DockerContainers() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="space-y-4">
           {containers.map((container: DockerContainer) => (
-            <Card key={container.id} className="hover:shadow-lg transition-shadow duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                      {getImageIcon(container.image)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg font-semibold">{container.name}</CardTitle>
-                      <CardDescription className="flex items-center space-x-2">
-                        <span>{container.image}:{container.tag}</span>
-                      </CardDescription>
-                    </div>
+            <Card key={container.id} className="hover:shadow-lg transition-shadow duration-200 w-full">
+              <div className="flex">
+                {/* Imagem lateral esquerda */}
+                <div className="w-32 flex-shrink-0">
+                  {container.imageUrl ? (
+                    <img 
+                      src={container.imageUrl} 
+                      alt={container.name}
+                      className="w-full h-full object-cover rounded-l-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg ${container.imageUrl ? 'hidden' : ''}`}>
+                    {getImageIcon(container.image)}
                   </div>
-                  <Badge 
-                    className={`${getStatusColor(container.status)} text-white`}
-                  >
-                    {getStatusText(container.status)}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  {container.description || "Sem descrição disponível"}
-                </p>
-                
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {container.cpuLimit && (
-                    <div className="flex items-center space-x-1">
-                      <Cpu className="w-3 h-3" />
-                      <span>CPU: {container.cpuLimit}</span>
-                    </div>
-                  )}
-                  {container.memoryLimit && (
-                    <div className="flex items-center space-x-1">
-                      <MemoryStick className="w-3 h-3" />
-                      <span>RAM: {container.memoryLimit}</span>
-                    </div>
-                  )}
                 </div>
 
-                <div className="flex gap-1">
-                  {container.status === "running" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => stopMutation.mutate(container.id)}
-                        disabled={stopMutation.isPending}
-                        className="p-2"
-                        title="Parar container"
+                {/* Conteúdo do card */}
+                <div className="flex-1 flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg font-semibold">{container.name}</CardTitle>
+                        <CardDescription className="flex items-center space-x-2">
+                          <span>{container.image}:{container.tag}</span>
+                        </CardDescription>
+                      </div>
+                      <Badge 
+                        className={`${getStatusColor(container.status)} text-white`}
                       >
-                        <Square className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => restartMutation.mutate(container.id)}
-                        disabled={restartMutation.isPending}
-                        className="p-2"
-                        title="Reiniciar container"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => pauseMutation.mutate(container.id)}
-                        disabled={pauseMutation.isPending}
-                        className="p-2"
-                        title="Pausar container"
-                      >
-                        <Pause className="w-3 h-3" />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => startMutation.mutate(container.id)}
-                      disabled={startMutation.isPending}
-                      className="p-2"
-                      title="Iniciar container"
-                    >
-                      <Play className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
+                        {getStatusText(container.status)}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4 flex-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {container.description || "Sem descrição disponível"}
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {container.cpuLimit && (
+                        <div className="flex items-center space-x-1">
+                          <Cpu className="w-3 h-3" />
+                          <span>CPU: {container.cpuLimit}</span>
+                        </div>
+                      )}
+                      {container.memoryLimit && (
+                        <div className="flex items-center space-x-1">
+                          <MemoryStick className="w-3 h-3" />
+                          <span>RAM: {container.memoryLimit}</span>
+                        </div>
+                      )}
+                    </div>
 
-                <div className="flex justify-between pt-2 border-t">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(container)}
-                  >
-                    <Edit className="w-3 h-3 mr-1" />
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDelete(container.id)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="w-3 h-3 mr-1" />
-                    Excluir
-                  </Button>
+                    <div className="flex gap-1">
+                      {container.status === "running" ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => stopMutation.mutate(container.id)}
+                            disabled={stopMutation.isPending}
+                            className="p-2"
+                            title="Parar container"
+                          >
+                            <Square className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => restartMutation.mutate(container.id)}
+                            disabled={restartMutation.isPending}
+                            className="p-2"
+                            title="Reiniciar container"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => pauseMutation.mutate(container.id)}
+                            disabled={pauseMutation.isPending}
+                            className="p-2"
+                            title="Pausar container"
+                          >
+                            <Pause className="w-3 h-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startMutation.mutate(container.id)}
+                          disabled={startMutation.isPending}
+                          className="p-2"
+                          title="Iniciar container"
+                        >
+                          <Play className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(container)}
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(container.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Excluir
+                      </Button>
+                    </div>
+                  </CardContent>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           ))}
         </div>

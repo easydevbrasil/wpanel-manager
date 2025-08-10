@@ -560,13 +560,62 @@ export class DatabaseStorage implements IStorage {
       { label: "Permissões", icon: "Shield", href: "/user-permissions", order: 9, parentId: null },
       { label: "Perfil", icon: "User", href: "/user-profile", order: 10, parentId: null },
       { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 11, parentId: null },
-      { label: "Containers", icon: "Container", href: "/containers", order: 12, parentId: null }
+      { label: "Containers Docker", icon: "Container", href: "/containers", order: 12, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);
 
     // Create default permissions for the admin user
     this.createDefaultPermissionsForUser(user);
+
+    // Sample docker containers
+      const sampleContainers = [
+        {
+          name: "NGINX Web Server",
+          image: "nginx",
+          tag: "alpine",
+          description: "Servidor web NGINX para hospedar aplicações estáticas",
+          status: "running" as const,
+          networkMode: "bridge",
+          restartPolicy: "unless-stopped",
+          cpuLimit: "0.5",
+          memoryLimit: "256m",
+          imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Nginx_logo.svg/2560px-Nginx_logo.svg.png",
+          environment: JSON.stringify({
+            "NGINX_HOST": "localhost",
+            "NGINX_PORT": "80"
+          }),
+          volumes: JSON.stringify([
+            { host: "/var/www/html", container: "/usr/share/nginx/html" }
+          ]),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          name: "PostgreSQL Database",
+          image: "postgres",
+          tag: "15-alpine",
+          description: "Banco de dados PostgreSQL para aplicações web",
+          status: "running" as const,
+          networkMode: "bridge",
+          restartPolicy: "unless-stopped",
+          cpuLimit: "1.0",
+          memoryLimit: "512m",
+          imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Postgresql_elephant.svg/1985px-Postgresql_elephant.svg.png",
+          environment: JSON.stringify({
+            "POSTGRES_DB": "myapp",
+            "POSTGRES_USER": "admin",
+            "POSTGRES_PASSWORD": "secret123"
+          }),
+          volumes: JSON.stringify([
+            { host: "/var/lib/postgresql/data", container: "/var/lib/postgresql/data" }
+          ]),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+
+      await db.insert(dockerContainers).values(sampleContainers);
   }
 
   private createDefaultPermissionsForUser(user: any) {
@@ -1685,12 +1734,37 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createDockerContainer(containerData: InsertDockerContainer): Promise<DockerContainer> {
+  async createDockerContainer(data: {
+    name: string;
+    image: string;
+    tag?: string;
+    description?: string;
+    command?: string;
+    networkMode?: string;
+    restartPolicy?: string;
+    cpuLimit?: string;
+    memoryLimit?: string;
+    imageUrl?: string;
+    environment?: Record<string, string>;
+    volumes?: Array<{ host: string; container: string }>;
+  }): Promise<DockerContainer> {
     try {
       const [container] = await db
         .insert(dockerContainers)
         .values({
-          ...containerData,
+          name: data.name,
+          image: data.image,
+          tag: data.tag || "latest",
+          description: data.description,
+          status: "stopped",
+          command: data.command,
+          networkMode: data.networkMode || "bridge",
+          restartPolicy: data.restartPolicy || "unless-stopped",
+          cpuLimit: data.cpuLimit,
+          memoryLimit: data.memoryLimit,
+          imageUrl: data.imageUrl,
+          environment: data.environment ? JSON.stringify(data.environment) : null,
+          volumes: data.volumes ? JSON.stringify(data.volumes) : null,
           createdAt: new Date(),
           updatedAt: new Date()
         })
@@ -1702,13 +1776,37 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateDockerContainer(id: number, containerData: Partial<InsertDockerContainer>): Promise<DockerContainer> {
+  async updateDockerContainer(id: number, data: {
+    name?: string;
+    image?: string;
+    tag?: string;
+    description?: string;
+    command?: string;
+    networkMode?: string;
+    restartPolicy?: string;
+    cpuLimit?: string;
+    memoryLimit?: string;
+    imageUrl?: string;
+    environment?: Record<string, string>;
+    volumes?: Array<{ host: string; container: string }>;
+  }): Promise<DockerContainer> {
     try {
       const [container] = await db
         .update(dockerContainers)
         .set({
-          ...containerData,
-          updatedAt: new Date()
+          name: data.name,
+          image: data.image,
+          tag: data.tag,
+          description: data.description,
+          command: data.command,
+          networkMode: data.networkMode,
+          restartPolicy: data.restartPolicy,
+          cpuLimit: data.cpuLimit,
+          memoryLimit: data.memoryLimit,
+          imageUrl: data.imageUrl,
+          environment: data.environment ? JSON.stringify(data.environment) : null,
+          volumes: data.volumes ? JSON.stringify(data.volumes) : null,
+          updatedAt: new Date(),
         })
         .where(eq(dockerContainers.id, id))
         .returning();
