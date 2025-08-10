@@ -76,7 +76,28 @@ const productFormSchema = z.object({
   status: z.enum(["active", "inactive", "discontinued"]).default("active"),
   featured: z.boolean().default(false),
   images: z.array(z.string().url()).default([]),
+  defaultImageIndex: z.number().default(0),
   tags: z.array(z.string()).default([]),
+});
+
+const categoryFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+  parentId: z.number().optional(),
+  image: z.string().url().optional(),
+  images: z.array(z.string().url()).default([]),
+  status: z.enum(["active", "inactive"]).default("active"),
+});
+
+const manufacturerFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  description: z.string().optional(),
+  website: z.string().url().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  logo: z.string().url().optional(),
+  images: z.array(z.string().url()).default([]),
+  status: z.enum(["active", "inactive"]).default("active"),
 });
 
 type ProductFormData = z.infer<typeof productFormSchema>;
@@ -87,6 +108,13 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isManufacturerDialogOpen, setIsManufacturerDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingManufacturer, setEditingManufacturer] = useState<Manufacturer | null>(null);
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [categoryImages, setCategoryImages] = useState<string[]>([]);
+  const [manufacturerImages, setManufacturerImages] = useState<string[]>([]);
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

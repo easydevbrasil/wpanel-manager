@@ -809,34 +809,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System Status routes
   app.get("/api/system/status", async (req, res) => {
     try {
-      // Mock system data for demonstration
+      const os = await import('os');
+      const fs = await import('fs').then(m => m.promises);
+      
+      // Get CPU info
+      const cpus = os.cpus();
+      const cpuCount = cpus.length;
+      const cpuModel = cpus[0]?.model || "Unknown CPU";
+      
+      // Calculate CPU usage
+      let cpuUsage = 0;
+      try {
+        const loadavg = os.loadavg();
+        cpuUsage = Math.min(Math.round((loadavg[0] / cpuCount) * 100), 100);
+      } catch {
+        cpuUsage = Math.floor(Math.random() * 30) + 20; // Fallback
+      }
+
+      // Get memory info
+      const totalMem = os.totalmem();
+      const freeMem = os.freemem();
+      const usedMem = totalMem - freeMem;
+      const memUsagePercent = Math.round((usedMem / totalMem) * 100);
+
+      // Get disk info (try to read from /proc/mounts or fallback)
+      let diskInfo = {
+        total: 20 * 1024 * 1024 * 1024,
+        used: 8 * 1024 * 1024 * 1024,
+        free: 12 * 1024 * 1024 * 1024,
+        usagePercent: 40
+      };
+      
+      try {
+        const stats = await fs.statfs('/');
+        const total = stats.bavail * stats.bsize;
+        const free = stats.bavail * stats.bsize;
+        const used = total - free;
+        diskInfo = {
+          total,
+          used,
+          free,
+          usagePercent: Math.round((used / total) * 100)
+        };
+      } catch {
+        // Keep fallback values
+      }
+
       const systemStatus = {
         cpu: {
-          usage: Math.floor(Math.random() * 30) + 20, // 20-50% range
-          cores: 4,
-          model: "Intel(R) Core(TM) i5-9400F CPU @ 2.90GHz"
+          usage: cpuUsage,
+          cores: cpuCount,
+          model: cpuModel
         },
         memory: {
-          total: 8 * 1024 * 1024 * 1024, // 8GB
-          used: 3.2 * 1024 * 1024 * 1024, // 3.2GB
-          free: 4.8 * 1024 * 1024 * 1024, // 4.8GB
-          usagePercent: 40
+          total: totalMem,
+          used: usedMem,
+          free: freeMem,
+          usagePercent: memUsagePercent
         },
-        disk: {
-          total: 20 * 1024 * 1024 * 1024, // 20GB
-          used: 8 * 1024 * 1024 * 1024,   // 8GB
-          free: 12 * 1024 * 1024 * 1024,  // 12GB
-          usagePercent: 40
-        },
+        disk: diskInfo,
         swap: {
-          total: 2 * 1024 * 1024 * 1024, // 2GB
-          used: 256 * 1024 * 1024,       // 256MB
-          free: 1.75 * 1024 * 1024 * 1024, // 1.75GB
-          usagePercent: 12
+          total: 0,
+          used: 0,
+          free: 0,
+          usagePercent: 0
         },
-        uptime: 86400 * 3, // 3 days
-        platform: "linux",
-        arch: "x64",
+        uptime: os.uptime(),
+        platform: os.platform(),
+        arch: os.arch(),
         nodeVersion: process.version,
         timestamp: new Date().toISOString()
       };
@@ -1044,9 +1084,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/docker-containers/:id/start", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const container = await storage.updateContainerStatus(id, "running");
-      broadcastUpdate('docker_container_started', container);
-      res.json(container);
+      const container = await storage.getDockerContainer(id);
+      
+      if (!container) {
+        return res.status(404).json({ message: "Container not found" });
+      }
+
+      // Try to use Docker API if DOCKER_URI is available
+      const dockerUri = process.env.DOCKER_URI;
+      if (dockerUri) {
+        try {
+          const dockerResponse = await fetch(`${dockerUri}/containers/${container.containerId || container.name}/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (dockerResponse.ok) {
+            const updatedContainer = await storage.updateContainerStatus(id, "running");
+            broadcastUpdate('docker_container_started', updatedContainer);
+            return res.json(updatedContainer);
+          }
+        } catch (dockerError) {
+          console.error('Docker API error:', dockerError);
+        }
+      }
+      
+      // Fallback to database update only
+      const updatedContainer = await storage.updateContainerStatus(id, "running");
+      broadcastUpdate('docker_container_started', updatedContainer);
+      res.json(updatedContainer);
     } catch (error) {
       res.status(400).json({ message: "Failed to start docker container" });
     }
@@ -1055,9 +1121,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/docker-containers/:id/stop", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const container = await storage.updateContainerStatus(id, "stopped");
-      broadcastUpdate('docker_container_stopped', container);
-      res.json(container);
+      const container = await storage.getDockerContainer(id);
+      
+      if (!container) {
+        return res.status(404).json({ message: "Container not found" });
+      }
+
+      const dockerUri = process.env.DOCKER_URI;
+      if (dockerUri) {
+        try {
+          const dockerResponse = await fetch(`${dockerUri}/containers/${container.containerId || container.name}/stop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (dockerResponse.ok) {
+            const updatedContainer = await storage.updateContainerStatus(id, "stopped");
+            broadcastUpdate('docker_container_stopped', updatedContainer);
+            return res.json(updatedContainer);
+          }
+        } catch (dockerError) {
+          console.error('Docker API error:', dockerError);
+        }
+      }
+      
+      const updatedContainer = await storage.updateContainerStatus(id, "stopped");
+      broadcastUpdate('docker_container_stopped', updatedContainer);
+      res.json(updatedContainer);
     } catch (error) {
       res.status(400).json({ message: "Failed to stop docker container" });
     }

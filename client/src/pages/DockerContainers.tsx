@@ -171,6 +171,26 @@ export default function DockerContainers() {
     },
   });
 
+  // Real Docker API integration
+  const dockerApiMutation = useMutation({
+    mutationFn: async ({ action, id }: { action: string; id: number }) => {
+      return await apiRequest("POST", `/api/docker-containers/${id}/${action}`);
+    },
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
+      const actionMap: Record<string, string> = {
+        start: "▶️ Container iniciado",
+        stop: "⏹️ Container parado",
+        restart: "🔄 Container reiniciado",
+        pause: "⏸️ Container pausado",
+      };
+      toast({
+        title: actionMap[action] || "✅ Ação executada",
+        description: `Container Docker ${action} com sucesso!`,
+      });
+    },
+  });
+
   // Container control mutations
   const startMutation = useMutation({
     mutationFn: async (id: number) => {

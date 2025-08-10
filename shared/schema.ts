@@ -102,6 +102,7 @@ export const categories = pgTable("categories", {
   description: text("description"),
   parentId: integer("parent_id"),
   image: text("image"),
+  images: text("images").array(),
   status: text("status").notNull().default("active"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -115,6 +116,7 @@ export const manufacturers = pgTable("manufacturers", {
   email: text("email"),
   phone: text("phone"),
   logo: text("logo"),
+  images: text("images").array(),
   status: text("status").notNull().default("active"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -147,6 +149,7 @@ export const products = pgTable("products", {
   minStock: integer("min_stock").default(0),
   maxStock: integer("max_stock"),
   images: text("images").array(), // Array of image URLs
+  defaultImageIndex: integer("default_image_index").default(0), // Index of default image in images array
   status: text("status").notNull().default("active"), // active, inactive, discontinued
   featured: boolean("featured").default(false),
   tags: text("tags").array(),

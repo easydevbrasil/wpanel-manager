@@ -124,48 +124,11 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  // Mock system status with realistic data that updates periodically
-  const generateSystemStatus = (): SystemStatus => ({
-    cpu: {
-      usage: Math.floor(Math.random() * 30) + 20, // 20-50%
-      cores: 4,
-      model: "Intel(R) Core(TM) i5-9400F CPU @ 2.90GHz"
-    },
-    memory: {
-      total: 8 * 1024 * 1024 * 1024, // 8GB
-      used: 3.2 * 1024 * 1024 * 1024, // 3.2GB
-      free: 4.8 * 1024 * 1024 * 1024, // 4.8GB
-      usagePercent: 40 + Math.floor(Math.random() * 20) // 40-60%
-    },
-    disk: {
-      total: 20 * 1024 * 1024 * 1024, // 20GB
-      used: 8 * 1024 * 1024 * 1024,   // 8GB
-      free: 12 * 1024 * 1024 * 1024,  // 12GB
-      usagePercent: 40
-    },
-    swap: {
-      total: 2 * 1024 * 1024 * 1024, // 2GB
-      used: 256 * 1024 * 1024,       // 256MB
-      free: 1.75 * 1024 * 1024 * 1024, // 1.75GB
-      usagePercent: 12
-    },
-    uptime: 86400 * 3, // 3 days
-    platform: "linux",
-    arch: "x64",
-    nodeVersion: "v20.18.1",
-    timestamp: new Date().toISOString()
+  // Fetch real system status from API
+  const { data: systemStatus, isLoading: isLoadingSystemStatus } = useQuery<SystemStatus>({
+    queryKey: ["/api/system/status"],
+    refetchInterval: 5000, // Update every 5 seconds
   });
-
-  const [systemStatus, setSystemStatus] = useState<SystemStatus>(generateSystemStatus());
-  
-  // Update system status every 5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSystemStatus(generateSystemStatus());
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   const stats = statsData as any;
 
