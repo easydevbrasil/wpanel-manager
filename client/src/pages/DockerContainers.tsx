@@ -1,35 +1,20 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { DockerContainer } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { 
   Play, 
   Square, 
   RotateCcw, 
-  Pause, 
-  Edit, 
-  Trash2, 
-  Plus,
+  Pause,
   Container,
   Server,
   Database,
   Globe,
   HardDrive,
   Cpu,
-  MemoryStick,
-  X
+  MemoryStick
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,337 +29,175 @@ const DockerIcon = ({ className = "w-6 h-6" }) => (
   </svg>
 );
 
-// Form schema
-const containerFormSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  image: z.string().min(1, "Imagem é obrigatória"),
-  tag: z.string().default("latest"),
-  description: z.string().optional(),
-  command: z.string().optional(),
-  networkMode: z.string().default("bridge"),
-  restartPolicy: z.string().default("unless-stopped"),
-  cpuLimit: z.string().optional(),
-  memoryLimit: z.string().optional(),
-  imageUrl: z.string().optional(),
-});
-
-type ContainerFormData = z.infer<typeof containerFormSchema>;
-
-interface EnvironmentVariable {
-  key: string;
-  value: string;
-}
-
-interface VolumeMapping {
-  host: string;
-  container: string;
+// Interface para containers da API Docker
+interface DockerApiContainer {
+  Id: string;
+  Names: string[];
+  Image: string;
+  ImageID: string;
+  Command: string;
+  Created: number;
+  Ports: Array<{
+    IP?: string;
+    PrivatePort: number;
+    PublicPort?: number;
+    Type: string;
+  }>;
+  Labels: Record<string, string>;
+  State: string;
+  Status: string;
+  HostConfig: {
+    NetworkMode: string;
+  };
+  NetworkSettings: {
+    Networks: Record<string, any>;
+  };
+  Mounts: Array<{
+    Type: string;
+    Source: string;
+    Destination: string;
+    Mode: string;
+    RW: boolean;
+    Propagation: string;
+  }>;
 }
 
 export default function DockerContainers() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingContainer, setEditingContainer] = useState<any>(null);
-  const [environmentVars, setEnvironmentVars] = useState<EnvironmentVariable[]>([]);
-  const [volumeMappings, setVolumeMappings] = useState<VolumeMapping[]>([]);
-  const [activeTab, setActiveTab] = useState("info");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch containers
-  const { data: containers = [], isLoading } = useQuery<DockerContainer[]>({
-    queryKey: ["/api/docker-containers"],
+  // Fetch containers da API Docker real
+  const { data: containers = [], isLoading } = useQuery<DockerApiContainer[]>({
+    queryKey: ["/api/docker/containers"],
+    refetchInterval: 5000, // Atualiza a cada 5 segundos
   });
 
-  // Form setup
-  const form = useForm<ContainerFormData>({
-    resolver: zodResolver(containerFormSchema),
-    defaultValues: {
-      name: "",
-      image: "",
-      tag: "latest",
-      description: "",
-      command: "",
-      networkMode: "bridge",
-      restartPolicy: "unless-stopped",
-      cpuLimit: "",
-      memoryLimit: "",
-      imageUrl: "",
-    },
-  });
-
-  // Create container mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: ContainerFormData) => {
-      return await apiRequest("POST", "/api/docker-containers", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
-      setIsDialogOpen(false);
-      setEnvironmentVars([]);
-      setVolumeMappings([]);
-      form.reset();
-      toast({
-        title: "🐳 Container criado",
-        description: "Container Docker criado com sucesso!",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "❌ Erro",
-        description: "Falha ao criar container Docker",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update container mutation
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: ContainerFormData }) => {
-      return await apiRequest("PUT", `/api/docker-containers/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
-      setIsDialogOpen(false);
-      setEditingContainer(null);
-      setEnvironmentVars([]);
-      setVolumeMappings([]);
-      form.reset();
-      toast({
-        title: "🔄 Container atualizado",
-        description: "Container Docker atualizado com sucesso!",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "❌ Erro",
-        description: "Falha ao atualizar container Docker",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Delete container mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/docker-containers/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
-      toast({
-        title: "🗑️ Container excluído",
-        description: "Container Docker excluído com sucesso!",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "❌ Erro",
-        description: "Falha ao excluir container Docker",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Real Docker API integration
-  const dockerApiMutation = useMutation({
-    mutationFn: async ({ action, id }: { action: string; id: number }) => {
-      return await apiRequest("POST", `/api/docker-containers/${id}/${action}`);
-    },
-    onSuccess: (_, { action }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
-      const actionMap: Record<string, string> = {
-        start: "▶️ Container iniciado",
-        stop: "⏹️ Container parado",
-        restart: "🔄 Container reiniciado",
-        pause: "⏸️ Container pausado",
-      };
-      toast({
-        title: actionMap[action] || "✅ Ação executada",
-        description: `Container Docker ${action} com sucesso!`,
-      });
-    },
-  });
-
-  // Container control mutations
+  // Container control mutations usando API Docker real
   const startMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/docker-containers/${id}/start`);
+    mutationFn: async (containerId: string) => {
+      return await apiRequest("POST", `/api/docker/containers/${containerId}/start`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "▶️ Container iniciado",
         description: "Container Docker iniciado com sucesso!",
       });
     },
+    onError: () => {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao iniciar container",
+        variant: "destructive",
+      });
+    },
   });
 
   const stopMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/docker-containers/${id}/stop`);
+    mutationFn: async (containerId: string) => {
+      return await apiRequest("POST", `/api/docker/containers/${containerId}/stop`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "⏹️ Container parado",
         description: "Container Docker parado com sucesso!",
       });
     },
+    onError: () => {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao parar container",
+        variant: "destructive",
+      });
+    },
   });
 
   const restartMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/docker-containers/${id}/restart`);
+    mutationFn: async (containerId: string) => {
+      return await apiRequest("POST", `/api/docker/containers/${containerId}/restart`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "🔄 Container reiniciado",
         description: "Container Docker reiniciado com sucesso!",
       });
     },
+    onError: () => {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao reiniciar container",
+        variant: "destructive",
+      });
+    },
   });
 
   const pauseMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("POST", `/api/docker-containers/${id}/pause`);
+    mutationFn: async (containerId: string) => {
+      return await apiRequest("POST", `/api/docker/containers/${containerId}/pause`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker-containers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "⏸️ Container pausado",
         description: "Container Docker pausado com sucesso!",
       });
     },
+    onError: () => {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao pausar container",
+        variant: "destructive",
+      });
+    },
   });
 
-  // Environment variables management
-  const addEnvironmentVar = () => {
-    setEnvironmentVars([...environmentVars, { key: "", value: "" }]);
+  // Funções auxiliares para exibição
+  const getContainerName = (container: DockerApiContainer) => {
+    return container.Names[0]?.replace(/^\//, '') || container.Id.slice(0, 12);
   };
 
-  const updateEnvironmentVar = (index: number, field: 'key' | 'value', value: string) => {
-    const newVars = [...environmentVars];
-    newVars[index][field] = value;
-    setEnvironmentVars(newVars);
-  };
-
-  const removeEnvironmentVar = (index: number) => {
-    setEnvironmentVars(environmentVars.filter((_, i) => i !== index));
-  };
-
-  // Volume mappings management
-  const addVolumeMapping = () => {
-    setVolumeMappings([...volumeMappings, { host: "", container: "" }]);
-  };
-
-  const updateVolumeMapping = (index: number, field: 'host' | 'container', value: string) => {
-    const newMappings = [...volumeMappings];
-    newMappings[index][field] = value;
-    setVolumeMappings(newMappings);
-  };
-
-  const removeVolumeMapping = (index: number) => {
-    setVolumeMappings(volumeMappings.filter((_, i) => i !== index));
-  };
-
-  const onSubmit = (data: ContainerFormData) => {
-    // Convert environment variables array to object
-    const environmentObj: Record<string, string> = {};
-    environmentVars.forEach(({ key, value }) => {
-      if (key.trim() && value.trim()) {
-        environmentObj[key.trim()] = value.trim();
+  const getContainerPorts = (container: DockerApiContainer) => {
+    return container.Ports.map(port => {
+      if (port.PublicPort) {
+        return `${port.PublicPort}:${port.PrivatePort}/${port.Type}`;
       }
-    });
-
-    // Convert volume mappings array to array of objects
-    const volumesArray = volumeMappings
-      .filter(({ host, container }) => host.trim() && container.trim())
-      .map(({ host, container }) => ({ host: host.trim(), container: container.trim() }));
-
-    const containerData = {
-      ...data,
-      environment: environmentObj,
-      volumes: volumesArray
-    };
-
-    if (editingContainer) {
-      updateMutation.mutate({ id: editingContainer.id, data: containerData });
-    } else {
-      createMutation.mutate(containerData);
-    }
+      return `${port.PrivatePort}/${port.Type}`;
+    }).join(', ') || 'Nenhuma porta exposta';
   };
 
-  const handleEdit = (container: any) => {
-    setEditingContainer(container);
-    
-    // Load existing environment variables
-    const envVars: EnvironmentVariable[] = [];
-    if (container.environment && typeof container.environment === 'object') {
-      Object.entries(container.environment).forEach(([key, value]) => {
-        envVars.push({ key, value: String(value) });
-      });
-    }
-    setEnvironmentVars(envVars);
-
-    // Load existing volume mappings
-    const volumes: VolumeMapping[] = [];
-    if (container.volumes && Array.isArray(container.volumes)) {
-      container.volumes.forEach((volume: any) => {
-        if (volume.host && volume.container) {
-          volumes.push({ host: volume.host, container: volume.container });
-        }
-      });
-    }
-    setVolumeMappings(volumes);
-    
-    form.reset({
-      name: container.name,
-      image: container.image,
-      tag: container.tag,
-      description: container.description || "",
-      command: container.command || "",
-      networkMode: container.networkMode,
-      restartPolicy: container.restartPolicy,
-      cpuLimit: container.cpuLimit || "",
-      memoryLimit: container.memoryLimit || "",
-      imageUrl: container.imageUrl || "",
-    });
-    setActiveTab("info");
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este container?")) {
-      deleteMutation.mutate(id);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (state: string) => {
+    switch (state.toLowerCase()) {
       case "running":
         return "bg-green-500";
-      case "stopped":
+      case "exited":
         return "bg-red-500";
       case "paused":
         return "bg-yellow-500";
       case "restarting":
         return "bg-blue-500";
+      case "created":
+        return "bg-gray-500";
       default:
         return "bg-gray-500";
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
+  const getStatusText = (state: string) => {
+    switch (state.toLowerCase()) {
       case "running":
         return "Executando";
-      case "stopped":
+      case "exited":
         return "Parado";
       case "paused":
         return "Pausado";
       case "restarting":
         return "Reiniciando";
+      case "created":
+        return "Criado";
       default:
-        return "Desconhecido";
+        return state;
     }
   };
 
@@ -388,375 +211,16 @@ export default function DockerContainers() {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-        <div className="flex items-center space-x-3">
-          <DockerIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              Containers Docker
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Gerencie containers Docker com controle completo
-            </p>
-          </div>
+      <div className="flex items-center space-x-3">
+        <DockerIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Containers Docker
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Visualize e controle containers Docker em tempo real
+          </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              onClick={() => {
-                setEditingContainer(null);
-                setEnvironmentVars([]);
-                setVolumeMappings([]);
-                setActiveTab("info");
-                form.reset();
-              }}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Novo Container
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <DockerIcon className="w-5 h-5" />
-                {editingContainer ? "Editar Container" : "Novo Container Docker"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingContainer 
-                  ? "Atualize as configurações do container Docker"
-                  : "Configure um novo container Docker para deploy"
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="info">Informações</TabsTrigger>
-                    <TabsTrigger value="variables">Variáveis</TabsTrigger>
-                    <TabsTrigger value="volumes">Volumes</TabsTrigger>
-                  </TabsList>
-
-                  {/* Informações Tab */}
-                  <TabsContent value="info" className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nome do Container</FormLabel>
-                            <FormControl>
-                              <Input placeholder="nginx-web-server" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="image"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Imagem Docker</FormLabel>
-                            <FormControl>
-                              <Input placeholder="nginx" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="tag"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tag</FormLabel>
-                            <FormControl>
-                              <Input placeholder="latest" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="networkMode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Modo de Rede</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o modo de rede" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="bridge">Bridge</SelectItem>
-                                <SelectItem value="host">Host</SelectItem>
-                                <SelectItem value="none">None</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="restartPolicy"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Política de Restart</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="no">No</SelectItem>
-                                <SelectItem value="always">Always</SelectItem>
-                                <SelectItem value="unless-stopped">Unless Stopped</SelectItem>
-                                <SelectItem value="on-failure">On Failure</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="cpuLimit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Limite de CPU</FormLabel>
-                            <FormControl>
-                              <Input placeholder="0.5" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="memoryLimit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Limite de Memória</FormLabel>
-                            <FormControl>
-                              <Input placeholder="512m" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="command"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Comando (Opcional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="npm start" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="imageUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>URL da Imagem (Opcional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://exemplo.com/logo.png" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Descreva a finalidade deste container..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </TabsContent>
-
-                  {/* Variáveis Tab */}
-                  <TabsContent value="variables" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-medium">Variáveis de Ambiente</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Configure as variáveis de ambiente do container
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addEnvironmentVar}
-                        className="flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Adicionar
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {environmentVars.map((envVar, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <Input
-                            placeholder="CHAVE"
-                            value={envVar.key}
-                            onChange={(e) => updateEnvironmentVar(index, 'key', e.target.value)}
-                            className="flex-1"
-                          />
-                          <span className="text-gray-400">=</span>
-                          <Input
-                            placeholder="valor"
-                            value={envVar.value}
-                            onChange={(e) => updateEnvironmentVar(index, 'value', e.target.value)}
-                            className="flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeEnvironmentVar(index)}
-                            className="p-2 text-red-600 hover:text-red-700"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                      {environmentVars.length === 0 && (
-                        <div className="text-center py-8">
-                          <div className="text-gray-400 mb-2">Nenhuma variável configurada</div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addEnvironmentVar}
-                            className="flex items-center gap-1"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Adicionar primeira variável
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  {/* Volumes Tab */}
-                  <TabsContent value="volumes" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-medium">Mapeamento de Volumes</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Configure os volumes e bind mounts do container
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addVolumeMapping}
-                        className="flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Adicionar
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {volumeMappings.map((volume, index) => (
-                        <div key={index} className="flex gap-2 items-center">
-                          <Input
-                            placeholder="/caminho/host"
-                            value={volume.host}
-                            onChange={(e) => updateVolumeMapping(index, 'host', e.target.value)}
-                            className="flex-1"
-                          />
-                          <span className="text-gray-400">:</span>
-                          <Input
-                            placeholder="/caminho/container"
-                            value={volume.container}
-                            onChange={(e) => updateVolumeMapping(index, 'container', e.target.value)}
-                            className="flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeVolumeMapping(index)}
-                            className="p-2 text-red-600 hover:text-red-700"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                      {volumeMappings.length === 0 && (
-                        <div className="text-center py-8">
-                          <div className="text-gray-400 mb-2">Nenhum volume configurado</div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addVolumeMapping}
-                            className="flex items-center gap-1"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Adicionar primeiro volume
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                  >
-                    {editingContainer ? "Atualizar" : "Criar"} Container
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {isLoading ? (
@@ -778,25 +242,13 @@ export default function DockerContainers() {
         </div>
       ) : (
         <div className="space-y-4">
-          {containers.map((container: DockerContainer) => (
-            <Card key={container.id} className="hover:shadow-lg transition-shadow duration-200 w-full">
+          {containers.map((container: DockerApiContainer) => (
+            <Card key={container.Id} className="hover:shadow-lg transition-shadow duration-200 w-full">
               <div className="flex">
-                {/* Imagem lateral esquerda */}
+                {/* Ícone lateral esquerdo */}
                 <div className="w-32 flex-shrink-0">
-                  {container.imageUrl ? (
-                    <img 
-                      src={container.imageUrl} 
-                      alt={container.name}
-                      className="w-full h-full object-cover rounded-l-lg"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div className={`w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg ${container.imageUrl ? 'hidden' : ''}`}>
-                    {getImageIcon(container.image)}
+                  <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg">
+                    {getImageIcon(container.Image)}
                   </div>
                 </div>
 
@@ -805,46 +257,38 @@ export default function DockerContainers() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg font-semibold">{container.name}</CardTitle>
+                        <CardTitle className="text-lg font-semibold">
+                          {getContainerName(container)}
+                        </CardTitle>
                         <CardDescription className="flex items-center space-x-2">
-                          <span>{container.image}:{container.tag}</span>
+                          <span>{container.Image}</span>
                         </CardDescription>
                       </div>
                       <Badge 
-                        className={`${getStatusColor(container.status)} text-white`}
+                        className={`${getStatusColor(container.State)} text-white`}
                       >
-                        {getStatusText(container.status)}
+                        {getStatusText(container.State)}
                       </Badge>
                     </div>
                   </CardHeader>
                   
                   <CardContent className="space-y-4 flex-1">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                      {container.description || "Sem descrição disponível"}
-                    </p>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {container.cpuLimit && (
-                        <div className="flex items-center space-x-1">
-                          <Cpu className="w-3 h-3" />
-                          <span>CPU: {container.cpuLimit}</span>
-                        </div>
-                      )}
-                      {container.memoryLimit && (
-                        <div className="flex items-center space-x-1">
-                          <MemoryStick className="w-3 h-3" />
-                          <span>RAM: {container.memoryLimit}</span>
-                        </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <p><strong>Status:</strong> {container.Status}</p>
+                      <p><strong>Portas:</strong> {getContainerPorts(container)}</p>
+                      <p><strong>Rede:</strong> {container.HostConfig.NetworkMode}</p>
+                      {container.Command && (
+                        <p><strong>Comando:</strong> {container.Command.length > 50 ? container.Command.substring(0, 50) + '...' : container.Command}</p>
                       )}
                     </div>
 
                     <div className="flex gap-1">
-                      {container.status === "running" ? (
+                      {container.State === "running" ? (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => stopMutation.mutate(container.id)}
+                            onClick={() => stopMutation.mutate(container.Id)}
                             disabled={stopMutation.isPending}
                             className="p-2"
                             title="Parar container"
@@ -854,7 +298,7 @@ export default function DockerContainers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => restartMutation.mutate(container.id)}
+                            onClick={() => restartMutation.mutate(container.Id)}
                             disabled={restartMutation.isPending}
                             className="p-2"
                             title="Reiniciar container"
@@ -864,7 +308,7 @@ export default function DockerContainers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => pauseMutation.mutate(container.id)}
+                            onClick={() => pauseMutation.mutate(container.Id)}
                             disabled={pauseMutation.isPending}
                             className="p-2"
                             title="Pausar container"
@@ -876,7 +320,7 @@ export default function DockerContainers() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => startMutation.mutate(container.id)}
+                          onClick={() => startMutation.mutate(container.Id)}
                           disabled={startMutation.isPending}
                           className="p-2"
                           title="Iniciar container"
@@ -884,26 +328,6 @@ export default function DockerContainers() {
                           <Play className="w-3 h-3" />
                         </Button>
                       )}
-                    </div>
-
-                    <div className="flex justify-between pt-2 border-t">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(container)}
-                      >
-                        <Edit className="w-3 h-3 mr-1" />
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(container.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Excluir
-                      </Button>
                     </div>
                   </CardContent>
                 </div>
@@ -920,15 +344,8 @@ export default function DockerContainers() {
             Nenhum container encontrado
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Comece criando seu primeiro container Docker
+            Não há containers Docker em execução no momento
           </p>
-          <Button 
-            onClick={() => setIsDialogOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Criar Container
-          </Button>
         </div>
       )}
     </div>
