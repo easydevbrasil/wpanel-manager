@@ -64,7 +64,7 @@ const multerStorage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: multerStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -530,16 +530,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Product routes
-  app.get("/api/products", async (req, res) => {
+  app.get("/api/products", authenticateToken, async (req, res) => {
     try {
+      console.log('Fetching products...');
       const products = await dbStorage.getProducts();
+      console.log('Products found:', products.length);
       res.json(products);
     } catch (error) {
-      res.status(500).json({ message: "Failed to get products" });
+      console.error('Error fetching products:', error);
+      res.status(500).json({ error: "Failed to fetch products" });
     }
   });
 
-  app.get("/api/products/:id", async (req, res) => {
+  app.get("/api/products/:id", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const product = await dbStorage.getProduct(id);
@@ -552,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", authenticateToken, async (req, res) => {
     try {
       const product = await dbStorage.createProduct(req.body);
       res.status(201).json(product);
@@ -561,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/products/:id", async (req, res) => {
+  app.put("/api/products/:id", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const product = await dbStorage.updateProduct(id, req.body);
@@ -571,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteProduct(id);

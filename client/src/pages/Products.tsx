@@ -138,8 +138,10 @@ export default function Products() {
 
   const PRODUCTS_PER_PAGE = 9;
 
+  // Fetch products
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+    refetchOnWindowFocus: false,
   });
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
