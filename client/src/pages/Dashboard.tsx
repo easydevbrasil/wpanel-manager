@@ -72,17 +72,17 @@ function formatUptime(seconds: number): string {
   return `${minutes}m`;
 }
 
-// CPU Gauge Component
-function CPUGauge({ usage }: { usage: number }) {
+// Gauge Component Genérico
+function SystemGauge({ usage, color }: { usage: number; color: string }) {
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
   const strokeDasharray = circumference;
   const strokeDashoffset = circumference - (usage / 100) * circumference;
   
-  const getColor = (usage: number) => {
+  const getGaugeColor = (usage: number, baseColor: string) => {
     if (usage >= 80) return "#ef4444"; // red
     if (usage >= 60) return "#f59e0b"; // yellow
-    return "#10b981"; // green
+    return baseColor;
   };
 
   return (
@@ -101,7 +101,7 @@ function CPUGauge({ usage }: { usage: number }) {
           cx="50"
           cy="50"
           r={radius}
-          stroke={getColor(usage)}
+          stroke={getGaugeColor(usage, color)}
           strokeWidth="8"
           fill="transparent"
           strokeDasharray={strokeDasharray}
@@ -255,14 +255,14 @@ export default function Dashboard() {
                     <Cpu className="w-5 h-5 md:w-6 md:h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
-                <CPUGauge usage={systemStatus.cpu.usage} />
+                <SystemGauge usage={systemStatus.cpu.usage} color="#3b82f6" />
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
                   {systemStatus.cpu.model.substring(0, 30)}...
                 </p>
               </CardContent>
             </Card>
 
-            {/* Memory Card */}
+            {/* Memory Card with Gauge */}
             <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -270,19 +270,16 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       Memória RAM
                     </p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {systemStatus.memory.usagePercent}%
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {formatBytes(systemStatus.memory.total)}
                     </p>
                   </div>
                   <div className="bg-green-100 dark:bg-green-900 p-2 md:p-3 rounded-lg">
                     <MemoryStick className="w-5 h-5 md:w-6 md:h-6 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
-                <Progress 
-                  value={systemStatus.memory.usagePercent} 
-                  className="mb-2" 
-                />
-                <div className="text-xs text-gray-500 dark:text-gray-500">
+                <SystemGauge usage={systemStatus.memory.usagePercent} color="#10b981" />
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
                   <span>{formatBytes(systemStatus.memory.used)}</span>
                   <span className="mx-1">/</span>
                   <span>{formatBytes(systemStatus.memory.total)}</span>
@@ -290,7 +287,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Storage Card */}
+            {/* Storage Card with Gauge */}
             <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -298,19 +295,16 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       Armazenamento
                     </p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {systemStatus.disk.usagePercent}%
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {formatBytes(systemStatus.disk.total)}
                     </p>
                   </div>
                   <div className="bg-purple-100 dark:bg-purple-900 p-2 md:p-3 rounded-lg">
                     <HardDrive className="w-5 h-5 md:w-6 md:h-6 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
-                <Progress 
-                  value={systemStatus.disk.usagePercent} 
-                  className="mb-2" 
-                />
-                <div className="text-xs text-gray-500 dark:text-gray-500">
+                <SystemGauge usage={systemStatus.disk.usagePercent} color="#8b5cf6" />
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
                   <span>{formatBytes(systemStatus.disk.used)}</span>
                   <span className="mx-1">/</span>
                   <span>{formatBytes(systemStatus.disk.total)}</span>
@@ -318,7 +312,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Swap Card */}
+            {/* Swap Card with Gauge */}
             <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -326,19 +320,16 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                       Swap
                     </p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {systemStatus.swap.usagePercent}%
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {systemStatus.swap.total > 0 ? formatBytes(systemStatus.swap.total) : "N/A"}
                     </p>
                   </div>
                   <div className="bg-orange-100 dark:bg-orange-900 p-2 md:p-3 rounded-lg">
                     <Activity className="w-5 h-5 md:w-6 md:h-6 text-orange-600 dark:text-orange-400" />
                   </div>
                 </div>
-                <Progress 
-                  value={systemStatus.swap.usagePercent} 
-                  className="mb-2" 
-                />
-                <div className="text-xs text-gray-500 dark:text-gray-500">
+                <SystemGauge usage={systemStatus.swap.usagePercent} color="#f97316" />
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
                   {systemStatus.swap.total > 0 ? (
                     <>
                       <span>{formatBytes(systemStatus.swap.used)}</span>
