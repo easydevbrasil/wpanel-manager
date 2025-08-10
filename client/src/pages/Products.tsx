@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -97,9 +96,8 @@ const categoryFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().optional(),
   parentId: z.number().optional(),
-  image: z.string().url().optional(),
-  images: z.array(z.string().url()).default([]),
   status: z.enum(["active", "inactive"]).default("active"),
+  image: z.string().url().optional(),
 });
 
 const manufacturerFormSchema = z.object({
@@ -108,8 +106,7 @@ const manufacturerFormSchema = z.object({
   website: z.string().url().optional(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
-  logo: z.string().url().optional(),
-  images: z.array(z.string().url()).default([]),
+  image: z.string().url().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
 });
 
@@ -129,7 +126,9 @@ export default function Products() {
   const [editingManufacturer, setEditingManufacturer] = useState<Manufacturer | null>(null);
   const [productImages, setProductImages] = useState<string[]>([]);
   const [categoryImages, setCategoryImages] = useState<string[]>([]);
+  const [categoryImage, setCategoryImage] = useState<string>("");
   const [manufacturerImages, setManufacturerImages] = useState<string[]>([]);
+  const [manufacturerImage, setManufacturerImage] = useState<string>("");
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -181,7 +180,7 @@ export default function Products() {
       name: "",
       description: "",
       status: "active",
-      images: [],
+      image: "",
     },
   });
 
@@ -191,7 +190,7 @@ export default function Products() {
       name: "",
       description: "",
       status: "active",
-      images: [],
+      image: "",
     },
   });
 
@@ -267,7 +266,7 @@ export default function Products() {
       setIsCategoryDialogOpen(false);
       setEditingCategory(null);
       categoryForm.reset();
-      setCategoryImages([]);
+      setCategoryImage("");
       toast({
         title: "Categoria criada",
         description: "Categoria foi criada com sucesso.",
@@ -290,7 +289,7 @@ export default function Products() {
       setIsCategoryDialogOpen(false);
       setEditingCategory(null);
       categoryForm.reset();
-      setCategoryImages([]);
+      setCategoryImage("");
       toast({
         title: "Categoria atualizada",
         description: "Categoria foi atualizada com sucesso.",
@@ -331,7 +330,7 @@ export default function Products() {
       setIsManufacturerDialogOpen(false);
       setEditingManufacturer(null);
       manufacturerForm.reset();
-      setManufacturerImages([]);
+      setManufacturerImage("");
       toast({
         title: "Fabricante criado",
         description: "Fabricante foi criado com sucesso.",
@@ -354,7 +353,7 @@ export default function Products() {
       setIsManufacturerDialogOpen(false);
       setEditingManufacturer(null);
       manufacturerForm.reset();
-      setManufacturerImages([]);
+      setManufacturerImage("");
       toast({
         title: "Fabricante atualizado",
         description: "Fabricante foi atualizado com sucesso.",
@@ -441,31 +440,37 @@ export default function Products() {
   };
 
   // Category handlers
-  const onSubmitCategory = (data: CategoryFormData) => {
-    const categoryData = {
-      ...data,
-      images: categoryImages,
-      image: categoryImages[0] || null,
-    };
-
-    if (editingCategory) {
-      updateCategoryMutation.mutate({ id: editingCategory.id, data: categoryData });
-    } else {
-      createCategoryMutation.mutate(categoryData);
+  const handleCategorySubmit = async (data: CategoryFormData) => {
+    try {
+      const categoryData = {
+        ...data,
+        image: categoryImage,
+      };
+      if (editingCategory) {
+        await updateCategoryMutation.mutateAsync({ id: editingCategory.id, data: categoryData });
+      } else {
+        await createCategoryMutation.mutateAsync(categoryData);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao salvar categoria.",
+        variant: "destructive",
+      });
+      console.error("Failed to submit category:", error);
     }
   };
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
-    setCategoryImages(category.images || []);
     categoryForm.reset({
       name: category.name,
       description: category.description || "",
       parentId: category.parentId || undefined,
       status: category.status as "active" | "inactive",
       image: category.image || "",
-      images: category.images || [],
     });
+    setCategoryImage(category.image || "");
     setIsCategoryDialogOpen(true);
   };
 
@@ -475,39 +480,42 @@ export default function Products() {
 
   const handleNewCategory = () => {
     setEditingCategory(null);
-    setCategoryImages([]);
+    setCategoryImage("");
     categoryForm.reset();
     setIsCategoryDialogOpen(true);
   };
 
   // Manufacturer handlers
-  const onSubmitManufacturer = (data: ManufacturerFormData) => {
-    const manufacturerData = {
-      ...data,
-      images: manufacturerImages,
-      logo: manufacturerImages[0] || null,
-    };
-
-    if (editingManufacturer) {
-      updateManufacturerMutation.mutate({ id: editingManufacturer.id, data: manufacturerData });
-    } else {
-      createManufacturerMutation.mutate(manufacturerData);
+  const handleManufacturerSubmit = async (data: ManufacturerFormData) => {
+    try {
+      const manufacturerData = {
+        ...data,
+        image: manufacturerImage,
+      };
+      if (editingManufacturer) {
+        await updateManufacturerMutation.mutateAsync({ id: editingManufacturer.id, data: manufacturerData });
+      } else {
+        await createManufacturerMutation.mutateAsync(manufacturerData);
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao salvar fabricante.",
+        variant: "destructive",
+      });
+      console.error("Failed to submit manufacturer:", error);
     }
   };
 
   const handleEditManufacturer = (manufacturer: Manufacturer) => {
     setEditingManufacturer(manufacturer);
-    setManufacturerImages(manufacturer.images || []);
     manufacturerForm.reset({
       name: manufacturer.name,
       description: manufacturer.description || "",
-      website: manufacturer.website || "",
-      email: manufacturer.email || "",
-      phone: manufacturer.phone || "",
+      image: manufacturer.image || "",
       status: manufacturer.status as "active" | "inactive",
-      logo: manufacturer.logo || "",
-      images: manufacturer.images || [],
     });
+    setManufacturerImage(manufacturer.image || "");
     setIsManufacturerDialogOpen(true);
   };
 
@@ -517,7 +525,7 @@ export default function Products() {
 
   const handleNewManufacturer = () => {
     setEditingManufacturer(null);
-    setManufacturerImages([]);
+    setManufacturerImage("");
     manufacturerForm.reset();
     setIsManufacturerDialogOpen(true);
   };
@@ -525,7 +533,7 @@ export default function Products() {
   // Image handling functions
   const addImage = (imageUrl: string, type: 'product' | 'category' | 'manufacturer') => {
     if (!imageUrl.trim()) return;
-    
+
     switch (type) {
       case 'product':
         if (!productImages.includes(imageUrl)) {
@@ -533,14 +541,10 @@ export default function Products() {
         }
         break;
       case 'category':
-        if (!categoryImages.includes(imageUrl)) {
-          setCategoryImages([...categoryImages, imageUrl]);
-        }
+        setCategoryImage(imageUrl);
         break;
       case 'manufacturer':
-        if (!manufacturerImages.includes(imageUrl)) {
-          setManufacturerImages([...manufacturerImages, imageUrl]);
-        }
+        setManufacturerImage(imageUrl);
         break;
     }
   };
@@ -551,22 +555,22 @@ export default function Products() {
         setProductImages(productImages.filter((_, i) => i !== index));
         break;
       case 'category':
-        setCategoryImages(categoryImages.filter((_, i) => i !== index));
+        setCategoryImage("");
         break;
       case 'manufacturer':
-        setManufacturerImages(manufacturerImages.filter((_, i) => i !== index));
+        setManufacturerImage("");
         break;
     }
   };
 
-  const ImageUploadSection = ({ 
-    images, 
-    onAddImage, 
-    onRemoveImage, 
-    type 
-  }: { 
-    images: string[]; 
-    onAddImage: (url: string) => void; 
+  const ImageUploadSection = ({
+    images,
+    onAddImage,
+    onRemoveImage,
+    type
+  }: {
+    images: string[];
+    onAddImage: (url: string) => void;
     onRemoveImage: (index: number) => void;
     type: 'product' | 'category' | 'manufacturer';
   }) => {
@@ -592,7 +596,7 @@ export default function Products() {
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-        
+
         {images.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {images.map((image, index) => (
@@ -632,14 +636,14 @@ export default function Products() {
   };
 
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = 
+    const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || product.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || product.categoryId?.toString() === categoryFilter;
-    
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -663,11 +667,11 @@ export default function Products() {
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     const scrollHeight = document.documentElement.scrollHeight;
     const clientHeight = document.documentElement.clientHeight;
-    
+
     // Se chegou perto do final (200px antes do fim)
     if (scrollTop + clientHeight >= scrollHeight - 200) {
       const hasMoreProducts = displayedProducts.length < filteredProducts.length;
-      
+
       if (hasMoreProducts && !isLoadingMore) {
         setIsLoadingMore(true);
         // Simula delay de carregamento para melhor UX
@@ -756,7 +760,7 @@ export default function Products() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleNewProduct} className="flex items-center gap-2">
@@ -770,13 +774,13 @@ export default function Products() {
                     {editingProduct ? "Editar Produto" : "Novo Produto"}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 dark:text-gray-400">
-                    {editingProduct 
+                    {editingProduct
                       ? "Atualize as informações do produto."
                       : "Adicione um novo produto ao seu catálogo."
                     }
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...productForm}>
                   <form onSubmit={productForm.handleSubmit(onSubmitProduct)} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -787,9 +791,9 @@ export default function Products() {
                           <FormItem className="md:col-span-2">
                             <FormLabel className="text-gray-900 dark:text-white">Nome do Produto</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="Nome do produto" 
-                                {...field} 
+                              <Input
+                                placeholder="Nome do produto"
+                                {...field}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
                             </FormControl>
@@ -797,7 +801,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="sku"
@@ -805,9 +809,9 @@ export default function Products() {
                           <FormItem>
                             <FormLabel className="text-gray-900 dark:text-white">SKU</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="SKU-001" 
-                                {...field} 
+                              <Input
+                                placeholder="SKU-001"
+                                {...field}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
                             </FormControl>
@@ -815,7 +819,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="barcode"
@@ -823,9 +827,9 @@ export default function Products() {
                           <FormItem>
                             <FormLabel className="text-gray-900 dark:text-white">Código de Barras</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="7891234567890" 
-                                {...field} 
+                              <Input
+                                placeholder="7891234567890"
+                                {...field}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
                             </FormControl>
@@ -833,7 +837,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="price"
@@ -841,9 +845,9 @@ export default function Products() {
                           <FormItem>
                             <FormLabel className="text-gray-900 dark:text-white">Preço de Venda</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="99.90" 
-                                {...field} 
+                              <Input
+                                placeholder="99.90"
+                                {...field}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
                             </FormControl>
@@ -851,7 +855,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="costPrice"
@@ -859,9 +863,9 @@ export default function Products() {
                           <FormItem>
                             <FormLabel className="text-gray-900 dark:text-white">Preço de Custo</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="75.00" 
-                                {...field} 
+                              <Input
+                                placeholder="75.00"
+                                {...field}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
                             </FormControl>
@@ -869,7 +873,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="categoryId"
@@ -894,7 +898,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="manufacturerId"
@@ -919,7 +923,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="stock"
@@ -927,10 +931,10 @@ export default function Products() {
                           <FormItem>
                             <FormLabel className="text-gray-900 dark:text-white">Estoque Atual</FormLabel>
                             <FormControl>
-                              <Input 
+                              <Input
                                 type="number"
-                                placeholder="0" 
-                                {...field} 
+                                placeholder="0"
+                                {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
@@ -939,7 +943,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="minStock"
@@ -947,10 +951,10 @@ export default function Products() {
                           <FormItem>
                             <FormLabel className="text-gray-900 dark:text-white">Estoque Mínimo</FormLabel>
                             <FormControl>
-                              <Input 
+                              <Input
                                 type="number"
-                                placeholder="0" 
-                                {...field} 
+                                placeholder="0"
+                                {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               />
@@ -959,7 +963,7 @@ export default function Products() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="status"
@@ -983,7 +987,7 @@ export default function Products() {
                         )}
                       />
                     </div>
-                    
+
                     <FormField
                       control={productForm.control}
                       name="description"
@@ -991,7 +995,7 @@ export default function Products() {
                         <FormItem>
                           <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
                           <FormControl>
-                            <Textarea 
+                            <Textarea
                               placeholder="Descrição detalhada do produto..."
                               className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               {...field}
@@ -1012,17 +1016,17 @@ export default function Products() {
                         type="product"
                       />
                     </div>
-                    
+
                     <div className="flex justify-end gap-3 pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={() => setIsProductDialogOpen(false)}
                         className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       >
                         Cancelar
                       </Button>
-                      <Button 
+                      <Button
                         type="submit"
                         disabled={createProductMutation.isPending || updateProductMutation.isPending}
                       >
@@ -1055,7 +1059,7 @@ export default function Products() {
               <Package className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
               <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum produto encontrado</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {searchTerm || statusFilter !== "all" || categoryFilter !== "all" 
+                {searchTerm || statusFilter !== "all" || categoryFilter !== "all"
                   ? "Tente ajustar os filtros de busca."
                   : "Comece criando seu primeiro produto."
                 }
@@ -1096,7 +1100,7 @@ export default function Products() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            
+
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -1138,14 +1142,14 @@ export default function Products() {
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
                               {product.name}
                             </h3>
-                            <Badge 
+                            <Badge
                               variant={product.status === "active" ? "default" : "secondary"}
                               className={
-                                product.status === "active" 
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                                product.status === "active"
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                   : product.status === "discontinued"
-                                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                                  : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                    : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                               }
                             >
                               {product.status === "active" ? "Ativo" : product.status === "discontinued" ? "Descontinuado" : "Inativo"}
@@ -1259,15 +1263,15 @@ export default function Products() {
                     {editingCategory ? "Editar Categoria" : "Nova Categoria"}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 dark:text-gray-400">
-                    {editingCategory 
+                    {editingCategory
                       ? "Atualize as informações da categoria."
                       : "Adicione uma nova categoria ao sistema."
                     }
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...categoryForm}>
-                  <form onSubmit={categoryForm.handleSubmit(onSubmitCategory)} className="space-y-4">
+                  <form onSubmit={categoryForm.handleSubmit(handleCategorySubmit)} className="space-y-4">
                     <FormField
                       control={categoryForm.control}
                       name="name"
@@ -1275,9 +1279,9 @@ export default function Products() {
                         <FormItem>
                           <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Nome da categoria" 
-                              {...field} 
+                            <Input
+                              placeholder="Nome da categoria"
+                              {...field}
                               className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                             />
                           </FormControl>
@@ -1285,7 +1289,7 @@ export default function Products() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={categoryForm.control}
                       name="description"
@@ -1293,7 +1297,7 @@ export default function Products() {
                         <FormItem>
                           <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
                           <FormControl>
-                            <Textarea 
+                            <Textarea
                               placeholder="Descrição da categoria..."
                               className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               {...field}
@@ -1326,27 +1330,47 @@ export default function Products() {
                       )}
                     />
 
-                    {/* Category Images */}
-                    <div className="space-y-2">
-                      <Label className="text-gray-900 dark:text-white">Imagens da Categoria</Label>
-                      <ImageUploadSection
-                        images={categoryImages}
-                        onAddImage={(url) => addImage(url, 'category')}
-                        onRemoveImage={(index) => removeImage(index, 'category')}
-                        type="category"
-                      />
-                    </div>
-                    
+                    {/* Category Image */}
+                    <FormField
+                      control={categoryForm.control}
+                      name="image"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Imagem (URL)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://exemplo.com/imagem.png"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setCategoryImage(e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          {categoryImage && (
+                            <div className="mt-2">
+                              <img
+                                src={categoryImage}
+                                alt="Preview"
+                                className="w-20 h-20 object-cover rounded border"
+                              />
+                            </div>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
                     <div className="flex justify-end gap-3 pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={() => setIsCategoryDialogOpen(false)}
                         className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       >
                         Cancelar
                       </Button>
-                      <Button 
+                      <Button
                         type="submit"
                         disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
                       >
@@ -1390,9 +1414,9 @@ export default function Products() {
                     <div className="space-y-4">
                       {/* Category Image */}
                       <div className="relative">
-                        {category.images && category.images.length > 0 ? (
+                        {category.image ? (
                           <img
-                            src={category.images[0]}
+                            src={category.image}
                             alt={category.name}
                             className="w-full h-32 object-cover rounded-lg"
                           />
@@ -1410,7 +1434,7 @@ export default function Products() {
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -1452,11 +1476,11 @@ export default function Products() {
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             {category.name}
                           </h3>
-                          <Badge 
+                          <Badge
                             variant={category.status === "active" ? "default" : "secondary"}
                             className={
-                              category.status === "active" 
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                              category.status === "active"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                 : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                             }
                           >
@@ -1499,15 +1523,15 @@ export default function Products() {
                     {editingManufacturer ? "Editar Fabricante" : "Novo Fabricante"}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 dark:text-gray-400">
-                    {editingManufacturer 
+                    {editingManufacturer
                       ? "Atualize as informações do fabricante."
                       : "Adicione um novo fabricante ao sistema."
                     }
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <Form {...manufacturerForm}>
-                  <form onSubmit={manufacturerForm.handleSubmit(onSubmitManufacturer)} className="space-y-4">
+                  <form onSubmit={manufacturerForm.handleSubmit(handleManufacturerSubmit)} className="space-y-4">
                     <FormField
                       control={manufacturerForm.control}
                       name="name"
@@ -1515,9 +1539,9 @@ export default function Products() {
                         <FormItem>
                           <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Nome do fabricante" 
-                              {...field} 
+                            <Input
+                              placeholder="Nome do fabricante"
+                              {...field}
                               className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                             />
                           </FormControl>
@@ -1525,64 +1549,7 @@ export default function Products() {
                         </FormItem>
                       )}
                     />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={manufacturerForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Email</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="email"
-                                placeholder="email@fabricante.com" 
-                                {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
 
-                      <FormField
-                        control={manufacturerForm.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Telefone</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="(11) 99999-9999" 
-                                {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={manufacturerForm.control}
-                      name="website"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Website</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="https://www.fabricante.com" 
-                              {...field} 
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
                     <FormField
                       control={manufacturerForm.control}
                       name="description"
@@ -1590,7 +1557,7 @@ export default function Products() {
                         <FormItem>
                           <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
                           <FormControl>
-                            <Textarea 
+                            <Textarea
                               placeholder="Descrição do fabricante..."
                               className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
                               {...field}
@@ -1623,27 +1590,47 @@ export default function Products() {
                       )}
                     />
 
-                    {/* Manufacturer Images */}
-                    <div className="space-y-2">
-                      <Label className="text-gray-900 dark:text-white">Imagens do Fabricante</Label>
-                      <ImageUploadSection
-                        images={manufacturerImages}
-                        onAddImage={(url) => addImage(url, 'manufacturer')}
-                        onRemoveImage={(index) => removeImage(index, 'manufacturer')}
-                        type="manufacturer"
-                      />
-                    </div>
-                    
+                    {/* Manufacturer Image */}
+                    <FormField
+                      control={manufacturerForm.control}
+                      name="image"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Imagem (URL)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://exemplo.com/imagem.png"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setManufacturerImage(e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          {manufacturerImage && (
+                            <div className="mt-2">
+                              <img
+                                src={manufacturerImage}
+                                alt="Preview"
+                                className="w-20 h-20 object-cover rounded border"
+                              />
+                            </div>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
                     <div className="flex justify-end gap-3 pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={() => setIsManufacturerDialogOpen(false)}
                         className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                       >
                         Cancelar
                       </Button>
-                      <Button 
+                      <Button
                         type="submit"
                         disabled={createManufacturerMutation.isPending || updateManufacturerMutation.isPending}
                       >
@@ -1685,17 +1672,17 @@ export default function Products() {
                 <Card key={manufacturer.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {/* Manufacturer Logo/Image */}
+                      {/* Manufacturer Image */}
                       <div className="relative">
-                        {manufacturer.images && manufacturer.images.length > 0 ? (
+                        {manufacturer.image ? (
                           <img
-                            src={manufacturer.images[0]}
+                            src={manufacturer.image}
                             alt={manufacturer.name}
                             className="w-full h-32 object-cover rounded-lg"
                           />
                         ) : (
                           <div className="w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                            <Building2 className="w-8 h-8 text-gray-400" />
+                            <Building2 className="w-12 h-12 text-gray-400" />
                           </div>
                         )}
                         <div className="absolute top-2 right-2 flex items-center space-x-1">
@@ -1707,7 +1694,7 @@ export default function Products() {
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -1749,11 +1736,11 @@ export default function Products() {
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             {manufacturer.name}
                           </h3>
-                          <Badge 
+                          <Badge
                             variant={manufacturer.status === "active" ? "default" : "secondary"}
                             className={
-                              manufacturer.status === "active" 
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                              manufacturer.status === "active"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                 : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                             }
                           >
@@ -1783,9 +1770,9 @@ export default function Products() {
                           {manufacturer.website && (
                             <div className="flex items-center">
                               <Globe className="w-4 h-4 mr-1" />
-                              <a 
-                                href={manufacturer.website} 
-                                target="_blank" 
+                              <a
+                                href={manufacturer.website}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 dark:text-blue-400 hover:underline"
                               >
