@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ message: "Nenhum arquivo enviado" });
       }
-      
+
       const fileUrl = `/uploads/${req.file.filename}`;
       res.json({ url: fileUrl, filename: req.file.filename });
     } catch (error) {
@@ -101,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ message: "Nenhum arquivo enviado" });
       }
-      
+
       const fileUrl = `/uploads/${req.file.filename}`;
       res.json({ url: fileUrl, filename: req.file.filename });
     } catch (error) {
@@ -211,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cart routes
   app.get("/api/cart", async (req, res) => {
     try {
-      const items = await storage.getCartItems(1); // Mock user ID
+      const items = await dbStorage.getCartItems(1); // Mock user ID
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to get cart items" });
@@ -222,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const itemId = parseInt(req.params.id);
       const { quantity } = req.body;
-      const updated = await storage.updateCartItemQuantity(itemId, quantity);
+      const updated = await dbStorage.updateCartItemQuantity(itemId, quantity);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update cart item" });
@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/cart/:id", async (req, res) => {
     try {
       const itemId = parseInt(req.params.id);
-      await storage.deleteCartItem(itemId);
+      await dbStorage.deleteCartItem(itemId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete cart item" });
@@ -241,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/cart", async (req, res) => {
     try {
-      await storage.clearCart(1); // Mock user ID
+      await dbStorage.clearCart(1); // Mock user ID
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear cart" });
@@ -252,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/notifications", async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
-      const notifications = await storage.getNotifications(1, limit); // Mock user ID
+      const notifications = await dbStorage.getNotifications(1, limit); // Mock user ID
       res.json(notifications);
     } catch (error) {
       res.status(500).json({ message: "Failed to get notifications" });
@@ -262,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/notifications/:id/read", async (req, res) => {
     try {
       const notificationId = parseInt(req.params.id);
-      const updated = await storage.markNotificationAsRead(notificationId);
+      const updated = await dbStorage.markNotificationAsRead(notificationId);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notification as read" });
@@ -272,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/notifications/:id", async (req, res) => {
     try {
       const notificationId = parseInt(req.params.id);
-      await storage.deleteNotification(notificationId);
+      await dbStorage.deleteNotification(notificationId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete notification" });
@@ -281,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/notifications", async (req, res) => {
     try {
-      await storage.clearNotifications(1); // Mock user ID
+      await dbStorage.clearNotifications(1); // Mock user ID
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear notifications" });
@@ -292,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/emails", async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
-      const emails = await storage.getEmails(1, limit); // Mock user ID
+      const emails = await dbStorage.getEmails(1, limit); // Mock user ID
       res.json(emails);
     } catch (error) {
       res.status(500).json({ message: "Failed to get emails" });
@@ -302,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/emails/:id/read", async (req, res) => {
     try {
       const emailId = parseInt(req.params.id);
-      const updated = await storage.markEmailAsRead(emailId);
+      const updated = await dbStorage.markEmailAsRead(emailId);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to mark email as read" });
@@ -312,7 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/emails/:id", async (req, res) => {
     try {
       const emailId = parseInt(req.params.id);
-      await storage.deleteEmail(emailId);
+      await dbStorage.deleteEmail(emailId);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete email" });
@@ -321,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/emails", async (req, res) => {
     try {
-      await storage.clearEmails(1); // Mock user ID
+      await dbStorage.clearEmails(1); // Mock user ID
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear emails" });
@@ -331,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client routes
   app.get("/api/clients", async (req, res) => {
     try {
-      const clients = await storage.getClients();
+      const clients = await dbStorage.getClients();
       res.json(clients);
     } catch (error) {
       res.status(500).json({ message: "Failed to get clients" });
@@ -341,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const client = await storage.getClient(id);
+      const client = await dbStorage.getClient(id);
       if (!client) {
         return res.status(404).json({ message: "Client not found" });
       }
@@ -356,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const client = await storage.updateClient(id, req.body);
+      const client = await dbStorage.updateClient(id, req.body);
       res.json(client);
     } catch (error) {
       res.status(500).json({ message: "Failed to update client" });
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteClient(id);
+      await dbStorage.deleteClient(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete client" });
@@ -376,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Category routes
   app.get("/api/categories", async (req, res) => {
     try {
-      const categories = await storage.getCategories();
+      const categories = await dbStorage.getCategories();
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to get categories" });
@@ -386,7 +386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/categories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const category = await storage.getCategory(id);
+      const category = await dbStorage.getCategory(id);
       if (!category) {
         return res.status(404).json({ message: "Category not found" });
       }
@@ -398,7 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/categories", async (req, res) => {
     try {
-      const category = await storage.createCategory(req.body);
+      const category = await dbStorage.createCategory(req.body);
       res.status(201).json(category);
     } catch (error) {
       res.status(500).json({ message: "Failed to create category" });
@@ -408,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/categories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const category = await storage.updateCategory(id, req.body);
+      const category = await dbStorage.updateCategory(id, req.body);
       res.json(category);
     } catch (error) {
       res.status(500).json({ message: "Failed to update category" });
@@ -418,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/categories/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteCategory(id);
+      await dbStorage.deleteCategory(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete category" });
@@ -428,7 +428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manufacturer routes
   app.get("/api/manufacturers", async (req, res) => {
     try {
-      const manufacturers = await storage.getManufacturers();
+      const manufacturers = await dbStorage.getManufacturers();
       res.json(manufacturers);
     } catch (error) {
       res.status(500).json({ message: "Failed to get manufacturers" });
@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/manufacturers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const manufacturer = await storage.getManufacturer(id);
+      const manufacturer = await dbStorage.getManufacturer(id);
       if (!manufacturer) {
         return res.status(404).json({ message: "Manufacturer not found" });
       }
@@ -450,7 +450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/manufacturers", async (req, res) => {
     try {
-      const manufacturer = await storage.createManufacturer(req.body);
+      const manufacturer = await dbStorage.createManufacturer(req.body);
       res.status(201).json(manufacturer);
     } catch (error) {
       res.status(500).json({ message: "Failed to create manufacturer" });
@@ -460,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/manufacturers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const manufacturer = await storage.updateManufacturer(id, req.body);
+      const manufacturer = await dbStorage.updateManufacturer(id, req.body);
       res.json(manufacturer);
     } catch (error) {
       res.status(500).json({ message: "Failed to update manufacturer" });
@@ -470,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/manufacturers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteManufacturer(id);
+      await dbStorage.deleteManufacturer(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete manufacturer" });
@@ -480,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product Group routes
   app.get("/api/product-groups", async (req, res) => {
     try {
-      const groups = await storage.getProductGroups();
+      const groups = await dbStorage.getProductGroups();
       res.json(groups);
     } catch (error) {
       res.status(500).json({ message: "Failed to get product groups" });
@@ -490,7 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/product-groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const group = await storage.getProductGroup(id);
+      const group = await dbStorage.getProductGroup(id);
       if (!group) {
         return res.status(404).json({ message: "Product group not found" });
       }
@@ -502,7 +502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/product-groups", async (req, res) => {
     try {
-      const group = await storage.createProductGroup(req.body);
+      const group = await dbStorage.createProductGroup(req.body);
       res.status(201).json(group);
     } catch (error) {
       res.status(500).json({ message: "Failed to create product group" });
@@ -512,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/product-groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const group = await storage.updateProductGroup(id, req.body);
+      const group = await dbStorage.updateProductGroup(id, req.body);
       res.json(group);
     } catch (error) {
       res.status(500).json({ message: "Failed to update product group" });
@@ -522,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/product-groups/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteProductGroup(id);
+      await dbStorage.deleteProductGroup(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete product group" });
@@ -532,7 +532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get("/api/products", async (req, res) => {
     try {
-      const products = await storage.getProducts();
+      const products = await dbStorage.getProducts();
       res.json(products);
     } catch (error) {
       res.status(500).json({ message: "Failed to get products" });
@@ -542,7 +542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const product = await storage.getProduct(id);
+      const product = await dbStorage.getProduct(id);
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -554,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products", async (req, res) => {
     try {
-      const product = await storage.createProduct(req.body);
+      const product = await dbStorage.createProduct(req.body);
       res.status(201).json(product);
     } catch (error) {
       res.status(500).json({ message: "Failed to create product" });
@@ -564,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const product = await storage.updateProduct(id, req.body);
+      const product = await dbStorage.updateProduct(id, req.body);
       res.json(product);
     } catch (error) {
       res.status(500).json({ message: "Failed to update product" });
@@ -574,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteProduct(id);
+      await dbStorage.deleteProduct(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete product" });
@@ -584,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplier routes
   app.get("/api/suppliers", async (req, res) => {
     try {
-      const suppliers = await storage.getSuppliers();
+      const suppliers = await dbStorage.getSuppliers();
       res.json(suppliers);
     } catch (error) {
       res.status(500).json({ message: "Failed to get suppliers" });
@@ -594,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/suppliers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const supplier = await storage.getSupplier(id);
+      const supplier = await dbStorage.getSupplier(id);
       if (!supplier) {
         return res.status(404).json({ message: "Supplier not found" });
       }
@@ -606,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/suppliers", async (req, res) => {
     try {
-      const supplier = await storage.createSupplier(req.body);
+      const supplier = await dbStorage.createSupplier(req.body);
       res.status(201).json(supplier);
     } catch (error) {
       res.status(500).json({ message: "Failed to create supplier" });
@@ -616,7 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/suppliers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const supplier = await storage.updateSupplier(id, req.body);
+      const supplier = await dbStorage.updateSupplier(id, req.body);
       res.json(supplier);
     } catch (error) {
       res.status(500).json({ message: "Failed to update supplier" });
@@ -626,7 +626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/suppliers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSupplier(id);
+      await dbStorage.deleteSupplier(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete supplier" });
@@ -636,7 +636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales routes
   app.get("/api/sales", async (req, res) => {
     try {
-      const sales = await storage.getSales();
+      const sales = await dbStorage.getSales();
       res.json(sales);
     } catch (error) {
       res.status(500).json({ message: "Failed to get sales" });
@@ -646,7 +646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/sales/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const sale = await storage.getSale(id);
+      const sale = await dbStorage.getSale(id);
       if (!sale) {
         return res.status(404).json({ message: "Sale not found" });
       }
@@ -658,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sales", async (req, res) => {
     try {
-      const sale = await storage.createSale(req.body);
+      const sale = await dbStorage.createSale(req.body);
       res.status(201).json(sale);
     } catch (error) {
       res.status(500).json({ message: "Failed to create sale" });
@@ -668,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/sales/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const sale = await storage.updateSale(id, req.body);
+      const sale = await dbStorage.updateSale(id, req.body);
       res.json(sale);
     } catch (error) {
       res.status(500).json({ message: "Failed to update sale" });
@@ -678,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/sales/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSale(id);
+      await dbStorage.deleteSale(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete sale" });
@@ -689,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/sales/:id/items", async (req, res) => {
     try {
       const saleId = parseInt(req.params.id);
-      const saleItems = await storage.getSaleItems(saleId);
+      const saleItems = await dbStorage.getSaleItems(saleId);
       res.json(saleItems);
     } catch (error) {
       res.status(500).json({ message: "Failed to get sale items" });
@@ -699,7 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/sales/:id/items", async (req, res) => {
     try {
       const saleId = parseInt(req.params.id);
-      const saleItem = await storage.createSaleItem({ ...req.body, saleId });
+      const saleItem = await dbStorage.createSaleItem({ ...req.body, saleId });
       res.status(201).json(saleItem);
     } catch (error) {
       res.status(500).json({ message: "Failed to create sale item" });
@@ -710,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/sales/:saleId/items", async (req, res) => {
     try {
       const saleId = parseInt(req.params.saleId);
-      const items = await storage.getSaleItems(saleId);
+      const items = await dbStorage.getSaleItems(saleId);
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to get sale items" });
@@ -719,7 +719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sale-items", async (req, res) => {
     try {
-      const saleItem = await storage.createSaleItem(req.body);
+      const saleItem = await dbStorage.createSaleItem(req.body);
       res.status(201).json(saleItem);
     } catch (error) {
       res.status(500).json({ message: "Failed to create sale item" });
@@ -729,7 +729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/sale-items/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const saleItem = await storage.updateSaleItem(id, req.body);
+      const saleItem = await dbStorage.updateSaleItem(id, req.body);
       res.json(saleItem);
     } catch (error) {
       res.status(500).json({ message: "Failed to update sale item" });
@@ -739,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/sale-items/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSaleItem(id);
+      await dbStorage.deleteSaleItem(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete sale item" });
@@ -749,7 +749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Support Tickets routes
   app.get("/api/support/tickets", async (req, res) => {
     try {
-      const tickets = await storage.getSupportTickets();
+      const tickets = await dbStorage.getSupportTickets();
       res.json(tickets);
     } catch (error) {
       res.status(500).json({ message: "Failed to get support tickets" });
@@ -759,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/support/tickets/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const ticket = await storage.getSupportTicket(id);
+      const ticket = await dbStorage.getSupportTicket(id);
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
@@ -771,7 +771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/support/tickets", async (req, res) => {
     try {
-      const ticket = await storage.createSupportTicket(req.body);
+      const ticket = await dbStorage.createSupportTicket(req.body);
       res.status(201).json(ticket);
     } catch (error) {
       res.status(500).json({ message: "Failed to create support ticket" });
@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/support/tickets/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const ticket = await storage.updateSupportTicket(id, req.body);
+      const ticket = await dbStorage.updateSupportTicket(id, req.body);
       res.json(ticket);
     } catch (error) {
       res.status(500).json({ message: "Failed to update support ticket" });
@@ -791,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/support/tickets/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSupportTicket(id);
+      await dbStorage.deleteSupportTicket(id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete support ticket" });
@@ -802,7 +802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/support/tickets/:id/messages", async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const messages = await storage.getSupportTicketMessages(ticketId);
+      const messages = await dbStorage.getSupportTicketMessages(ticketId);
       res.json(messages);
     } catch (error) {
       res.status(500).json({ message: "Failed to get ticket messages" });
@@ -812,7 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/support/tickets/:id/messages", async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const message = await storage.createSupportTicketMessage({ ...req.body, ticketId });
+      const message = await dbStorage.createSupportTicketMessage({ ...req.body, ticketId });
       res.status(201).json(message);
     } catch (error) {
       res.status(500).json({ message: "Failed to create ticket message" });
@@ -822,7 +822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Support Categories routes
   app.get("/api/support/categories", async (req, res) => {
     try {
-      const categories = await storage.getSupportCategories();
+      const categories = await dbStorage.getSupportCategories();
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to get support categories" });
@@ -831,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/support/categories", async (req, res) => {
     try {
-      const category = await storage.createSupportCategory(req.body);
+      const category = await dbStorage.createSupportCategory(req.body);
       res.status(201).json(category);
     } catch (error) {
       res.status(500).json({ message: "Failed to create support category" });
@@ -841,7 +841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chatwoot Settings routes
   app.get("/api/chatwoot/settings", async (req, res) => {
     try {
-      const settings = await storage.getChatwootSettings();
+      const settings = await dbStorage.getChatwootSettings();
       res.json(settings);
     } catch (error) {
       res.status(500).json({ message: "Failed to get Chatwoot settings" });
@@ -850,7 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chatwoot/settings", async (req, res) => {
     try {
-      const settings = await storage.createChatwootSettings(req.body);
+      const settings = await dbStorage.createChatwootSettings(req.body);
       res.status(201).json(settings);
     } catch (error) {
       res.status(500).json({ message: "Failed to create Chatwoot settings" });
@@ -860,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/chatwoot/settings/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const settings = await storage.updateChatwootSettings(id, req.body);
+      const settings = await dbStorage.updateChatwootSettings(id, req.body);
       res.json(settings);
     } catch (error) {
       res.status(500).json({ message: "Failed to update Chatwoot settings" });
@@ -952,7 +952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Email Accounts routes
   app.get("/api/email-accounts", async (req, res) => {
     try {
-      const accounts = await storage.getEmailAccounts();
+      const accounts = await dbStorage.getEmailAccounts();
       res.json(accounts);
     } catch (error) {
       res.status(500).json({ message: "Failed to get email accounts" });
@@ -962,7 +962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/email-accounts/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const account = await storage.getEmailAccount(id);
+      const account = await dbStorage.getEmailAccount(id);
       if (!account) {
         return res.status(404).json({ message: "Email account not found" });
       }
@@ -974,7 +974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/email-accounts", async (req, res) => {
     try {
-      const account = await storage.createEmailAccount(req.body);
+      const account = await dbStorage.createEmailAccount(req.body);
       await generateMailAccountsFile();
       broadcastUpdate('email_account_created', account);
       res.status(201).json(account);
@@ -986,7 +986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/email-accounts/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const account = await storage.updateEmailAccount(id, req.body);
+      const account = await dbStorage.updateEmailAccount(id, req.body);
       await generateMailAccountsFile();
       broadcastUpdate('email_account_updated', account);
       res.json(account);
@@ -998,7 +998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/email-accounts/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteEmailAccount(id);
+      await dbStorage.deleteEmailAccount(id);
       await generateMailAccountsFile();
       broadcastUpdate('email_account_deleted', { id });
       res.status(204).send();
@@ -1010,7 +1010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/email-accounts/:id/set-default", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const account = await storage.setDefaultEmailAccount(id);
+      const account = await dbStorage.setDefaultEmailAccount(id);
       await generateMailAccountsFile();
       broadcastUpdate('email_account_default_updated', account);
       res.json(account);
@@ -1022,7 +1022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Permissions routes
   app.get("/api/permissions", authenticateToken, async (req, res) => {
     try {
-      const permissions = await storage.getUserPermissions();
+      const permissions = await dbStorage.getUserPermissions();
       res.json(permissions);
     } catch (error) {
       res.status(500).json({ message: "Failed to get user permissions" });
@@ -1032,7 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:userId/permissions", authenticateToken, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      const permissions = await storage.getUserPermissionsByUserId(userId);
+      const permissions = await dbStorage.getUserPermissionsByUserId(userId);
       res.json(permissions);
     } catch (error) {
       res.status(500).json({ message: "Failed to get user permissions" });
@@ -1042,7 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:userId/permissions", authenticateToken, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      const permissions = await storage.updateUserPermissions(userId, req.body);
+      const permissions = await dbStorage.updateUserPermissions(userId, req.body);
       broadcastUpdate('user_permissions_updated', { userId, permissions });
       res.json(permissions);
     } catch (error) {
@@ -1055,7 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const user = await storage.updateUser(id, req.body);
+      const user = await dbStorage.updateUser(id, req.body);
       broadcastUpdate('user_updated', { user });
       res.json(user);
     } catch (error) {
@@ -1067,7 +1067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:id/address", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const address = await storage.getUserAddress(id);
+      const address = await dbStorage.getUserAddress(id);
       res.json(address);
     } catch (error) {
       res.status(500).json({ message: "Failed to get user address" });
@@ -1077,7 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id/address", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const address = await storage.updateUserAddress(id, req.body);
+      const address = await dbStorage.updateUserAddress(id, req.body);
       broadcastUpdate('user_address_updated', { userId: id, address });
       res.json(address);
     } catch (error) {
@@ -1103,7 +1103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
     try {
       const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
-      
+
       console.log(`Connecting to Docker API at: ${dockerUri}`);
 
       // Fazer chamada real para a API Docker
@@ -1123,7 +1123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(containers);
     } catch (error) {
       console.error('Docker API error:', error);
-      
+
       // Fallback para containers mock se a API Docker não estiver disponível
       const mockContainers = [
         {
@@ -1302,7 +1302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Function to broadcast dashboard stats updates
   async function broadcastDashboardUpdate() {
     try {
-      const stats = await storage.getDashboardStats(1);
+      const stats = await dbStorage.getDashboardStats(1);
       broadcastUpdate('dashboard_stats_updated', stats);
     } catch (error) {
       console.error('Failed to broadcast dashboard update:', error);
@@ -1314,7 +1314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clients - broadcast on all operations
   app.post("/api/clients", async (req, res) => {
     try {
-      const client = await storage.createClient(req.body);
+      const client = await dbStorage.createClient(req.body);
       broadcastUpdate('client_created', client);
       broadcastDashboardUpdate(); // Update dashboard counters
       res.status(201).json(client);
@@ -1326,7 +1326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const client = await storage.updateClient(id, req.body);
+      const client = await dbStorage.updateClient(id, req.body);
       broadcastUpdate('client_updated', client);
       res.json(client);
     } catch (error) {
@@ -1337,7 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteClient(id);
+      await dbStorage.deleteClient(id);
       broadcastUpdate('client_deleted', { id });
       broadcastDashboardUpdate(); // Update dashboard counters
       res.json({ success: true });
@@ -1349,7 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Products - broadcast on all operations
   app.post("/api/products", async (req, res) => {
     try {
-      const product = await storage.createProduct(req.body);
+      const product = await dbStorage.createProduct(req.body);
       broadcastUpdate('product_created', product);
       broadcastDashboardUpdate();
       res.status(201).json(product);
@@ -1361,7 +1361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const product = await storage.updateProduct(id, req.body);
+      const product = await dbStorage.updateProduct(id, req.body);
       broadcastUpdate('product_updated', product);
       res.json(product);
     } catch (error) {
@@ -1372,7 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteProduct(id);
+      await dbStorage.deleteProduct(id);
       broadcastUpdate('product_deleted', { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
@@ -1384,7 +1384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Suppliers - broadcast on all operations
   app.post("/api/suppliers", async (req, res) => {
     try {
-      const supplier = await storage.createSupplier(req.body);
+      const supplier = await dbStorage.createSupplier(req.body);
       broadcastUpdate('supplier_created', supplier);
       broadcastDashboardUpdate();
       res.status(201).json(supplier);
@@ -1396,7 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/suppliers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const supplier = await storage.updateSupplier(id, req.body);
+      const supplier = await dbStorage.updateSupplier(id, req.body);
       broadcastUpdate('supplier_updated', supplier);
       res.json(supplier);
     } catch (error) {
@@ -1407,7 +1407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/suppliers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSupplier(id);
+      await dbStorage.deleteSupplier(id);
       broadcastUpdate('supplier_deleted', { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
@@ -1419,7 +1419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales - broadcast on all operations
   app.post("/api/sales", async (req, res) => {
     try {
-      const sale = await storage.createSale(req.body);
+      const sale = await dbStorage.createSale(req.body);
       broadcastUpdate('sale_created', sale);
       broadcastDashboardUpdate();
       res.status(201).json(sale);
@@ -1431,7 +1431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/sales/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const sale = await storage.updateSale(id, req.body);
+      const sale = await dbStorage.updateSale(id, req.body);
       broadcastUpdate('sale_updated', sale);
       res.json(sale);
     } catch (error) {
@@ -1442,7 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/sales/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSale(id);
+      await dbStorage.deleteSale(id);
       broadcastUpdate('sale_deleted', { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
@@ -1454,7 +1454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Support Tickets - broadcast on all operations
   app.post("/api/support/tickets", async (req, res) => {
     try {
-      const ticket = await storage.createSupportTicket(req.body);
+      const ticket = await dbStorage.createSupportTicket(req.body);
       broadcastUpdate('ticket_created', ticket);
       broadcastDashboardUpdate();
       res.status(201).json(ticket);
@@ -1466,7 +1466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/support/tickets/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const ticket = await storage.updateSupportTicket(id, req.body);
+      const ticket = await dbStorage.updateSupportTicket(id, req.body);
       broadcastUpdate('ticket_updated', ticket);
       res.json(ticket);
     } catch (error) {
@@ -1477,7 +1477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/support/tickets/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteSupportTicket(id);
+      await dbStorage.deleteSupportTicket(id);
       broadcastUpdate('ticket_deleted', { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
@@ -1490,7 +1490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/support/tickets/:id/messages", async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const message = await storage.createSupportTicketMessage({ ...req.body, ticketId });
+      const message = await dbStorage.createSupportTicketMessage({ ...req.body, ticketId });
       broadcastUpdate('ticket_message_created', { ticketId, message });
       res.status(201).json(message);
     } catch (error) {
@@ -1501,7 +1501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users API routes for database administration
   app.get("/api/users", async (req, res) => {
     try {
-      const users = await storage.getUsers();
+      const users = await dbStorage.getUsers();
       res.json(users);
     } catch (error) {
       res.status(500).json({ message: "Failed to get users" });
@@ -1511,7 +1511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const user = await storage.getUser(id);
+      const user = await dbStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1523,7 +1523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", async (req, res) => {
     try {
-      const user = await storage.createUser(req.body);
+      const user = await dbStorage.createUser(req.body);
       broadcastUpdate('user_created', user);
       res.status(201).json(user);
     } catch (error) {
@@ -1534,7 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const user = await storage.updateUser(id, req.body);
+      const user = await dbStorage.updateUser(id, req.body);
       broadcastUpdate('user_updated', user);
       res.json(user);
     } catch (error) {
@@ -1545,7 +1545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/users/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteUser(id);
+      await dbStorage.deleteUser(id);
       broadcastUpdate('user_deleted', { id });
       res.json({ success: true });
     } catch (error) {

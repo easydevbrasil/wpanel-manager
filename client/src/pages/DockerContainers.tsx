@@ -30,6 +30,17 @@ const DockerIcon = ({ className = "w-6 h-6" }) => (
   </svg>
 );
 
+// Docker icon component
+const DockerIcon = ({ className = "w-6 h-6" }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    className={className}
+    fill="currentColor"
+  >
+    <path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.184.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.718-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288Z"/>
+  </svg>
+);
+
 // Interface para containers da API Docker
 interface DockerApiContainer {
   Id: string;
@@ -67,6 +78,98 @@ export default function DockerContainers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [containerLogos, setContainerLogos] = useState<Record<string, string>>({});
+
+  // Helper functions defined before use
+  const getContainerName = (container: DockerApiContainer): string => {
+    return container.Names[0]?.replace(/^\//, '') || container.Id.slice(0, 12);
+  };
+
+  const getContainerPorts = (container: DockerApiContainer) => {
+    return container.Ports.map(port => {
+      if (port.PublicPort) {
+        return `${port.PublicPort}:${port.PrivatePort}/${port.Type}`;
+      }
+      return `${port.PrivatePort}/${port.Type}`;
+    }).join(', ') || 'Nenhuma porta exposta';
+  };
+
+  const getStatusColor = (state: string) => {
+    switch (state.toLowerCase()) {
+      case "running":
+        return "bg-green-500";
+      case "exited":
+        return "bg-red-500";
+      case "paused":
+        return "bg-yellow-500";
+      case "restarting":
+        return "bg-blue-500";
+      case "created":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  const getStatusText = (state: string) => {
+    switch (state.toLowerCase()) {
+      case "running":
+        return "Executando";
+      case "exited":
+        return "Parado";
+      case "paused":
+        return "Pausado";
+      case "restarting":
+        return "Reiniciando";
+      case "created":
+        return "Criado";
+      default:
+        return state;
+    }
+  };
+
+  const handleLogoUpload = async (containerId: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/upload/container-logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setContainerLogos(prev => ({
+          ...prev,
+          [containerId]: result.url
+        }));
+        toast({
+          title: "✅ Logo atualizado",
+          description: "Logo do container foi atualizado com sucesso!",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao fazer upload do logo",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getImageIcon = (image: string, containerId: string) => {
+    // Se há logo personalizado, usar ele
+    if (containerLogos[containerId]) {
+      return <img src={containerLogos[containerId]} alt="Logo" className="w-5 h-5 object-contain" />;
+    }
+
+    // Caso contrário, usar ícone padrão baseado na imagem
+    if (image.includes("nginx") || image.includes("apache")) return <Globe className="w-5 h-5" />;
+    if (image.includes("mysql") || image.includes("postgres") || image.includes("mongo")) return <Database className="w-5 h-5" />;
+    if (image.includes("node") || image.includes("express")) return <Server className="w-5 h-5" />;
+    if (image.includes("redis")) return <HardDrive className="w-5 h-5" />;
+    return <Container className="w-5 h-5" />;
+  };
 
   // Fetch containers da API Docker real
   const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
@@ -160,96 +263,23 @@ export default function DockerContainers() {
     },
   });
 
-  // Funções auxiliares para exibição
-  const getContainerName = (container: DockerApiContainer) => {
-    return container.Names[0]?.replace(/^\//, '') || container.Id.slice(0, 12);
-  };
-
-  const getContainerPorts = (container: DockerApiContainer) => {
-    return container.Ports.map(port => {
-      if (port.PublicPort) {
-        return `${port.PublicPort}:${port.PrivatePort}/${port.Type}`;
-      }
-      return `${port.PrivatePort}/${port.Type}`;
-    }).join(', ') || 'Nenhuma porta exposta';
-  };
-
-  const getStatusColor = (state: string) => {
-    switch (state.toLowerCase()) {
-      case "running":
-        return "bg-green-500";
-      case "exited":
-        return "bg-red-500";
-      case "paused":
-        return "bg-yellow-500";
-      case "restarting":
-        return "bg-blue-500";
-      case "created":
-        return "bg-gray-500";
+  const handleContainerAction = async (containerId: string, action: string) => {
+    switch (action) {
+      case 'start':
+        startMutation.mutate(containerId);
+        break;
+      case 'stop':
+        stopMutation.mutate(containerId);
+        break;
+      case 'restart':
+        restartMutation.mutate(containerId);
+        break;
+      case 'pause':
+        pauseMutation.mutate(containerId);
+        break;
       default:
-        return "bg-gray-500";
+        break;
     }
-  };
-
-  const getStatusText = (state: string) => {
-    switch (state.toLowerCase()) {
-      case "running":
-        return "Executando";
-      case "exited":
-        return "Parado";
-      case "paused":
-        return "Pausado";
-      case "restarting":
-        return "Reiniciando";
-      case "created":
-        return "Criado";
-      default:
-        return state;
-    }
-  };
-
-  const handleLogoUpload = async (containerId: string, file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const response = await fetch('/api/upload/container-logo', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setContainerLogos(prev => ({
-          ...prev,
-          [containerId]: result.url
-        }));
-        toast({
-          title: "✅ Logo atualizado",
-          description: "Logo do container foi atualizado com sucesso!",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Erro",
-        description: "Falha ao fazer upload do logo",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getImageIcon = (image: string, containerId: string) => {
-    // Se há logo personalizado, usar ele
-    if (containerLogos[containerId]) {
-      return <img src={containerLogos[containerId]} alt="Logo" className="w-5 h-5 object-contain" />;
-    }
-    
-    // Caso contrário, usar ícone padrão baseado na imagem
-    if (image.includes("nginx") || image.includes("apache")) return <Globe className="w-5 h-5" />;
-    if (image.includes("mysql") || image.includes("postgres") || image.includes("mongo")) return <Database className="w-5 h-5" />;
-    if (image.includes("node") || image.includes("express")) return <Server className="w-5 h-5" />;
-    if (image.includes("redis")) return <HardDrive className="w-5 h-5" />;
-    return <Container className="w-5 h-5" />;
   };
 
   return (
@@ -301,7 +331,7 @@ export default function DockerContainers() {
                       getImageIcon(container.Image, container.Id)
                     )}
                   </div>
-                  
+
                   {/* Overlay para upload de logo */}
                   <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-l-lg">
                     <label className="cursor-pointer text-white text-xs text-center p-2">
@@ -340,7 +370,7 @@ export default function DockerContainers() {
                       </Badge>
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent className="space-y-4 flex-1">
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       <p><strong>Status:</strong> {container.Status}</p>
@@ -357,7 +387,7 @@ export default function DockerContainers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => stopMutation.mutate(container.Id)}
+                            onClick={() => handleContainerAction(container.Id, 'stop')}
                             disabled={stopMutation.isPending}
                             className="p-2"
                             title="Parar container"
@@ -367,7 +397,7 @@ export default function DockerContainers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => restartMutation.mutate(container.Id)}
+                            onClick={() => handleContainerAction(container.Id, 'restart')}
                             disabled={restartMutation.isPending}
                             className="p-2"
                             title="Reiniciar container"
@@ -377,7 +407,7 @@ export default function DockerContainers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => pauseMutation.mutate(container.Id)}
+                            onClick={() => handleContainerAction(container.Id, 'pause')}
                             disabled={pauseMutation.isPending}
                             className="p-2"
                             title="Pausar container"
@@ -389,7 +419,7 @@ export default function DockerContainers() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => startMutation.mutate(container.Id)}
+                          onClick={() => handleContainerAction(container.Id, 'start')}
                           disabled={startMutation.isPending}
                           className="p-2"
                           title="Iniciar container"
