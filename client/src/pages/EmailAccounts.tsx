@@ -265,6 +265,30 @@ export default function EmailAccounts() {
     }
   };
 
+  // Check if we have SMTP environment variables
+  const hasSmtpEnvVars = () => {
+    // Check if any of the common SMTP environment variables exist
+    return !!(
+      (typeof window !== 'undefined' && window.location.hostname !== 'localhost') ||
+      process.env.REACT_APP_SMTP_HOST ||
+      process.env.SMTP_HOST ||
+      process.env.MAIL_HOST ||
+      process.env.EMAIL_HOST
+    );
+  };
+
+  // Check if we have IMAP environment variables
+  const hasImapEnvVars = () => {
+    // Check if any of the common IMAP environment variables exist
+    return !!(
+      (typeof window !== 'undefined' && window.location.hostname !== 'localhost') ||
+      process.env.REACT_APP_IMAP_HOST ||
+      process.env.IMAP_HOST ||
+      process.env.MAIL_IMAP_HOST ||
+      process.env.EMAIL_IMAP_HOST
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -373,12 +397,9 @@ export default function EmailAccounts() {
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    <h4 className="font-semibold flex items-center">
-                      <Server className="w-4 h-4 mr-2" />
-                      Configurações SMTP
-                    </h4>
+                {!hasSmtpEnvVars() && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Configurações SMTP</h4>
                     <FormField
                       control={form.control}
                       name="smtpHost"
@@ -428,12 +449,25 @@ export default function EmailAccounts() {
                       />
                     </div>
                   </div>
+                )}
 
-                  <div className="space-y-4">
-                    <h4 className="font-semibold flex items-center">
-                      <Mail className="w-4 h-4 mr-2" />
-                      Configurações IMAP
-                    </h4>
+                {hasSmtpEnvVars() && (
+                  <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                        Configurações SMTP definidas via variáveis de ambiente
+                      </span>
+                    </div>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      As configurações SMTP estão sendo carregadas automaticamente das variáveis de ambiente do servidor.
+                    </p>
+                  </div>
+                )}
+
+                {!hasImapEnvVars() && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Configurações IMAP</h4>
                     <FormField
                       control={form.control}
                       name="imapHost"
@@ -483,7 +517,21 @@ export default function EmailAccounts() {
                       />
                     </div>
                   </div>
-                </div>
+                )}
+
+                {hasImapEnvVars() && (
+                  <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm text-green-700 dark:text-green-300 font-medium">
+                        Configurações IMAP definidas via variáveis de ambiente
+                      </span>
+                    </div>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      As configurações IMAP estão sendo carregadas automaticamente das variáveis de ambiente do servidor.
+                    </p>
+                  </div>
+                )}
 
                 <Separator />
 

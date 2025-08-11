@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,77 @@ type ProductFormData = z.infer<typeof productFormSchema>;
 type CategoryFormData = z.infer<typeof categoryFormSchema>;
 type ManufacturerFormData = z.infer<typeof manufacturerFormSchema>;
 
+// Componente para upload com drag & drop
+const DragDropUpload = ({ 
+  onFileSelect, 
+  multiple = false, 
+  className = "" 
+}: { 
+  onFileSelect: (files: FileList) => void;
+  multiple?: boolean;
+  className?: string;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      onFileSelect(files);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onFileSelect(e.target.files);
+    }
+  };
+
+  return (
+    <div
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        isDragging 
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+      } ${className}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className="flex flex-col items-center space-y-2">
+        <Upload className="w-8 h-8 text-gray-400" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Arraste e solte {multiple ? 'imagens' : 'uma imagem'} aqui ou
+        </p>
+        <label className="cursor-pointer">
+          <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            clique para selecionar
+          </span>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            multiple={multiple}
+            onChange={handleFileInput}
+          />
+        </label>
+      </div>
+    </div>
+  );
+};
+
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "discontinued">("all");
@@ -125,9 +197,7 @@ export default function Products() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingManufacturer, setEditingManufacturer] = useState<Manufacturer | null>(null);
   const [productImages, setProductImages] = useState<string[]>([]);
-  const [categoryImages, setCategoryImages] = useState<string[]>([]); // Não utilizado atualmente, mas mantido para consistência
   const [categoryImage, setCategoryImage] = useState<string>("");
-  const [manufacturerImages, setManufacturerImages] = useState<string[]>([]); // Não utilizado atualmente, mas mantido para consistência
   const [manufacturerImage, setManufacturerImage] = useState<string>("");
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -156,59 +226,52 @@ export default function Products() {
     queryKey: ["/api/product-groups"],
   });
 
-  // Product Form State Management (for image handling)
-  const [productFormState, setProductFormState] = useState<ProductFormData>({
-    name: "",
-    description: "",
-    sku: "",
-    barcode: "",
-    price: "",
-    costPrice: "",
-    categoryId: undefined,
-    manufacturerId: undefined,
-    productGroupId: undefined,
-    weight: "",
-    stock: 0,
-    minStock: 0,
-    maxStock: undefined,
-    status: "active",
-    featured: false,
-    images: [],
-    defaultImageIndex: 0,
-    tags: [],
-  });
-
-  // Category Form State Management (for image handling)
-  const [categoryFormState, setCategoryFormState] = useState<CategoryFormData>({
-    name: "",
-    description: "",
-    status: "active",
-    image: "",
-  });
-
-  // Manufacturer Form State Management (for image handling)
-  const [manufacturerFormState, setManufacturerFormState] = useState<ManufacturerFormData>({
-    name: "",
-    description: "",
-    status: "active",
-    image: "",
-  });
-
-
   // Forms
   const productForm = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: productFormState,
+    defaultValues: {
+      name: "",
+      description: "",
+      sku: "",
+      barcode: "",
+      price: "",
+      costPrice: "",
+      categoryId: undefined,
+      manufacturerId: undefined,
+      productGroupId: undefined,
+      weight: "",
+      stock: 0,
+      minStock: 0,
+      maxStock: undefined,
+      status: "active",
+      featured: false,
+      images: [],
+      defaultImageIndex: 0,
+      tags: [],
+    }
   });
 
   const categoryForm = useForm<CategoryFormData>({
     resolver: zodResolver(categoryFormSchema),
-    defaultValues: categoryFormState,
+    defaultValues: {
+      name: "",
+      description: "",
+      status: "active",
+      image: "",
+    }
   });
 
   const manufacturerForm = useForm<ManufacturerFormData>({
     resolver: zodResolver(manufacturerFormSchema),
-    defaultValues: manufacturerFormState,
+    defaultValues: {
+      name: "",
+      description: "",
+      website: "",
+      email: "",
+      phone: "",
+      status: "active",
+      image: "",
+    }
   });
 
   // Product mutations
@@ -220,12 +283,6 @@ export default function Products() {
       setEditingProduct(null);
       productForm.reset();
       setProductImages([]);
-      setProductFormState({
-        name: "", description: "", sku: "", barcode: "", price: "", costPrice: "",
-        categoryId: undefined, manufacturerId: undefined, productGroupId: undefined,
-        weight: "", stock: 0, minStock: 0, maxStock: undefined, status: "active",
-        featured: false, images: [], defaultImageIndex: 0, tags: [],
-      });
       toast({
         title: "Produto criado",
         description: "Produto foi criado com sucesso.",
@@ -249,12 +306,6 @@ export default function Products() {
       setEditingProduct(null);
       productForm.reset();
       setProductImages([]);
-      setProductFormState({
-        name: "", description: "", sku: "", barcode: "", price: "", costPrice: "",
-        categoryId: undefined, manufacturerId: undefined, productGroupId: undefined,
-        weight: "", stock: 0, minStock: 0, maxStock: undefined, status: "active",
-        featured: false, images: [], defaultImageIndex: 0, tags: [],
-      });
       toast({
         title: "Produto atualizado",
         description: "Produto foi atualizado com sucesso.",
@@ -296,7 +347,6 @@ export default function Products() {
       setEditingCategory(null);
       categoryForm.reset();
       setCategoryImage("");
-      setCategoryFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Categoria criada",
         description: "Categoria foi criada com sucesso.",
@@ -320,7 +370,6 @@ export default function Products() {
       setEditingCategory(null);
       categoryForm.reset();
       setCategoryImage("");
-      setCategoryFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Categoria atualizada",
         description: "Categoria foi atualizada com sucesso.",
@@ -362,7 +411,6 @@ export default function Products() {
       setEditingManufacturer(null);
       manufacturerForm.reset();
       setManufacturerImage("");
-      setManufacturerFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Fabricante criado",
         description: "Fabricante foi criado com sucesso.",
@@ -386,7 +434,6 @@ export default function Products() {
       setEditingManufacturer(null);
       manufacturerForm.reset();
       setManufacturerImage("");
-      setManufacturerFormState({ name: "", description: "", status: "active", image: "" });
       toast({
         title: "Fabricante atualizado",
         description: "Fabricante foi atualizado com sucesso.",
@@ -419,6 +466,85 @@ export default function Products() {
     },
   });
 
+  // Upload function
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload/product-image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  // Upload handlers
+  const handleProductImageUpload = async (files: FileList) => {
+    try {
+      const uploadPromises = Array.from(files).map(file => uploadImage(file));
+      const imageUrls = await Promise.all(uploadPromises);
+      setProductImages(prev => [...prev, ...imageUrls]);
+      toast({
+        title: "Imagens carregadas",
+        description: `${imageUrls.length} imagem(s) carregada(s) com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar imagens.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCategoryImageUpload = async (files: FileList) => {
+    try {
+      const imageUrl = await uploadImage(files[0]);
+      setCategoryImage(imageUrl);
+      toast({
+        title: "Imagem carregada",
+        description: "Imagem da categoria carregada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar imagem.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleManufacturerImageUpload = async (files: FileList) => {
+    try {
+      const imageUrl = await uploadImage(files[0]);
+      setManufacturerImage(imageUrl);
+      toast({
+        title: "Imagem carregada",
+        description: "Imagem do fabricante carregada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar imagem.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Product handlers
   const onSubmitProduct = (data: ProductFormData) => {
     const productData = {
@@ -439,7 +565,7 @@ export default function Products() {
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setProductImages(product.images || []);
-    setProductFormState({
+    productForm.reset({
       name: product.name,
       description: product.description || "",
       sku: product.sku,
@@ -458,7 +584,6 @@ export default function Products() {
       images: product.images || [],
       tags: product.tags || [],
     });
-    productForm.reset(productFormState);
     setIsProductDialogOpen(true);
   };
 
@@ -469,49 +594,34 @@ export default function Products() {
   const handleNewProduct = () => {
     setEditingProduct(null);
     setProductImages([]);
-    setProductFormState({
-      name: "", description: "", sku: "", barcode: "", price: "", costPrice: "",
-      categoryId: undefined, manufacturerId: undefined, productGroupId: undefined,
-      weight: "", stock: 0, minStock: 0, maxStock: undefined, status: "active",
-      featured: false, images: [], defaultImageIndex: 0, tags: [],
-    });
-    productForm.reset(productFormState);
+    productForm.reset();
     setIsProductDialogOpen(true);
   };
 
   // Category handlers
-  const handleCategorySubmit = async (data: CategoryFormData) => {
-    try {
-      const categoryData = {
-        ...data,
-        image: categoryImage,
-      };
-      if (editingCategory) {
-        await updateCategoryMutation.mutateAsync({ id: editingCategory.id, data: categoryData });
-      } else {
-        await createCategoryMutation.mutateAsync(categoryData);
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha ao salvar categoria.",
-        variant: "destructive",
-      });
-      console.error("Failed to submit category:", error);
+  const handleCategorySubmit = (data: CategoryFormData) => {
+    const categoryData = {
+      ...data,
+      image: categoryImage || undefined,
+    };
+    
+    if (editingCategory) {
+      updateCategoryMutation.mutate({ id: editingCategory.id, data: categoryData });
+    } else {
+      createCategoryMutation.mutate(categoryData);
     }
   };
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
-    setCategoryFormState({
+    setCategoryImage(category.image || "");
+    categoryForm.reset({
       name: category.name,
       description: category.description || "",
       parentId: category.parentId || undefined,
       status: category.status as "active" | "inactive",
       image: category.image || "",
     });
-    setCategoryImage(category.image || "");
-    categoryForm.reset(categoryFormState);
     setIsCategoryDialogOpen(true);
   };
 
@@ -522,43 +632,36 @@ export default function Products() {
   const handleNewCategory = () => {
     setEditingCategory(null);
     setCategoryImage("");
-    setCategoryFormState({ name: "", description: "", status: "active", image: "" });
-    categoryForm.reset(categoryFormState);
+    categoryForm.reset();
     setIsCategoryDialogOpen(true);
   };
 
   // Manufacturer handlers
-  const handleManufacturerSubmit = async (data: ManufacturerFormData) => {
-    try {
-      const manufacturerData = {
-        ...data,
-        image: manufacturerImage,
-      };
-      if (editingManufacturer) {
-        await updateManufacturerMutation.mutateAsync({ id: editingManufacturer.id, data: manufacturerData });
-      } else {
-        await createManufacturerMutation.mutateAsync(manufacturerData);
-      }
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha ao salvar fabricante.",
-        variant: "destructive",
-      });
-      console.error("Failed to submit manufacturer:", error);
+  const handleManufacturerSubmit = (data: ManufacturerFormData) => {
+    const manufacturerData = {
+      ...data,
+      image: manufacturerImage || undefined,
+    };
+    
+    if (editingManufacturer) {
+      updateManufacturerMutation.mutate({ id: editingManufacturer.id, data: manufacturerData });
+    } else {
+      createManufacturerMutation.mutate(manufacturerData);
     }
   };
 
   const handleEditManufacturer = (manufacturer: Manufacturer) => {
     setEditingManufacturer(manufacturer);
-    setManufacturerFormState({
+    setManufacturerImage(manufacturer.image || "");
+    manufacturerForm.reset({
       name: manufacturer.name,
       description: manufacturer.description || "",
+      website: manufacturer.website || "",
+      email: manufacturer.email || "",
+      phone: manufacturer.phone || "",
       image: manufacturer.image || "",
       status: manufacturer.status as "active" | "inactive",
     });
-    setManufacturerImage(manufacturer.image || "");
-    manufacturerForm.reset(manufacturerFormState);
     setIsManufacturerDialogOpen(true);
   };
 
@@ -569,186 +672,12 @@ export default function Products() {
   const handleNewManufacturer = () => {
     setEditingManufacturer(null);
     setManufacturerImage("");
-    setManufacturerFormState({ name: "", description: "", status: "active", image: "" });
-    manufacturerForm.reset(manufacturerFormState);
+    manufacturerForm.reset();
     setIsManufacturerDialogOpen(true);
   };
 
-  // Image handling functions
-  const addImage = (imageData: string, type: 'product' | 'category' | 'manufacturer') => {
-    if (!imageData.trim()) return;
-
-    switch (type) {
-      case 'product':
-        if (!productImages.includes(imageData)) {
-          setProductImages([...productImages, imageData]);
-        }
-        break;
-      case 'category':
-        setCategoryImage(imageData);
-        break;
-      case 'manufacturer':
-        setManufacturerImage(imageData);
-        break;
-    }
-  };
-
-  const removeImage = (index: number, type: 'product' | 'category' | 'manufacturer') => {
-    switch (type) {
-      case 'product':
-        setProductImages(productImages.filter((_, i) => i !== index));
-        break;
-      case 'category':
-        setCategoryImage("");
-        break;
-      case 'manufacturer':
-        setManufacturerImage("");
-        break;
-    }
-  };
-
-  const ImageUploadSection = ({
-    images,
-    onAddImage,
-    onRemoveImage,
-    type
-  }: {
-    images: string[];
-    onAddImage: (url: string) => void;
-    onRemoveImage: (index: number) => void;
-    type: 'product' | 'category' | 'manufacturer';
-  }) => {
-    const [newImageUrl, setNewImageUrl] = useState("");
-    const [isUploading, setIsUploading] = useState(false);
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      // Validar tipo de arquivo
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Erro",
-          description: "Por favor, selecione apenas arquivos de imagem.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validar tamanho (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Erro",
-          description: "A imagem deve ter no máximo 5MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setIsUploading(true);
-
-      try {
-        // Converter para base64
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = reader.result as string;
-          onAddImage(base64);
-          toast({
-            title: "Sucesso",
-            description: "Imagem carregada com sucesso!",
-          });
-        };
-        reader.readAsDataURL(file);
-      } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Falha ao carregar a imagem.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsUploading(false);
-        // Reset input
-        event.target.value = '';
-      }
-    };
-
-    return (
-      <div className="space-y-3">
-        <FormLabel className="text-sm font-medium text-gray-900 dark:text-white">
-          {type === 'product' ? 'Imagens do Produto' : type === 'category' ? 'Imagem da Categoria' : 'Imagem do Fabricante'}
-        </FormLabel>
-
-        <div className="space-y-2">
-          {/* Upload via arquivo */}
-          <div className="flex items-center space-x-2">
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-              className="flex-1"
-            />
-            {isUploading && <div className="text-sm text-gray-500">Carregando...</div>}
-          </div>
-
-          {/* Upload via URL (opcional) */}
-          <div className="flex space-x-2">
-            <Input
-              type="text"
-              placeholder="Ou insira URL da imagem (opcional)"
-              value={newImageUrl}
-              onChange={(e) => setNewImageUrl(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              onClick={() => {
-                if (newImageUrl.trim()) {
-                  onAddImage(newImageUrl);
-                  setNewImageUrl("");
-                }
-              }}
-              size="sm"
-              variant="outline"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {images.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            {images.map((image, index) => (
-              <div key={index} className="relative group">
-                <img
-                  src={image}
-                  alt={`${type} ${index + 1}`}
-                  className="w-full h-20 object-cover rounded border"
-                  onError={(e) => {
-                    // Fallback para imagens com erro
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiHElnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0iI0YzRjNGOiIvPgo8cGF0aCBkPSJNMTIgOVYxM00xMiAxN0gxMi4wMDVNMjIgMTJDMTEuNDc3MiA2IDYuNDc3MiAxMiAxMiAxNyIgc3Ryb2tlPSIjRDU1MDA0IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={() => onRemoveImage(index)}
-                  size="sm"
-                  variant="destructive"
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-                {type === 'product' && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b">
-                    {index === 0 ? 'Principal' : `Img ${index + 1}`}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+  const removeProductImage = (index: number) => {
+    setProductImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const getCategoryName = (categoryId: number | null) => {
@@ -777,12 +706,8 @@ export default function Products() {
 
   // Scroll infinito com paginação
   useEffect(() => {
-    if (filteredProducts.length > 0) {
-      const productsToShow = filteredProducts.slice(0, currentPage * PRODUCTS_PER_PAGE);
-      setDisplayedProducts(productsToShow);
-    } else {
-      setDisplayedProducts([]);
-    }
+    const productsToShow = filteredProducts.slice(0, currentPage * PRODUCTS_PER_PAGE);
+    setDisplayedProducts(productsToShow);
   }, [filteredProducts, currentPage]);
 
   // Reset para página 1 quando filtros mudarem
@@ -816,63 +741,6 @@ export default function Products() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
-
-  // State for managing group form (assuming it exists elsewhere or needs to be added)
-  const [groupForm, setGroupForm] = useState({ name: '', description: '', image: '' });
-
-  // Image upload handler for all types
-  const handleImageUpload = async (file: File, type: 'main' | 'additional' | 'category' | 'manufacturer' | 'group') => {
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const response = await fetch('/api/upload/image', { // Assuming a general upload endpoint
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const imageUrl = result.url;
-
-        switch (type) {
-          case 'main':
-            setProductFormState(prev => ({ ...prev, image: imageUrl }));
-            break;
-          case 'additional':
-            setProductFormState(prev => ({
-              ...prev,
-              images: prev.images ? [...prev.images, imageUrl] : [imageUrl]
-            }));
-            break;
-          case 'category':
-            setCategoryFormState(prev => ({ ...prev, image: imageUrl }));
-            break;
-          case 'manufacturer':
-            setManufacturerFormState(prev => ({ ...prev, image: imageUrl }));
-            break;
-          case 'group':
-            setGroupForm(prev => ({ ...prev, image: imageUrl }));
-            break;
-        }
-
-        toast({
-          title: "✅ Imagem enviada",
-          description: "Imagem foi enviada com sucesso!",
-        });
-      } else {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
-    } catch (error) {
-      toast({
-        title: "❌ Erro",
-        description: "Falha ao enviar imagem",
-        variant: "destructive",
-      });
-      console.error("Image upload error:", error);
-    }
-  };
-
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -1192,51 +1060,42 @@ export default function Products() {
                     />
 
                     {/* Product Images */}
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <Label className="text-gray-900 dark:text-white">Imagens do Produto</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="image">Imagem Principal</Label>
-                          <Input
-                            id="image"
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageUpload(file, 'main');
-                              }
-                            }}
-                          />
-                          {productFormState.image && (
-                            <div className="mt-2">
-                              <img src={productFormState.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <Label htmlFor="images">Outras Imagens</Label>
-                          <Input
-                            id="images"
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files || []);
-                              files.forEach(file => handleImageUpload(file, 'additional'));
-                            }}
-                          />
-                          {productFormState.images && productFormState.images.length > 0 && (
-                            <div className="mt-2 flex gap-2 flex-wrap">
-                              {productFormState.images.map((img, index) => (
-                                <img key={index} src={img} alt={`Preview ${index}`} className="w-16 h-16 object-cover rounded" />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      
+                      <DragDropUpload 
+                        onFileSelect={handleProductImageUpload}
+                        multiple={true}
+                      />
 
+                      {productImages.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {productImages.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={image}
+                                alt={`Produto ${index + 1}`}
+                                className="w-full h-20 object-cover rounded border"
+                              />
+                              <Button
+                                type="button"
+                                onClick={() => removeProductImage(index)}
+                                size="sm"
+                                variant="destructive"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                              {index === 0 && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b">
+                                  Principal
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex justify-end gap-3 pt-4">
                       <Button
@@ -1552,22 +1411,25 @@ export default function Products() {
                     />
 
                     {/* Category Image */}
-                    <div>
-                      <Label htmlFor="categoryImage">Imagem da Categoria</Label>
-                      <Input
-                        id="categoryImage"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleImageUpload(file, 'category');
-                          }
-                        }}
+                    <div className="space-y-2">
+                      <Label className="text-gray-900 dark:text-white">Imagem da Categoria</Label>
+                      
+                      <DragDropUpload 
+                        onFileSelect={handleCategoryImageUpload}
+                        multiple={false}
                       />
-                      {categoryFormState.image && (
-                        <div className="mt-2">
-                          <img src={categoryFormState.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+
+                      {categoryImage && (
+                        <div className="flex items-center space-x-2">
+                          <img src={categoryImage} alt="Preview" className="w-16 h-16 object-cover rounded" />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCategoryImage("")}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -1802,22 +1664,25 @@ export default function Products() {
                     />
 
                     {/* Manufacturer Image */}
-                    <div>
-                      <Label htmlFor="manufacturerImage">Imagem</Label>
-                      <Input
-                        id="manufacturerImage"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleImageUpload(file, 'manufacturer');
-                          }
-                        }}
+                    <div className="space-y-2">
+                      <Label className="text-gray-900 dark:text-white">Imagem</Label>
+                      
+                      <DragDropUpload 
+                        onFileSelect={handleManufacturerImageUpload}
+                        multiple={false}
                       />
-                      {manufacturerFormState.image && (
-                        <div className="mt-2">
-                          <img src={manufacturerFormState.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+
+                      {manufacturerImage && (
+                        <div className="flex items-center space-x-2">
+                          <img src={manufacturerImage} alt="Preview" className="w-16 h-16 object-cover rounded" />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setManufacturerImage("")}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
                       )}
                     </div>
