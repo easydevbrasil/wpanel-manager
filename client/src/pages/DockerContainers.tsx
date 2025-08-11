@@ -159,11 +159,8 @@ export default function DockerContainers() {
       return <img src={containerLogos[containerId]} alt="Logo" className="w-5 h-5 object-contain" />;
     }
 
-    if (image.includes("nginx") || image.includes("apache")) return <Globe className="w-5 h-5" />;
-    if (image.includes("mysql") || image.includes("postgres") || image.includes("mongo")) return <Database className="w-5 h-5" />;
-    if (image.includes("node") || image.includes("express")) return <Server className="w-5 h-5" />;
-    if (image.includes("redis")) return <HardDrive className="w-5 h-5" />;
-    return <Container className="w-5 h-5" />;
+    // Use Docker logo as default for all containers
+    return <img src="/uploads/docker-logo.png" alt="Docker" className="w-5 h-5 object-contain" />;
   };
 
   const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
