@@ -111,9 +111,6 @@ export const manufacturers = pgTable("manufacturers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  website: text("website"),
-  email: text("email"),
-  phone: text("phone"),
   image: text("image"),
   status: text("status").notNull().default("active"),
   createdAt: text("created_at").notNull(),
@@ -342,6 +339,8 @@ export const insertManufacturerSchema = createInsertSchema(manufacturers).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  image: z.string().optional(),
 });
 
 export const insertProductGroupSchema = createInsertSchema(productGroups).omit({

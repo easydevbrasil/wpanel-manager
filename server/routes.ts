@@ -1159,15 +1159,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(`${dockerUri}/containers/${containerId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000,
       });
 
       if (!response.ok) {
-        throw new Error(`Docker API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Docker API error ${response.status}:`, errorText);
+        return res.status(500).json({ message: `Falha ao iniciar container: ${response.status}` });
       }
 
       console.log(`Started container ${containerId}`);
-      res.json({ message: `Container ${containerId} iniciado com sucesso` });
+      res.json({ message: `Container iniciado com sucesso` });
     } catch (error) {
       console.error('Docker start error:', error);
       res.status(500).json({ message: "Falha ao iniciar container" });
@@ -1182,15 +1183,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(`${dockerUri}/containers/${containerId}/stop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000,
       });
 
       if (!response.ok) {
-        throw new Error(`Docker API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Docker API error ${response.status}:`, errorText);
+        return res.status(500).json({ message: `Falha ao parar container: ${response.status}` });
       }
 
       console.log(`Stopped container ${containerId}`);
-      res.json({ message: `Container ${containerId} parado com sucesso` });
+      res.json({ message: `Container parado com sucesso` });
     } catch (error) {
       console.error('Docker stop error:', error);
       res.status(500).json({ message: "Falha ao parar container" });
@@ -1205,41 +1207,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(`${dockerUri}/containers/${containerId}/restart`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000,
       });
 
       if (!response.ok) {
-        throw new Error(`Docker API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Docker API error ${response.status}:`, errorText);
+        return res.status(500).json({ message: `Falha ao reiniciar container: ${response.status}` });
       }
 
       console.log(`Restarted container ${containerId}`);
-      res.json({ message: `Container ${containerId} reiniciado com sucesso` });
+      res.json({ message: `Container reiniciado com sucesso` });
     } catch (error) {
       console.error('Docker restart error:', error);
       res.status(500).json({ message: "Falha ao reiniciar container" });
-    }
-  });
-
-  app.post("/api/docker/containers/:id/pause", authenticateToken, async (req, res) => {
-    try {
-      const containerId = req.params.id;
-      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
-
-      const response = await fetch(`${dockerUri}/containers/${containerId}/pause`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 10000,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Docker API error: ${response.status}`);
-      }
-
-      console.log(`Paused container ${containerId}`);
-      res.json({ message: `Container ${containerId} pausado com sucesso` });
-    } catch (error) {
-      console.error('Docker pause error:', error);
-      res.status(500).json({ message: "Falha ao pausar container" });
     }
   });
 
