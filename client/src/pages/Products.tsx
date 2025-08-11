@@ -104,8 +104,8 @@ const categoryFormSchema = z.object({
 const manufacturerFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   description: z.string().optional(),
-  website: z.string().url().optional(),
-  email: z.string().email().optional(),
+  website: z.string().url().optional().or(z.string().length(0)),
+  email: z.string().email().optional().or(z.string().length(0)),
   phone: z.string().optional(),
   image: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
@@ -640,7 +640,10 @@ export default function Products() {
   const handleManufacturerSubmit = (data: ManufacturerFormData) => {
     const manufacturerData = {
       ...data,
-      image: manufacturerImage || undefined,
+      image: manufacturerImage || null,
+      website: data.website || null,
+      email: data.email || null,
+      phone: data.phone || null,
     };
     
     if (editingManufacturer) {
@@ -708,7 +711,7 @@ export default function Products() {
   useEffect(() => {
     const productsToShow = filteredProducts.slice(0, currentPage * PRODUCTS_PER_PAGE);
     setDisplayedProducts(productsToShow);
-  }, [filteredProducts, currentPage]);
+  }, [filteredProducts, currentPage, PRODUCTS_PER_PAGE]);
 
   // Reset para página 1 quando filtros mudarem
   useEffect(() => {

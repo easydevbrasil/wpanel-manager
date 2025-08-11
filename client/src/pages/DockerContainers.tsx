@@ -156,11 +156,11 @@ export default function DockerContainers() {
 
   const getImageIcon = (image: string, containerId: string) => {
     if (containerLogos[containerId]) {
-      return <img src={containerLogos[containerId]} alt="Logo" className="w-5 h-5 object-contain" />;
+      return <img src={containerLogos[containerId]} alt="Logo" className="w-full h-4/5 object-contain" />;
     }
 
     // Use Docker logo as default for all containers
-    return <img src="/uploads/docker-logo.png" alt="Docker" className="w-5 h-5 object-contain" />;
+    return <img src="/uploads/docker-logo.png" alt="Docker" className="w-full h-4/5 object-contain" />;
   };
 
   const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
@@ -323,12 +323,12 @@ export default function DockerContainers() {
             <Card key={container.Id} className="hover:shadow-lg transition-shadow duration-200 w-full">
               <div className="flex">
                 <div className="w-32 flex-shrink-0 relative group">
-                  <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg">
+                  <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg p-2">
                     {containerLogos[container.Id] ? (
                       <img 
                         src={containerLogos[container.Id]} 
                         alt="Logo" 
-                        className="w-16 h-16 object-contain" 
+                        className="w-full h-4/5 object-contain" 
                       />
                     ) : (
                       getImageIcon(container.Image, container.Id)
