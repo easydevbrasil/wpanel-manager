@@ -71,6 +71,7 @@ import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import * as crypto from "crypto";
 import * as argon2 from "argon2";
+import * as bcrypt from "bcrypt";
 
 export interface IStorage {
   // Authentication
@@ -236,7 +237,47 @@ export class DatabaseStorage implements IStorage {
   // private sessions: Map<string, any> = new Map(); // Removed in-memory session management
 
   constructor() {
-    this.initializeData();
+    this.init();
+  }
+
+  private async init() {
+    await this.seedDatabase();
+    await this.createAdminUser();
+  }
+
+  private async createAdminUser() {
+    try {
+      // Check if admin user already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, 'admin'))
+        .limit(1);
+
+      if (!existingUser) {
+        // Create admin user
+        const hashedPassword = await argon2.hash('admin123');
+
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            username: 'admin',
+            password: hashedPassword,
+            name: 'Administrator',
+            role: 'Admin',
+            avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+          })
+          .returning();
+
+        console.log('Admin user created successfully:', newUser.username);
+        // Create default permissions for the newly created admin user
+        this.createDefaultPermissionsForUser(newUser);
+      } else {
+        console.log('Admin user already exists');
+      }
+    } catch (error) {
+      console.error('Error creating admin user:', error);
+    }
   }
 
   private async initializeData() {
@@ -273,14 +314,18 @@ export class DatabaseStorage implements IStorage {
   private async createSampleData() {
     const now = new Date().toISOString();
 
-    // Create admin user with Argon2 hashed password
-    const [adminUser] = await db.insert(users).values({
-      username: "admin",
-      password: await argon2.hash("admin123"),
-      name: "Administrador",
-      role: "Admin",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-    }).returning();
+    // Create admin user with Argon2 hashed password (this part is now handled by createAdminUser)
+    // const [adminUser] = await db.insert(users).values({
+    //   username: "admin",
+    //   password: await argon2.hash("admin123"),
+    //   name: "Administrador",
+    //   role: "Admin",
+    //   avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+    // }).returning();
+
+    // Fetch admin user to use their ID for permissions and other associations
+    const [adminUser] = await db.select().from(users).where(eq(users.username, "admin")).limit(1);
+
 
     // Create sample user
     const [user] = await db.insert(users).values({
@@ -579,8 +624,8 @@ export class DatabaseStorage implements IStorage {
 
     await db.insert(navigationItems).values(navItems);
 
-    // Create default permissions for the admin user
-    this.createDefaultPermissionsForUser(adminUser);
+    // Create default permissions for the admin user (this is now called in createAdminUser)
+    // this.createDefaultPermissionsForUser(adminUser);
 
     // Sample docker containers
       const sampleContainers = [
@@ -720,7 +765,7 @@ export class DatabaseStorage implements IStorage {
       { userId: user.id, module: "system_monitoring", canView: true, canCreate: false, canEdit: false, canDelete: false }
     ];
 
-    // Note: We'll store permissions in memory for now since the schema needs to be updated
+    // Store permissions in memory, assuming this is a temporary solution until schema update
     (global as any).userPermissions = permissionsData;
   }
 
@@ -1929,7 +1974,7 @@ export class DatabaseStorage implements IStorage {
           environment: data.environment ? JSON.stringify(data.environment) : null,
           volumes: data.volumes ? JSON.stringify(data.volumes) : null,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .returning();
       return container;
