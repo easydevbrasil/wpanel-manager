@@ -1562,7 +1562,8 @@ export class DatabaseStorage implements IStorage {
           username: user.username,
           name: user.name,
           role: user.role,
-          avatar: user.avatar
+          avatar: user.avatar,
+          password: user.password
         },
         sessionToken: sessionToken,
         refreshToken: refreshToken
@@ -2600,8 +2601,10 @@ export class DatabaseStorage implements IStorage {
         .insert(emailAccounts)
         .values({
           ...data,
+          username: data.username ?? "", // Ensure username is always a string
           password: hashedPassword,
-          isDefault: isFirstAccount || data.isDefault,
+          provider: data.provider ?? "", // Ensure provider is always a string
+          isDefault: isFirstAccount || !!data.isDefault,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -2631,7 +2634,7 @@ export class DatabaseStorage implements IStorage {
         updateData.password = await argon2.hash(updateData.password);
       }
 
-      updateData.updatedAt = new Date().toISOString();
+      //updateData.updatedAt = new Date().toISOString();
 
       const [account] = await db
         .update(emailAccounts)

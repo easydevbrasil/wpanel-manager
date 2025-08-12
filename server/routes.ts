@@ -207,7 +207,7 @@ const upload = multer({
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
-      cb(new Error("Apenas arquivos de imagem são permitidos!"), false);
+      cb(new Error("Apenas arquivos de imagem são permitidos!"));
     }
   },
 });
