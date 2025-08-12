@@ -62,7 +62,7 @@ async function generateMailAccountsFile() {
 // Function to restart mailserver container
 async function restartMailserverContainer() {
   try {
-    const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
+    const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
 
     // First, try to find the mailserver container
     const containersResponse = await fetch(`${dockerUri}/containers/json?all=true`, {
@@ -1338,7 +1338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
     try {
-      const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
+      const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
 
       // Try to connect to Docker API first
       const response = await fetch(`${dockerUri}/containers/json?all=true`, {
@@ -1566,7 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
+        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
 
         try {
           const response = await fetch(
@@ -1602,7 +1602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
+        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
 
         try {
           const response = await fetch(
@@ -1638,7 +1638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
+        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
 
         try {
           const response = await fetch(
@@ -1674,7 +1674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
+        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
 
         try {
           const response = await fetch(

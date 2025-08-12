@@ -195,6 +195,12 @@ export function useWebSocket() {
               queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
               break;
             
+            // Docker container updates
+            case 'docker_container_updated':
+            case 'docker_containers_changed':
+              queryClient.invalidateQueries({ queryKey: ['/api/docker/containers'] });
+              break;
+            
             // System messages
             case 'connection':
               console.log('WebSocket connection confirmed');

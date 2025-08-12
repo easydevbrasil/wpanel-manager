@@ -163,14 +163,25 @@ export default function DockerContainers() {
     return <img src="/uploads/docker-logo.png" alt="Docker" className="w-full h-4/5 object-contain" />;
   };
 
-  const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
-    queryKey: ["/api/docker/containers"],
-    refetchInterval: 5000,
+  const { data: dockerStatus } = useQuery({
+    queryKey: ["/api/docker/status"],
+    refetchInterval: 10000, // Check Docker status every 10 seconds
   });
 
-  const containers = allContainers.filter(container => 
-    !getContainerName(container).toLowerCase().includes('docker-socket-proxy')
-  );
+  const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
+    queryKey: ["/api/docker/containers"],
+    refetchInterval: 2000, // Update every 2 seconds for real-time feel
+    refetchIntervalInBackground: true, // Keep updating even when tab is not active
+    staleTime: 1000, // Consider data stale after 1 second
+  });
+
+  const containers = allContainers.filter(container => {
+    const name = getContainerName(container).toLowerCase();
+    // Filter out system containers but keep all user containers
+    return !name.includes('docker-socket-proxy') && 
+           !name.includes('replit-') && 
+           !name.startsWith('k8s_');
+  });
 
   // Mutations corrigidas
   const startMutation = useMutation({
@@ -297,8 +308,19 @@ export default function DockerContainers() {
           <p className="text-gray-600 dark:text-gray-400">
             Visualize e controle containers Docker em tempo real
           </p>
-          <div className="mt-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full inline-block">
-            📋 Modo Demo - Containers simulados para demonstração
+          <div className="mt-2 flex gap-2">
+            <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full inline-block">
+              🔄 Atualização em tempo real (2s)
+            </div>
+            {dockerStatus?.available ? (
+              <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full inline-block">
+                🐳 Docker API conectado (v{dockerStatus.version})
+              </div>
+            ) : (
+              <div className="px-3 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs rounded-full inline-block">
+                📋 Usando dados simulados - Docker API indisponível
+              </div>
+            )}
           </div>
         </div>
       </div>
