@@ -828,22 +828,10 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('Validating session token:', sessionToken);
 
+      // First get the session
       const [session] = await db
-        .select({
-          id: sessions.id,
-          userId: sessions.userId,
-          expiresAt: sessions.expiresAt,
-          user: {
-            id: users.id,
-            username: users.username,
-            name: users.name,
-            email: users.email,
-            role: users.role,
-            avatar: users.avatar
-          }
-        })
+        .select()
         .from(sessions)
-        .innerJoin(users, eq(sessions.userId, users.id))
         .where(eq(sessions.token, sessionToken))
         .limit(1);
 
@@ -865,6 +853,25 @@ export class DatabaseStorage implements IStorage {
         return null;
       }
 
+      // Get the user separately
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          avatar: users.avatar
+        })
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .limit(1);
+
+      if (!user) {
+        console.log('User not found for session');
+        return null;
+      }
+
       // Extend session expiration by 7 days from now
       const newExpiresAt = new Date();
       newExpiresAt.setDate(newExpiresAt.getDate() + 7);
@@ -874,8 +881,8 @@ export class DatabaseStorage implements IStorage {
         .set({ expiresAt: newExpiresAt.toISOString() })
         .where(eq(sessions.token, sessionToken));
 
-      console.log('Session validated successfully for user:', session.user.username);
-      return { user: session.user };
+      console.log('Session validated successfully for user:', user.username);
+      return { user };
     } catch (error) {
       console.error('Error validating session:', error);
       return null;
