@@ -800,7 +800,7 @@ export class DatabaseStorage implements IStorage {
 
       // Generate secure tokens
       const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
-      
+
       // Session token (short-lived, 15 minutes)
       const sessionPayload = {
         userId: user.id,
@@ -810,7 +810,7 @@ export class DatabaseStorage implements IStorage {
         iat: Math.floor(Date.now() / 1000)
       };
       const sessionToken = jwt.sign(sessionPayload, sessionSecret, { expiresIn: '15m' });
-      
+
       // Refresh token (long-lived, 7 days)
       const refreshPayload = {
         userId: user.id,
@@ -823,7 +823,7 @@ export class DatabaseStorage implements IStorage {
       // Store session in database with additional security
       const sessionHash = await argon2.hash(sessionToken);
       const refreshHash = await argon2.hash(refreshToken);
-      
+
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes
 
@@ -855,28 +855,47 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async validateSession(sessionToken: string): Promise<{ user: any } | null> {
+  async validateSession(sessionToken: string, ipAddress?: string): Promise<{ user: any } | null> {
     try {
-      console.log('Validating JWT session token');
+      console.log('Validating Argon2 session token');
 
-      const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
-      
-      // Verify JWT token
-      let decoded: any;
-      try {
-        decoded = jwt.verify(sessionToken, sessionSecret) as any;
-      } catch (jwtError) {
-        console.log('Invalid JWT token:', jwtError);
+      // Get all active sessions from database
+      const activeSessions = await db
+        .select()
+        .from(sessions)
+        .where(and(
+          eq(sessions.isActive, true),
+          sql`${sessions.expiresAt} > NOW()`
+        ));
+
+      // Find matching session by verifying token hash
+      let matchingSession = null;
+      for (const session of activeSessions) {
+        try {
+          const isValid = await argon2.verify(session.token, sessionToken);
+          if (isValid) {
+            matchingSession = session;
+            break;
+          }
+        } catch (verifyError) {
+          // Continue to next session
+          continue;
+        }
+      }
+
+      if (!matchingSession) {
+        console.log('Session not found or invalid');
         return null;
       }
 
-      // Check if it's a session token
-      if (decoded.type !== 'session') {
-        console.log('Invalid token type');
+      // Check if session is expired
+      if (new Date() > new Date(matchingSession.expiresAt)) {
+        console.log('Session expired');
+        await this.invalidateSessionById(matchingSession.id);
         return null;
       }
 
-      // Get user from database
+      // Get user data
       const [user] = await db
         .select({
           id: users.id,
@@ -887,36 +906,23 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar
         })
         .from(users)
-        .where(eq(users.id, decoded.userId))
+        .where(eq(users.id, matchingSession.userId))
         .limit(1);
 
       if (!user) {
-        console.log('User not found for token');
+        console.log('User not found for session');
         return null;
       }
 
-      // Verify session exists in database (additional security layer)
-      // Note: We don't compare the hash directly since JWT validation is sufficient
-      const [dbSession] = await db
-        .select()
-        .from(sessions)
-        .where(eq(sessions.userId, user.id))
-        .limit(1);
-
-      if (!dbSession) {
-        console.log('Session not found in database');
-        return null;
-      }
-
-      // Check if session is expired
-      const now = new Date();
-      const sessionExpiry = new Date(dbSession.expiresAt);
-      if (now > sessionExpiry) {
-        console.log('Session expired in database');
-        // Clean up expired session
-        await db.delete(sessions).where(eq(sessions.userId, user.id));
-        return null;
-      }
+      // Update last activity
+      await db
+        .update(sessions)
+        .set({
+          lastActivityAt: new Date(),
+          ipAddress: ipAddress || matchingSession.ipAddress,
+          updatedAt: new Date()
+        })
+        .where(eq(sessions.id, matchingSession.id));
 
       console.log('Session validated successfully for user:', user.username);
       return { user };
@@ -931,7 +937,7 @@ export class DatabaseStorage implements IStorage {
       console.log('Refreshing session');
 
       const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
-      
+
       // Verify refresh token
       let decoded: any;
       try {
@@ -967,7 +973,7 @@ export class DatabaseStorage implements IStorage {
         iat: Math.floor(Date.now() / 1000)
       };
       const newSessionToken = jwt.sign(sessionPayload, sessionSecret, { expiresIn: '15m' });
-      
+
       const refreshPayload = {
         userId: user.id,
         username: user.username,
@@ -1003,9 +1009,9 @@ export class DatabaseStorage implements IStorage {
   async invalidateSession(sessionToken: string): Promise<void> {
     try {
       console.log('Invalidating session');
-      
+
       const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
-      
+
       let decoded: any;
       try {
         decoded = jwt.verify(sessionToken, sessionSecret) as any;
@@ -1013,7 +1019,17 @@ export class DatabaseStorage implements IStorage {
       } catch (jwtError) {
         console.log('Token already invalid or expired');
       }
-      
+
+      console.log('Session invalidated successfully');
+    } catch (error) {
+      console.error('Session invalidation error:', error);
+    }
+  }
+
+  async invalidateSessionById(sessionId: number): Promise<void> {
+    try {
+      console.log('Invalidating session by ID:', sessionId);
+      await db.delete(sessions).where(eq(sessions.id, sessionId));
       console.log('Session invalidated successfully');
     } catch (error) {
       console.error('Session invalidation error:', error);

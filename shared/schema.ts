@@ -411,8 +411,15 @@ export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
-  expiresAt: text("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  refreshToken: text("refresh_token").unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  refreshExpiresAt: timestamp("refresh_expires_at").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertSessionSchema = createInsertSchema(sessions).omit({

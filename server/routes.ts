@@ -60,75 +60,71 @@ async function generateMailAccountsFile() {
 }
 
 // Authentication middleware
-  const authenticateToken = async (req: any, res: any, next: any) => {
-    // Try to get token from cookies first, then headers as fallback
-    let token = req.cookies?.sessionToken || req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
+const authenticateToken = async (req: any, res: any, next: any) => {
+  const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+  const userAgent = req.get('User-Agent') || 'unknown';
+
+  // Try to get token from different sources (cookies first, then headers)
+  let token = req.cookies.sessionToken || req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
+
+  if (!token) {
+    // Try to refresh token if session token is missing but refresh token exists
+    const refreshToken = req.cookies.refreshToken;
+    if (refreshToken) {
+      try {
+        const result = await dbStorage.refreshSession(refreshToken, ipAddress, userAgent);
+        if (result) {
+          // Set new cookies
+          const isProduction = process.env.NODE_ENV === 'production';
+
+          res.cookie('sessionToken', result.sessionToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 4 * 60 * 60 * 1000, // 4 hours
+            path: '/'
+          });
+
+          res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            path: '/'
+          });
+
+          token = result.sessionToken;
+        }
+      } catch (refreshError) {
+        console.error('Auto-refresh failed:', refreshError);
+      }
+    }
 
     if (!token) {
-      // Try to refresh token if session token is missing but refresh token exists
-      const refreshToken = req.cookies?.refreshToken;
-      if (refreshToken) {
-        try {
-          const result = await dbStorage.refreshSession(refreshToken);
-          if (result) {
-            // Set new cookies
-            const isProduction = process.env.NODE_ENV === 'production';
-
-            res.cookie('sessionToken', result.sessionToken, {
-              httpOnly: true,
-              secure: isProduction,
-              sameSite: isProduction ? 'strict' : 'lax',
-              maxAge: 15 * 60 * 1000,
-              path: '/'
-            });
-
-            res.cookie('refreshToken', result.refreshToken, {
-              httpOnly: true,
-              secure: isProduction,
-              sameSite: isProduction ? 'strict' : 'lax',
-              maxAge: 7 * 24 * 60 * 60 * 1000,
-              path: '/'
-            });
-
-            token = result.sessionToken;
-          }
-        } catch (refreshError) {
-          console.error('Auto-refresh failed:', refreshError);
-        }
-      }
-
-      if (!token) {
-        return res.status(401).json({ message: "Token de acesso requerido" });
-      }
+      return res.status(401).json({ message: "Token de acesso requerido" });
     }
+  }
 
-    try {
-      const session = await dbStorage.validateSession(token);
-      if (!session) {
-        // Clear invalid cookies
-        res.clearCookie('sessionToken', { 
-          httpOnly: true, 
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-          path: '/' 
-        });
+  try {
+    const session = await dbStorage.validateSession(token, ipAddress);
+    if (!session) {
+      // Clear invalid cookies
+      res.clearCookie('sessionToken', { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/' 
+      });
 
-        res.clearCookie('refreshToken', { 
-          httpOnly: true, 
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-          path: '/' 
-        });
-
-        return res.status(401).json({ message: "Sessão inválida ou expirada" });
-      }
-      req.user = session.user;
-      next();
-    } catch (error) {
-      console.error('Authentication error:', error);
-      return res.status(403).json({ message: "Token inválido" });
+      return res.status(401).json({ message: "Sessão inválida ou expirada" });
     }
-  };
+    req.user = session.user;
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(403).json({ message: "Token inválido" });
+  }
+};
 
 // Configurar multer para upload de imagens
 const multerStorage = multer.diskStorage({
@@ -194,12 +190,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
+      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+      const userAgent = req.get('User-Agent') || 'unknown';
 
       if (!username || !password) {
         return res.status(400).json({ message: "Usuário e senha são obrigatórios" });
       }
 
-      const result = await dbStorage.authenticateUser(username, password);
+      const result = await dbStorage.authenticateUser(username, password, ipAddress, userAgent);
       if (!result) {
         return res.status(401).json({ message: "Credenciais inválidas" });
       }
@@ -211,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? 'strict' : 'lax',
-        maxAge: 15 * 60 * 1000, // 15 minutes
+        maxAge: 4 * 60 * 60 * 1000, // 4 hours
         path: '/'
       });
 
@@ -219,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? 'strict' : 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         path: '/'
       });
 
@@ -266,12 +264,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/refresh", async (req, res) => {
     try {
       const refreshToken = req.cookies.refreshToken;
+      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+      const userAgent = req.get('User-Agent') || 'unknown';
 
       if (!refreshToken) {
         return res.status(401).json({ message: "Token de atualização não encontrado" });
       }
 
-      const result = await dbStorage.refreshSession(refreshToken);
+      const result = await dbStorage.refreshSession(refreshToken, ipAddress, userAgent);
       if (!result) {
         return res.status(401).json({ message: "Token de atualização inválido" });
       }
@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? 'strict' : 'lax',
-        maxAge: 15 * 60 * 1000, // 15 minutes
+        maxAge: 4 * 60 * 60 * 1000, // 4 hours
         path: '/'
       });
 
@@ -291,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? 'strict' : 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         path: '/'
       });
 
