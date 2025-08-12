@@ -61,25 +61,58 @@ async function generateMailAccountsFile() {
 
 // Authentication middleware
 const authenticateToken = async (req: any, res: any, next: any) => {
-  // Try to get token from different sources
-  const authHeader = req.headers['authorization'];
-  const sessionToken = req.headers['session-token'];
-  
-  let token = null;
-  
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  } else if (sessionToken) {
-    token = sessionToken;
-  }
+  // Try to get token from different sources (cookies first, then headers)
+  let token = req.cookies.sessionToken || req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
 
   if (!token) {
-    return res.status(401).json({ message: "Token de acesso requerido" });
+    // Try to refresh token if session token is missing but refresh token exists
+    const refreshToken = req.cookies.refreshToken;
+    if (refreshToken) {
+      try {
+        const result = await dbStorage.refreshSession(refreshToken);
+        if (result) {
+          // Set new cookies
+          const isProduction = process.env.NODE_ENV === 'production';
+          
+          res.cookie('sessionToken', result.sessionToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 15 * 60 * 1000,
+            path: '/'
+          });
+
+          res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/'
+          });
+
+          token = result.sessionToken;
+        }
+      } catch (refreshError) {
+        console.error('Auto-refresh failed:', refreshError);
+      }
+    }
+    
+    if (!token) {
+      return res.status(401).json({ message: "Token de acesso requerido" });
+    }
   }
 
   try {
     const session = await dbStorage.validateSession(token);
     if (!session) {
+      // Clear invalid cookies
+      res.clearCookie('sessionToken', { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/' 
+      });
+      
       return res.status(401).json({ message: "Sessão inválida ou expirada" });
     }
     req.user = session.user;
@@ -164,21 +197,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Credenciais inválidas" });
       }
 
-      res.json(result);
+      // Set secure HTTP-only cookies
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      res.cookie('sessionToken', result.sessionToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+        path: '/'
+      });
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/'
+      });
+
+      // Return user data without tokens for security
+      res.json({ 
+        user: result.user,
+        message: "Login realizado com sucesso" 
+      });
     } catch (error) {
+      console.error('Login error:', error);
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   });
 
-  app.post("/api/auth/logout", authenticateToken, async (req: any, res) => {
+  app.post("/api/auth/logout", async (req: any, res) => {
     try {
-      const token = req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
-      if (token) {
-        await dbStorage.invalidateSession(token);
+      const sessionToken = req.cookies.sessionToken || req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
+      
+      if (sessionToken) {
+        await dbStorage.invalidateSession(sessionToken);
       }
+
+      // Clear cookies
+      res.clearCookie('sessionToken', { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/' 
+      });
+      
+      res.clearCookie('refreshToken', { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/' 
+      });
+
       res.json({ message: "Logout realizado com sucesso" });
     } catch (error) {
       res.status(500).json({ message: "Erro ao fazer logout" });
+    }
+  });
+
+  app.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const refreshToken = req.cookies.refreshToken;
+      
+      if (!refreshToken) {
+        return res.status(401).json({ message: "Token de atualização não encontrado" });
+      }
+
+      const result = await dbStorage.refreshSession(refreshToken);
+      if (!result) {
+        return res.status(401).json({ message: "Token de atualização inválido" });
+      }
+
+      // Set new secure cookies
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      res.cookie('sessionToken', result.sessionToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+        path: '/'
+      });
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/'
+      });
+
+      res.json({ message: "Token atualizado com sucesso" });
+    } catch (error) {
+      console.error('Refresh error:', error);
+      res.status(500).json({ message: "Erro ao atualizar token" });
     }
   });
 
