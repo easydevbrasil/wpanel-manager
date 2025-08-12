@@ -59,6 +59,53 @@ async function generateMailAccountsFile() {
   }
 }
 
+// Function to restart mailserver container
+async function restartMailserverContainer() {
+  try {
+    const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
+    
+    // First, try to find the mailserver container
+    const containersResponse = await fetch(`${dockerUri}/containers/json?all=true`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!containersResponse.ok) {
+      console.error("Failed to get containers list");
+      return;
+    }
+
+    const containers = await containersResponse.json();
+    const mailserverContainer = containers.find((container: any) => 
+      container.Names.some((name: string) => name.includes("mailserver")) ||
+      container.Image.includes("mailserver") ||
+      container.Image.includes("postfix") ||
+      container.Image.includes("dovecot")
+    );
+
+    if (!mailserverContainer) {
+      console.log("Mailserver container not found");
+      return;
+    }
+
+    console.log(`Restarting mailserver container: ${mailserverContainer.Id}`);
+
+    // Restart the container
+    const restartResponse = await fetch(`${dockerUri}/containers/${mailserverContainer.Id}/restart`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (restartResponse.ok) {
+      console.log("Mailserver container restarted successfully");
+    } else {
+      console.error("Failed to restart mailserver container:", restartResponse.status);
+    }
+  } catch (error) {
+    console.error("Error restarting mailserver container:", error);
+  }
+}
+
 // Authentication middleware
 const authenticateToken = async (req: any, res: any, next: any) => {
   const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
@@ -1149,6 +1196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const account = await dbStorage.createEmailAccount(req.body);
       await generateMailAccountsFile();
+      await restartMailserverContainer();
       broadcastUpdate("email_account_created", account);
       res.status(201).json(account);
     } catch (error) {
@@ -1161,6 +1209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const account = await dbStorage.updateEmailAccount(id, req.body);
       await generateMailAccountsFile();
+      await restartMailserverContainer();
       broadcastUpdate("email_account_updated", account);
       res.json(account);
     } catch (error) {
@@ -1173,6 +1222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await dbStorage.deleteEmailAccount(id);
       await generateMailAccountsFile();
+      await restartMailserverContainer();
       broadcastUpdate("email_account_deleted", { id });
       res.status(204).send();
     } catch (error) {
@@ -1185,6 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const account = await dbStorage.setDefaultEmailAccount(id);
       await generateMailAccountsFile();
+      await restartMailserverContainer();
       broadcastUpdate("email_account_default_updated", account);
       res.json(account);
     } catch (error) {
