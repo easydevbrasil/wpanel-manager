@@ -258,7 +258,16 @@ export class DatabaseStorage implements IStorage {
 
   private async createAdminUser() {
     try {
-      // Always try to create admin user since you deleted all users
+      // Check if admin user already exists first
+      const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin')).limit(1);
+      
+      if (existingAdmin.length > 0) {
+        console.log('Admin user already exists');
+        // Ensure permissions are set for existing admin user
+        this.createDefaultPermissionsForUser(existingAdmin[0]);
+        return;
+      }
+
       console.log('Creating admin user with credentials: admin / admin123');
 
       const hashedPassword = await argon2.hash('admin123');
@@ -279,10 +288,6 @@ export class DatabaseStorage implements IStorage {
       this.createDefaultPermissionsForUser(newUser);
     } catch (error) {
       console.error('Error creating admin user:', error);
-      // If user already exists, just log it
-      if (error instanceof Error && error.message.includes('duplicate key')) {
-        console.log('Admin user already exists');
-      }
     }
   }
 
