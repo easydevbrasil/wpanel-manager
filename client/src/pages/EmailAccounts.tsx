@@ -75,12 +75,35 @@ export default function EmailAccounts() {
 
   const createMutation = useMutation({
     mutationFn: async (data: EmailAccountFormData) => {
+      const emailData = {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        provider: 'custom',
+        smtpHost: '',
+        smtpPort: 587,
+        smtpSecure: false,
+        imapHost: '',
+        imapPort: 993,
+        imapSecure: true,
+        username: data.email,
+        isDefault: false,
+        status: 'active',
+        syncFrequency: 15,
+        signature: data.signature || '',
+        autoReply: false,
+        autoReplyMessage: '',
+      };
+      
       const response = await fetch('/api/email-accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(emailData),
       });
-      if (!response.ok) throw new Error('Failed to create email account');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create email account');
+      }
       return response.json();
     },
     onSuccess: () => {

@@ -14,14 +14,14 @@ function getCpuUsageMeasure() {
   const cpus = os.cpus();
   let idle = 0;
   let total = 0;
-  
+
   for (const cpu of cpus) {
     for (const type in cpu.times) {
       total += cpu.times[type as keyof typeof cpu.times];
     }
     idle += cpu.times.idle;
   }
-  
+
   return { idle, total };
 }
 
@@ -1361,7 +1361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   wss.on('connection', (ws: WebSocket, req: any) => {
     console.log('New WebSocket connection established');
-    
+
     // Try to extract session token from cookies or headers
     let sessionToken: string | undefined;
     const cookies = req.headers.cookie;
@@ -1369,7 +1369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cookieMatch = cookies.match(/sessionToken=([^;]+)/);
       sessionToken = cookieMatch ? cookieMatch[1] : undefined;
     }
-    
+
     clients.set(ws, { sessionToken });
 
     // Send initial connection confirmation
@@ -1383,7 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
-        
+
         if (data.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
         } else if (data.type === 'auth_status_request') {
@@ -1391,7 +1391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const clientInfo = clients.get(ws);
             const sessionToken = clientInfo?.sessionToken;
-            
+
             if (!sessionToken) {
               const response = {
                 type: 'auth_status_response',
@@ -1408,11 +1408,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Validate session using existing auth logic
             const ipAddress = req.ip || req.connection?.remoteAddress || 'websocket';
             const session = await dbStorage.validateSession(sessionToken, ipAddress);
-            
+
             if (session) {
               // Update client info with user data
               clients.set(ws, { sessionToken, user: session.user });
-              
+
               const response = {
                 type: 'auth_status_response',
                 data: {

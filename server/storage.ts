@@ -260,7 +260,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Check if admin user already exists first
       const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin')).limit(1);
-      
+
       if (existingAdmin.length > 0) {
         console.log('Admin user already exists');
         // Ensure permissions are set for existing admin user

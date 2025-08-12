@@ -44,32 +44,29 @@ export function useAuthState() {
       }
       setIsLoading(false);
     } else if (lastMessage?.type === 'session_expired') {
-      console.log('Session expired via WebSocket');
       setUser(null);
       window.location.href = "/login";
     }
   }, [lastMessage]);
 
   useEffect(() => {
-    // Initial auth check via HTTP
-    checkAuthStatus();
+    // Initial auth check via WebSocket only
+    if (isConnected) {
+      requestAuthStatusViaWebSocket();
+    }
     
     // Set up WebSocket session verification every minute
     const interval = setInterval(() => {
-      if (user && isConnected) {
+      if (isConnected) {
         requestAuthStatusViaWebSocket();
-      } else if (user && !isConnected) {
-        // Fallback to HTTP if WebSocket is not connected
-        checkAuthStatus();
       }
     }, 60 * 1000); // 1 minute
     
     return () => clearInterval(interval);
-  }, [user, isConnected, sendMessage]);
+  }, [isConnected, sendMessage]);
 
   const requestAuthStatusViaWebSocket = () => {
     if (isConnected && sendMessage) {
-      console.log('Requesting auth status via WebSocket...');
       sendMessage({
         type: 'auth_status_request',
         timestamp: new Date().toISOString()
@@ -77,29 +74,7 @@ export function useAuthState() {
     }
   };
 
-  const checkAuthStatus = async () => {
-    try {
-      console.log('Checking auth status with HTTP...');
-      
-      const response = await fetch("/api/auth/verify", {
-        credentials: "include", // Important: include cookies in request
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Auth verification successful:', data);
-        setUser(data.user);
-      } else {
-        console.log('Auth verification failed:', response.status);
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Auth verification error:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
