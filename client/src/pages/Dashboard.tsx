@@ -255,7 +255,7 @@ export default function Dashboard() {
                     <Cpu className="w-5 h-5 md:w-6 md:h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
-                <SystemGauge usage={systemStatus.cpu.usage} color="#3b82f6" />
+                <SystemGauge usage={Math.round(systemStatus.cpu.usage)} color="#3b82f6" />
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
                   {systemStatus.cpu.model.substring(0, 30)}...
                 </p>

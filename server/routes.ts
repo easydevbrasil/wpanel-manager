@@ -9,6 +9,22 @@ import * as path from "path";
 import multer from "multer";
 import os from "os";
 
+// Helper function to measure CPU usage
+function getCpuUsageMeasure() {
+  const cpus = os.cpus();
+  let idle = 0;
+  let total = 0;
+  
+  for (const cpu of cpus) {
+    for (const type in cpu.times) {
+      total += cpu.times[type as keyof typeof cpu.times];
+    }
+    idle += cpu.times.idle;
+  }
+  
+  return { idle, total };
+}
+
 // Add CPU usage calculation helper
 function getCpuUsage(): Promise<number> {
   return new Promise((resolve) => {
@@ -17,8 +33,8 @@ function getCpuUsage(): Promise<number> {
       const endMeasure = getCpuUsageMeasure();
       const idleDifference = endMeasure.idle - startMeasure.idle;
       const totalDifference = endMeasure.total - startMeasure.total;
-      const cpuPercentage = 100 - Math.round(100 * idleDifference / totalDifference);
-      resolve(cpuPercentage);
+      const cpuPercentage = 100 - (100 * idleDifference / totalDifference);
+      resolve(Math.max(0, Math.min(100, Math.round(cpuPercentage))));
     }, 1000);
   });
 }
