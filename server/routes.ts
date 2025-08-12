@@ -61,8 +61,17 @@ async function generateMailAccountsFile() {
 
 // Authentication middleware
 const authenticateToken = async (req: any, res: any, next: any) => {
+  // Try to get token from different sources
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1] || req.headers['session-token'];
+  const sessionToken = req.headers['session-token'];
+  
+  let token = null;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (sessionToken) {
+    token = sessionToken;
+  }
 
   if (!token) {
     return res.status(401).json({ message: "Token de acesso requerido" });
@@ -76,6 +85,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
     req.user = session.user;
     next();
   } catch (error) {
+    console.error('Authentication error:', error);
     return res.status(403).json({ message: "Token inválido" });
   }
 };

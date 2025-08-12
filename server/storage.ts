@@ -816,7 +816,7 @@ export class DatabaseStorage implements IStorage {
           role: user.role,
           avatar: user.avatar
         },
-        token: sessionToken // Changed from sessionToken to token to match interface
+        sessionToken: sessionToken
       };
     } catch (error) {
       console.error('Error authenticating user:', error);
