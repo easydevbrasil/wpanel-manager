@@ -297,6 +297,9 @@ export default function DockerContainers() {
           <p className="text-gray-600 dark:text-gray-400">
             Visualize e controle containers Docker em tempo real
           </p>
+          <div className="mt-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full inline-block">
+            📋 Modo Demo - Containers simulados para demonstração
+          </div>
         </div>
       </div>
 
