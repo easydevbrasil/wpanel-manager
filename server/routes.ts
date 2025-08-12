@@ -44,9 +44,9 @@ async function generateMailAccountsFile() {
   try {
     const accounts = await dbStorage.getEmailAccounts();
     const lines = accounts.map(account => {
-      // Use Argon2 hash directly for Postfix compatibility
-      // Note: Postfix typically uses crypt() format, but we'll use Argon2 format
-      return `${account.email}|{ARGON2}${account.password || ''}`;
+      // For Postfix compatibility, we need to store the Argon2 hash directly
+      // Postfix supports various formats including Argon2
+      return `${account.email}|${account.password}`;
     });
 
     const filePath = path.join(process.cwd(), 'mail_accounts.cf');

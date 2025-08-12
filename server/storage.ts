@@ -232,6 +232,8 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private sessions: Map<string, any> = new Map();
+
   constructor() {
     this.initializeData();
   }
@@ -577,7 +579,7 @@ export class DatabaseStorage implements IStorage {
           image: "nginx",
           tag: "alpine",
           description: "Servidor web NGINX para hospedar aplicações estáticas",
-          status: "running" as const,
+          status: "stopped",
           networkMode: "bridge",
           restartPolicy: "unless-stopped",
           cpuLimit: "0.5",
@@ -590,15 +592,15 @@ export class DatabaseStorage implements IStorage {
           volumes: JSON.stringify([
             { host: "/var/www/html", container: "/usr/share/nginx/html" }
           ]),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           name: "PostgreSQL Database",
           image: "postgres",
           tag: "15-alpine",
           description: "Banco de dados PostgreSQL para aplicações web",
-          status: "running" as const,
+          status: "stopped",
           networkMode: "bridge",
           restartPolicy: "unless-stopped",
           cpuLimit: "1.0",
@@ -612,8 +614,8 @@ export class DatabaseStorage implements IStorage {
           volumes: JSON.stringify([
             { host: "/var/lib/postgresql/data", container: "/var/lib/postgresql/data" }
           ]),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ];
 
@@ -722,7 +724,20 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Verify password with Argon2
-      const isValidPassword = await argon2.verify(user.password, password);
+      let isValidPassword = false;
+      try {
+        isValidPassword = await argon2.verify(user.password, password);
+      } catch (error) {
+        // If Argon2 verification fails, try old hash method for backward compatibility
+        const hashedPassword = this.hashPassword(password);
+        isValidPassword = (user.password === hashedPassword);
+
+        // If old method works, update to Argon2
+        if (isValidPassword) {
+          const argonHash = await argon2.hash(password);
+          await db.update(users).set({ password: argonHash }).where(eq(users.id, user.id));
+        }
+      }
 
       if (!isValidPassword) {
         return null;
@@ -753,8 +768,7 @@ export class DatabaseStorage implements IStorage {
 
   async validateSession(sessionToken: string): Promise<{ user: any } | null> {
     try {
-      (global as any).userSessions = (global as any).userSessions || {};
-      const session = (global as any).userSessions[sessionToken];
+      const session = this.sessions.get(sessionToken);
 
       if (!session) {
         return null;
@@ -762,7 +776,7 @@ export class DatabaseStorage implements IStorage {
 
       // Check if session is expired
       if (Date.now() > session.expiresAt) {
-        delete (global as any).userSessions[sessionToken];
+        this.sessions.delete(sessionToken);
         return null;
       }
 
@@ -777,11 +791,38 @@ export class DatabaseStorage implements IStorage {
 
   async invalidateSession(sessionToken: string): Promise<void> {
     try {
-      (global as any).userSessions = (global as any).userSessions || {};
-      delete (global as any).userSessions[sessionToken];
+      this.sessions.delete(sessionToken);
     } catch (error) {
       console.error('Session invalidation error:', error);
     }
+  }
+
+  private async createSession(userId: number, token: string, expiresAt: Date) {
+    const user = await this.getUser(userId);
+    if (user) {
+      this.sessions.set(token, {
+        token,
+        userId,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          avatar: user.avatar
+        },
+        expiresAt
+      });
+    }
+  }
+
+  // Utility methods for password hashing and session token generation
+  private hashPassword(password: string): string {
+    // Fallback for older versions, should be replaced with Argon2
+    return crypto.pbkdf2Sync(password, crypto.randomBytes(16).toString('hex'), 10000, 64, 'sha512').toString('hex');
+  }
+
+  private generateSessionToken(): string {
+    return crypto.randomBytes(32).toString('hex');
   }
 
   // Database implementation methods
@@ -800,28 +841,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: InsertUser): Promise<User> {
-    // Hash password with Argon2
-    const hashedPassword = await argon2.hash(userData.password);
+    try {
+      // Hash password with Argon2 before storing
+      const hashedPassword = await argon2.hash(userData.password);
 
-    const [user] = await db.insert(users).values({
-      ...userData,
-      password: hashedPassword
-    }).returning();
-    return user;
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...userData,
+          password: hashedPassword,
+        })
+        .returning();
+
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw new Error('Falha ao criar usuário');
+    }
   }
 
   async updateUser(id: number, userData: Partial<InsertUser>): Promise<User> {
-    // Hash password if provided
-    if (userData.password) {
-      userData.password = await argon2.hash(userData.password);
-    }
+    try {
+      const updateData = { ...userData };
 
-    const [user] = await db
-      .update(users)
-      .set(userData)
-      .where(eq(users.id, id))
-      .returning();
-    return user;
+      // If password is being updated, hash it with Argon2
+      if (updateData.password) {
+        updateData.password = await argon2.hash(updateData.password);
+      }
+
+      const [user] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, id))
+        .returning();
+
+      return user;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw new Error('Falha ao atualizar usuário');
+    }
   }
 
   async deleteUser(id: number): Promise<void> {
@@ -1594,43 +1652,71 @@ export class DatabaseStorage implements IStorage {
     return account || undefined;
   }
 
-  async createEmailAccount(accountData: InsertEmailAccount): Promise<EmailAccount> {
-    const now = new Date().toISOString();
+  async createEmailAccount(data: InsertEmailAccount): Promise<EmailAccount> {
+    try {
+      // Hash password with Argon2 before storing
+      const hashedPassword = await argon2.hash(data.password);
 
-    // Generate a secure password if not provided
-    const password = accountData.password || crypto.randomBytes(16).toString('hex');
+      // If this is the first email account, make it default
+      const existingAccounts = await this.getEmailAccounts();
+      const isFirstAccount = existingAccounts.length === 0;
 
-    // Hash the password with Argon2
-    const hashedPassword = await argon2.hash(password);
+      const [account] = await db
+        .insert(emailAccounts)
+        .values({
+          ...data,
+          password: hashedPassword,
+          isDefault: isFirstAccount || data.isDefault,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .returning();
 
-    const [account] = await db.insert(emailAccounts).values({
-      ...accountData,
-      password: hashedPassword,
-      username: accountData.username || accountData.email,
-      provider: accountData.provider || 'smtp',
-      createdAt: now,
-      updatedAt: now,
-    }).returning();
-    return account;
+      // If setting as default, unset all other defaults
+      if (account.isDefault) {
+        await db
+          .update(emailAccounts)
+          .set({ isDefault: false })
+          .where(sql`${emailAccounts.id} != ${account.id}`);
+      }
+
+      return account;
+    } catch (error) {
+      console.error('Error creating email account:', error);
+      throw new Error('Falha ao criar conta de email');
+    }
   }
 
-  async updateEmailAccount(id: number, accountData: Partial<InsertEmailAccount>): Promise<EmailAccount> {
-    const now = new Date().toISOString();
+  async updateEmailAccount(id: number, data: Partial<InsertEmailAccount>): Promise<EmailAccount> {
+    try {
+      const updateData = { ...data };
 
-    // Hash password if provided
-    if (accountData.password) {
-      accountData.password = await argon2.hash(accountData.password);
+      // If password is being updated, hash it with Argon2
+      if (updateData.password) {
+        updateData.password = await argon2.hash(updateData.password);
+      }
+
+      updateData.updatedAt = new Date().toISOString();
+
+      const [account] = await db
+        .update(emailAccounts)
+        .set(updateData)
+        .where(eq(emailAccounts.id, id))
+        .returning();
+
+      // If setting as default, unset all other defaults
+      if (data.isDefault) {
+        await db
+          .update(emailAccounts)
+          .set({ isDefault: false })
+          .where(sql`${emailAccounts.id} != ${id}`);
+      }
+
+      return account;
+    } catch (error) {
+      console.error('Error updating email account:', error);
+      throw new Error('Falha ao atualizar conta de email');
     }
-
-    const [account] = await db
-      .update(emailAccounts)
-      .set({
-        ...accountData,
-        updatedAt: now,
-      })
-      .where(eq(emailAccounts.id, id))
-      .returning();
-    return account;
   }
 
   async deleteEmailAccount(id: number): Promise<void> {
