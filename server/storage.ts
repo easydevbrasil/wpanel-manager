@@ -254,40 +254,145 @@ export class DatabaseStorage implements IStorage {
   private async init() {
     await this.initializeData();
     await this.createAdminUser();
+    await this.createDefaultNavigationItems();
   }
 
-  private async createAdminUser() {
+  // Create default admin user if none exists
+  async createAdminUser() {
     try {
-      // Check if admin user already exists first
-      const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin')).limit(1);
-
-      if (existingAdmin.length > 0) {
-        console.log('Admin user already exists');
-        // Ensure permissions are set for existing admin user
-        this.createDefaultPermissionsForUser(existingAdmin[0]);
+      const existingUsers = await db.select().from(users).limit(1);
+      if (existingUsers.length > 0) {
+        console.log('Users already exist, skipping admin user creation');
         return;
       }
 
+      const hashedPassword = await argon2.hash('admin123');
       console.log('Creating admin user with credentials: admin / admin123');
 
-      const hashedPassword = await argon2.hash('admin123');
+      const [adminUser] = await db.insert(users).values({
+        username: 'admin',
+        password: hashedPassword,
+        name: 'Administrator',
+        role: 'Admin',
+        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+      }).returning();
 
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          username: 'admin',
-          password: hashedPassword,
-          name: 'Administrator',
-          role: 'Admin',
-          avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-        })
-        .returning();
+      console.log('Admin user created successfully:', adminUser.username);
 
-      console.log('Admin user created successfully:', newUser.username);
-      // Create default permissions for the newly created admin user
-      this.createDefaultPermissionsForUser(newUser);
+      // Create default permissions for admin user
+      await this.createDefaultPermissionsForUser(adminUser);
+
+      return adminUser;
     } catch (error) {
       console.error('Error creating admin user:', error);
+    }
+  }
+
+  // Create default navigation items
+  async createDefaultNavigationItems() {
+    try {
+      const existingItems = await db.select().from(navigationItems).limit(1);
+      if (existingItems.length > 0) {
+        console.log('Navigation items already exist, skipping creation');
+        return;
+      }
+
+      console.log('Creating default navigation items...');
+
+      const defaultItems = [
+        {
+          label: 'Dashboard',
+          href: '/',
+          icon: 'LayoutDashboard',
+          position: 1,
+          parentId: null
+        },
+        {
+          label: 'Clientes',
+          href: '/clients',
+          icon: 'Users',
+          position: 2,
+          parentId: null
+        },
+        {
+          label: 'Produtos',
+          href: '/products',
+          icon: 'Package',
+          position: 3,
+          parentId: null
+        },
+        {
+          label: 'Fornecedores',
+          href: '/suppliers',
+          icon: 'Truck',
+          position: 4,
+          parentId: null
+        },
+        {
+          label: 'Vendas',
+          href: '/sales',
+          icon: 'ShoppingCart',
+          position: 5,
+          parentId: null
+        },
+        {
+          label: 'Suporte',
+          href: '/support',
+          icon: 'MessageSquare',
+          position: 6,
+          parentId: null
+        },
+        {
+          label: 'Email',
+          href: '/email-accounts',
+          icon: 'Mail',
+          position: 7,
+          parentId: null
+        },
+        {
+          label: 'Administração',
+          href: null,
+          icon: 'Settings',
+          position: 8,
+          parentId: null
+        }
+      ];
+
+      const insertedItems = await db.insert(navigationItems).values(defaultItems).returning();
+
+      // Create sub-items for Administration
+      const adminParent = insertedItems.find(item => item.label === 'Administração');
+      if (adminParent) {
+        const subItems = [
+          {
+            label: 'Usuários',
+            href: '/database-admin',
+            icon: 'User',
+            position: 1,
+            parentId: adminParent.id
+          },
+          {
+            label: 'Permissões',
+            href: '/user-permissions',
+            icon: 'Shield',
+            position: 2,
+            parentId: adminParent.id
+          },
+          {
+            label: 'Sistema',
+            href: '/system-status',
+            icon: 'Monitor',
+            position: 3,
+            parentId: adminParent.id
+          }
+        ];
+
+        await db.insert(navigationItems).values(subItems);
+      }
+
+      console.log('Default navigation items created successfully');
+    } catch (error) {
+      console.error('Error creating default navigation items:', error);
     }
   }
 
