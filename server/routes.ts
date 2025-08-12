@@ -7,6 +7,37 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import multer from "multer";
+import os from "os";
+
+// Add CPU usage calculation helper
+function getCpuUsage(): Promise<number> {
+  return new Promise((resolve) => {
+    const startMeasure = getCpuUsageMeasure();
+    setTimeout(() => {
+      const endMeasure = getCpuUsageMeasure();
+      const idleDifference = endMeasure.idle - startMeasure.idle;
+      const totalDifference = endMeasure.total - startMeasure.total;
+      const cpuPercentage = 100 - Math.round(100 * idleDifference / totalDifference);
+      resolve(cpuPercentage);
+    }, 1000);
+  });
+}
+
+function getCpuUsageMeasure() {
+  const cpus = os.cpus();
+  let user = 0, nice = 0, sys = 0, idle = 0, irq = 0;
+
+  for (const cpu of cpus) {
+    user += cpu.times.user;
+    nice += cpu.times.nice;
+    sys += cpu.times.sys;
+    idle += cpu.times.idle;
+    irq += cpu.times.irq;
+  }
+
+  const total = user + nice + sys + idle + irq;
+  return { idle, total };
+}
 
 // Function to generate mail_accounts.cf file
 async function generateMailAccountsFile() {
@@ -873,65 +904,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System Status routes
   app.get("/api/system/status", async (req, res) => {
     try {
-      const os = await import('os');
-      const fs = await import('fs').then(m => m.promises);
-
-      // Get CPU info
       const cpus = os.cpus();
-      const cpuCount = cpus.length;
-      const cpuModel = cpus[0]?.model || "Unknown CPU";
-
-      // Calculate CPU usage
-      let cpuUsage = 0;
-      try {
-        const loadavg = os.loadavg();
-        cpuUsage = Math.min(Math.round((loadavg[0] / cpuCount) * 100), 100);
-      } catch {
-        cpuUsage = Math.floor(Math.random() * 30) + 20; // Fallback
-      }
-
-      // Get memory info
       const totalMem = os.totalmem();
       const freeMem = os.freemem();
       const usedMem = totalMem - freeMem;
-      const memUsagePercent = Math.round((usedMem / totalMem) * 100);
 
-      // Get disk info (try to read from /proc/mounts or fallback)
-      let diskInfo = {
-        total: 20 * 1024 * 1024 * 1024,
-        used: 8 * 1024 * 1024 * 1024,
-        free: 12 * 1024 * 1024 * 1024,
-        usagePercent: 40
-      };
-
-      try {
-        const stats = await fs.statfs('/');
-        const total = stats.bavail * stats.bsize;
-        const free = stats.bavail * stats.bsize;
-        const used = total - free;
-        diskInfo = {
-          total,
-          used,
-          free,
-          usagePercent: Math.round((used / total) * 100)
-        };
-      } catch {
-        // Keep fallback values
-      }
+      // Get accurate CPU usage
+      const cpuUsage = await getCpuUsage();
 
       const systemStatus = {
         cpu: {
           usage: cpuUsage,
-          cores: cpuCount,
-          model: cpuModel
+          cores: cpus.length,
+          model: cpus[0]?.model || "Unknown"
         },
         memory: {
           total: totalMem,
           used: usedMem,
           free: freeMem,
-          usagePercent: memUsagePercent
+          usagePercent: Math.round((usedMem / totalMem) * 100)
         },
-        disk: diskInfo,
+        disk: {
+          total: 100 * 1024 * 1024 * 1024, // Mock 100GB
+          used: 50 * 1024 * 1024 * 1024,   // Mock 50GB used
+          free: 50 * 1024 * 1024 * 1024,   // Mock 50GB free
+          usagePercent: 50
+        },
         swap: {
           total: 0,
           used: 0,
@@ -947,8 +945,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(systemStatus);
     } catch (error) {
-      console.error("Error fetching system status:", error);
-      res.status(500).json({ error: "Failed to fetch system status" });
+      console.error("Error getting system status:", error);
+      res.status(500).json({ error: "Failed to get system status" });
     }
   });
 
