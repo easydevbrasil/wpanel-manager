@@ -896,7 +896,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Verify session exists in database (additional security layer)
-      const sessionHash = await argon2.hash(sessionToken);
+      // Note: We don't compare the hash directly since JWT validation is sufficient
       const [dbSession] = await db
         .select()
         .from(sessions)
@@ -905,6 +905,16 @@ export class DatabaseStorage implements IStorage {
 
       if (!dbSession) {
         console.log('Session not found in database');
+        return null;
+      }
+
+      // Check if session is expired
+      const now = new Date();
+      const sessionExpiry = new Date(dbSession.expiresAt);
+      if (now > sessionExpiry) {
+        console.log('Session expired in database');
+        // Clean up expired session
+        await db.delete(sessions).where(eq(sessions.userId, user.id));
         return null;
       }
 

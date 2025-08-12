@@ -36,8 +36,7 @@ export function useAuthState() {
     
     // Check auth status every 5 minutes to keep session alive
     const interval = setInterval(() => {
-      const token = localStorage.getItem("sessionToken");
-      if (token && user) {
+      if (user) {
         checkAuthStatus();
       }
     }, 5 * 60 * 1000); // 5 minutes
@@ -46,19 +45,11 @@ export function useAuthState() {
   }, [user]);
 
   const checkAuthStatus = async () => {
-    const token = localStorage.getItem("sessionToken");
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      console.log('Checking auth status with token:', token);
+      console.log('Checking auth status with cookies...');
       
       const response = await fetch("/api/auth/verify", {
-        headers: {
-          "session-token": token,
-        },
+        credentials: "include", // Important: include cookies in request
       });
 
       if (response.ok) {
@@ -67,11 +58,11 @@ export function useAuthState() {
         setUser(data.user);
       } else {
         console.log('Auth verification failed:', response.status);
-        localStorage.removeItem("sessionToken");
+        setUser(null);
       }
     } catch (error) {
       console.error('Auth verification error:', error);
-      localStorage.removeItem("sessionToken");
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +72,7 @@ export function useAuthState() {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include", // Important: include cookies
         headers: {
           "Content-Type": "application/json",
         },
@@ -89,32 +81,27 @@ export function useAuthState() {
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem("sessionToken", data.sessionToken);
+        console.log('Login successful, cookies set by server');
         setUser(data.user);
         return true;
       }
       return false;
     } catch (error) {
+      console.error('Login error:', error);
       return false;
     }
   };
 
   const logout = async () => {
-    const token = localStorage.getItem("sessionToken");
-    if (token) {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: {
-            "session-token": token,
-          },
-        });
-      } catch (error) {
-        // Continue with logout even if API call fails
-      }
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include", // Important: include cookies
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
     }
     
-    localStorage.removeItem("sessionToken");
     setUser(null);
     window.location.href = "/login";
   };
