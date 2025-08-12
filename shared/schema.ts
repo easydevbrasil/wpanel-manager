@@ -400,6 +400,10 @@ export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  password: z.string().optional(),
+  username: z.string().optional(),
+  provider: z.string().optional(),
 });
 
 // Authentication schemas will be added later

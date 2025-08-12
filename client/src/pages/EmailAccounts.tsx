@@ -51,6 +51,7 @@ interface EmailAccount {
 const emailAccountSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   signature: z.string().optional(),
 });
 
@@ -190,6 +191,7 @@ export default function EmailAccounts() {
       form.reset({
         name: account.name,
         email: account.email,
+        password: '', // Don't pre-fill password for security
         signature: account.signature || '',
       });
     } else {
@@ -258,6 +260,20 @@ export default function EmailAccounts() {
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input type="email" placeholder="usuario@empresa.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Digite a senha da conta" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
