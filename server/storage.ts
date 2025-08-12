@@ -272,10 +272,19 @@ export class DatabaseStorage implements IStorage {
   private async createSampleData() {
     const now = new Date().toISOString();
 
+    // Create admin user with Argon2 hashed password
+    const [adminUser] = await db.insert(users).values({
+      username: "admin",
+      password: await argon2.hash("admin123"),
+      name: "Administrador",
+      role: "Admin",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+    }).returning();
+
     // Create sample user
     const [user] = await db.insert(users).values({
       username: "john.smith",
-      password: "password123",
+      password: await argon2.hash("password123"),
       name: "John Smith",
       role: "Admin",
       avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
@@ -570,7 +579,7 @@ export class DatabaseStorage implements IStorage {
     await db.insert(navigationItems).values(navItems);
 
     // Create default permissions for the admin user
-    this.createDefaultPermissionsForUser(user);
+    this.createDefaultPermissionsForUser(adminUser);
 
     // Sample docker containers
       const sampleContainers = [
