@@ -34,12 +34,12 @@ export function useAuthState() {
   useEffect(() => {
     checkAuthStatus();
     
-    // Check auth status every 5 minutes to keep session alive
+    // Check auth status every minute to keep session alive
     const interval = setInterval(() => {
       if (user) {
         checkAuthStatus();
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 60 * 1000); // 1 minute
     
     return () => clearInterval(interval);
   }, [user]);
