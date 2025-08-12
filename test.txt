@@ -2,4 +2,4 @@ NODE_ENV="development"
 DOCKER_URI="https://docker.easydev.com.br"
 DOCKER_API_TOKEN="your_docker_api_token_here"
 DATABASE_URL="postgresql://postgres:MPc3KWhKkLMdsvfqkWTgn3sgTWJPtpcs@152.53.166.90:5432/webpanel?schema=public&sslmode=disable"
-SESSION_
+SESSION_SECRET="KRbYmEq2Ul0EQ6CSOl3KZ4XOxp5W6Wh9"
