@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import * as argon2 from 'argon2';
 import * as bcrypt from 'bcrypt';
 import jwt from "jsonwebtoken";
+import { db } from './db';
 
 import {
   users,
