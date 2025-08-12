@@ -241,7 +241,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   private async init() {
-    await this.seedDatabase();
+    await this.initializeData();
     await this.createAdminUser();
   }
 
