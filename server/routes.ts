@@ -1610,24 +1610,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(2000),
+              signal: AbortSignal.timeout(10000), // 10 second timeout
             },
           );
 
           if (!response.ok) {
-            throw new Error(`Docker API returned ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Docker API error ${response.status}:`, errorText);
+            throw new Error(`Docker API returned ${response.status}: ${errorText}`);
           }
 
-          console.log(`Started container ${containerId}`);
-          res.json({ message: `Container iniciado com sucesso` });
+          console.log(`Successfully started container ${containerId}`);
+          res.json({ 
+            message: `Container iniciado com sucesso`,
+            containerId: containerId,
+            status: 'started'
+          });
         } catch (dockerError) {
-          // Mock successful start for demo purposes
+          console.log(`Docker API unavailable, using mock: ${dockerError.message}`);
           console.log(`Mock: Started container ${containerId}`);
-          res.json({ message: `Container iniciado com sucesso (modo demo)` });
+          res.json({ 
+            message: `Container iniciado com sucesso (modo demo)`,
+            containerId: containerId,
+            status: 'started',
+            mock: true
+          });
         }
       } catch (error) {
         console.error("Docker start error:", error);
-        res.status(500).json({ message: "Falha ao iniciar container" });
+        res.status(500).json({ 
+          message: "Falha ao iniciar container",
+          error: error.message 
+        });
       }
     },
   );
@@ -1692,28 +1706,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         try {
           const response = await fetch(
-            `${dockerUri}/containers/${containerId}/restart`,
+            `${dockerUri}/containers/${containerId}/restart?t=10`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(2000),
+              signal: AbortSignal.timeout(15000), // 15 second timeout for restart
             },
           );
 
           if (!response.ok) {
-            throw new Error(`Docker API returned ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Docker API error ${response.status}:`, errorText);
+            throw new Error(`Docker API returned ${response.status}: ${errorText}`);
           }
 
-          console.log(`Restarted container ${containerId}`);
-          res.json({ message: `Container reiniciado com sucesso` });
+          console.log(`Successfully restarted container ${containerId}`);
+          res.json({ 
+            message: `Container reiniciado com sucesso`,
+            containerId: containerId,
+            status: 'restarted'
+          });
         } catch (dockerError) {
-          // Mock successful restart for demo purposes
+          console.log(`Docker API unavailable, using mock: ${dockerError.message}`);
           console.log(`Mock: Restarted container ${containerId}`);
-          res.json({ message: `Container reiniciado com sucesso (modo demo)` });
+          res.json({ 
+            message: `Container reiniciado com sucesso (modo demo)`,
+            containerId: containerId,
+            status: 'restarted',
+            mock: true
+          });
         }
       } catch (error) {
         console.error("Docker restart error:", error);
-        res.status(500).json({ message: "Falha ao reiniciar container" });
+        res.status(500).json({ 
+          message: "Falha ao reiniciar container",
+          error: error.message 
+        });
       }
     },
   );

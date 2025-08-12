@@ -189,32 +189,38 @@ export default function DockerContainers() {
   // Mutations corrigidas
   const startMutation = useMutation({
     mutationFn: async (containerId: string) => {
-      const response = await fetch(`/api/docker/containers/${containerId}/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Falha ao iniciar container';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
+      try {
+        const response = await fetch(`/api/docker/containers/${containerId}/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = 'Falha ao iniciar container';
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorMessage;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
-        throw new Error(errorMessage);
+        
+        const result = await response.json();
+        return result;
+      } catch (error: any) {
+        console.error('Start container network error:', error);
+        throw new Error(error.message || 'Falha de comunicação ao iniciar container');
       }
-      
-      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "▶️ Container iniciado",
-        description: "Container Docker iniciado com sucesso!",
+        description: data.mock ? "Container iniciado (modo demo)" : "Container Docker iniciado com sucesso!",
       });
     },
     onError: (error: any) => {
@@ -228,32 +234,38 @@ export default function DockerContainers() {
 
   const stopMutation = useMutation({
     mutationFn: async (containerId: string) => {
-      const response = await fetch(`/api/docker/containers/${containerId}/stop`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Falha ao parar container';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
+      try {
+        const response = await fetch(`/api/docker/containers/${containerId}/stop`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = 'Falha ao parar container';
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorMessage;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
-        throw new Error(errorMessage);
+        
+        const result = await response.json();
+        return result;
+      } catch (error: any) {
+        console.error('Stop container network error:', error);
+        throw new Error(error.message || 'Falha de comunicação ao parar container');
       }
-      
-      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "⏹️ Container parado",
-        description: "Container Docker parado com sucesso!",
+        description: data.mock ? "Container parado (modo demo)" : "Container Docker parado com sucesso!",
       });
     },
     onError: (error: any) => {
@@ -268,32 +280,38 @@ export default function DockerContainers() {
 
   const restartMutation = useMutation({
     mutationFn: async (containerId: string) => {
-      const response = await fetch(`/api/docker/containers/${containerId}/restart`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Falha ao reiniciar container';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
+      try {
+        const response = await fetch(`/api/docker/containers/${containerId}/restart`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = 'Falha ao reiniciar container';
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorMessage;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
-        throw new Error(errorMessage);
+        
+        const result = await response.json();
+        return result;
+      } catch (error: any) {
+        console.error('Restart container network error:', error);
+        throw new Error(error.message || 'Falha de comunicação ao reiniciar container');
       }
-      
-      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
       toast({
         title: "🔄 Container reiniciado",
-        description: "Container Docker reiniciado com sucesso!",
+        description: data.mock ? "Container reiniciado (modo demo)" : "Container Docker reiniciado com sucesso!",
       });
     },
     onError: (error: any) => {
