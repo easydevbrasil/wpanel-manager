@@ -406,7 +406,19 @@ export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
   provider: z.string().optional(),
 });
 
-// Authentication schemas will be added later
+// Sessions Table for Authentication
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSessionSchema = createInsertSchema(sessions).omit({
+  id: true,
+  createdAt: true,
+});
 
 export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
   id: true,
@@ -454,6 +466,8 @@ export type ChatwootSettings = typeof chatwootSettings.$inferSelect;
 export type InsertChatwootSettings = z.infer<typeof insertChatwootSettingsSchema>;
 export type EmailAccount = typeof emailAccounts.$inferSelect;
 export type InsertEmailAccount = z.infer<typeof insertEmailAccountSchema>;
+export type Session = typeof sessions.$inferSelect;
+export type InsertSession = z.infer<typeof insertSessionSchema>;
 
 // Docker Containers Table
 export const dockerContainers = pgTable("docker_containers", {
