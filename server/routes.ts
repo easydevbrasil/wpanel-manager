@@ -1334,6 +1334,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.post("/api/docker-containers/:id/restart", authenticateToken, async (req, res) => { ... });
   // app.post("/api/docker-containers/:id/pause", authenticateToken, async (req, res) => { ... });
 
+  // Docker status endpoint
+  app.get("/api/docker/status", authenticateToken, async (req, res) => {
+    try {
+      const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
+      
+      try {
+        const response = await fetch(`${dockerUri}/version`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(2000),
+        });
+
+        if (response.ok) {
+          const versionInfo = await response.json();
+          res.json({
+            available: true,
+            version: versionInfo.Version || 'unknown',
+            apiVersion: versionInfo.ApiVersion || 'unknown'
+          });
+        } else {
+          throw new Error('Docker API not responding');
+        }
+      } catch (dockerError) {
+        res.json({
+          available: false,
+          error: dockerError.message
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        available: false,
+        error: error.message
+      });
+    }
+  });
+
   // Rotas da API Docker real
 
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
@@ -1606,28 +1642,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         try {
           const response = await fetch(
-            `${dockerUri}/containers/${containerId}/stop`,
+            `${dockerUri}/containers/${containerId}/stop?t=30`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(2000),
+              signal: AbortSignal.timeout(35000), // 35 second timeout for stop operation
             },
           );
 
           if (!response.ok) {
-            throw new Error(`Docker API returned ${response.status}`);
+            const errorText = await response.text();
+            console.error(`Docker API error ${response.status}:`, errorText);
+            throw new Error(`Docker API returned ${response.status}: ${errorText}`);
           }
 
-          console.log(`Stopped container ${containerId}`);
-          res.json({ message: `Container parado com sucesso` });
+          console.log(`Successfully stopped container ${containerId}`);
+          res.json({ 
+            message: `Container parado com sucesso`,
+            containerId: containerId,
+            status: 'stopped'
+          });
         } catch (dockerError) {
-          // Mock successful stop for demo purposes
+          console.log(`Docker API unavailable, using mock: ${dockerError.message}`);
           console.log(`Mock: Stopped container ${containerId}`);
-          res.json({ message: `Container parado com sucesso (modo demo)` });
+          res.json({ 
+            message: `Container parado com sucesso (modo demo)`,
+            containerId: containerId,
+            status: 'stopped',
+            mock: true
+          });
         }
       } catch (error) {
         console.error("Docker stop error:", error);
-        res.status(500).json({ message: "Falha ao parar container" });
+        res.status(500).json({ 
+          message: "Falha ao parar container",
+          error: error.message 
+        });
       }
     },
   );

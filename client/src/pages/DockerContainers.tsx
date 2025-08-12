@@ -193,13 +193,19 @@ export default function DockerContainers() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
         },
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Falha ao iniciar container');
+        const errorText = await response.text();
+        let errorMessage = 'Falha ao iniciar container';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       return response.json();
@@ -226,13 +232,19 @@ export default function DockerContainers() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
         },
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Falha ao parar container');
+        const errorText = await response.text();
+        let errorMessage = 'Falha ao parar container';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       return response.json();
@@ -245,6 +257,7 @@ export default function DockerContainers() {
       });
     },
     onError: (error: any) => {
+      console.error('Stop container error:', error);
       toast({
         title: "❌ Erro",
         description: error.message || "Falha ao parar container",
@@ -259,13 +272,19 @@ export default function DockerContainers() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
         },
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Falha ao reiniciar container');
+        const errorText = await response.text();
+        let errorMessage = 'Falha ao reiniciar container';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       return response.json();
