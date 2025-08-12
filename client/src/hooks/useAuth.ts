@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
+import { useWebSocket } from "./use-websocket";
 
 interface AuthUser {
   id: number;
@@ -30,23 +31,55 @@ export function useAuth() {
 export function useAuthState() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { sendMessage, lastMessage, isConnected } = useWebSocket();
+
+  // Listen for WebSocket messages related to auth
+  useEffect(() => {
+    if (lastMessage?.type === 'auth_status_response') {
+      const { valid, user: userData } = lastMessage.data;
+      if (valid && userData) {
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    } else if (lastMessage?.type === 'session_expired') {
+      console.log('Session expired via WebSocket');
+      setUser(null);
+      window.location.href = "/login";
+    }
+  }, [lastMessage]);
 
   useEffect(() => {
+    // Initial auth check via HTTP
     checkAuthStatus();
     
-    // Check auth status every minute to keep session alive
+    // Set up WebSocket session verification every minute
     const interval = setInterval(() => {
-      if (user) {
+      if (user && isConnected) {
+        requestAuthStatusViaWebSocket();
+      } else if (user && !isConnected) {
+        // Fallback to HTTP if WebSocket is not connected
         checkAuthStatus();
       }
     }, 60 * 1000); // 1 minute
     
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, isConnected, sendMessage]);
+
+  const requestAuthStatusViaWebSocket = () => {
+    if (isConnected && sendMessage) {
+      console.log('Requesting auth status via WebSocket...');
+      sendMessage({
+        type: 'auth_status_request',
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
 
   const checkAuthStatus = async () => {
     try {
-      console.log('Checking auth status with cookies...');
+      console.log('Checking auth status with HTTP...');
       
       const response = await fetch("/api/auth/verify", {
         credentials: "include", // Important: include cookies in request

@@ -1356,12 +1356,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket Server for real-time updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  // Store connected clients
-  const clients = new Set<WebSocket>();
+  // Store connected clients with session info
+  const clients = new Map<WebSocket, { sessionToken?: string; user?: any }>();
 
-  wss.on('connection', (ws: WebSocket) => {
+  wss.on('connection', (ws: WebSocket, req: any) => {
     console.log('New WebSocket connection established');
-    clients.add(ws);
+    
+    // Try to extract session token from cookies or headers
+    let sessionToken: string | undefined;
+    const cookies = req.headers.cookie;
+    if (cookies) {
+      const cookieMatch = cookies.match(/sessionToken=([^;]+)/);
+      sessionToken = cookieMatch ? cookieMatch[1] : undefined;
+    }
+    
+    clients.set(ws, { sessionToken });
 
     // Send initial connection confirmation
     ws.send(JSON.stringify({
@@ -1371,11 +1380,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
 
     // Handle client messages
-    ws.on('message', (message: string) => {
+    ws.on('message', async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
+        
         if (data.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+        } else if (data.type === 'auth_status_request') {
+          // Handle auth status request via WebSocket
+          try {
+            const clientInfo = clients.get(ws);
+            const sessionToken = clientInfo?.sessionToken;
+            
+            if (!sessionToken) {
+              const response = {
+                type: 'auth_status_response',
+                data: {
+                  valid: false,
+                  message: 'No session token found'
+                },
+                timestamp: new Date().toISOString()
+              };
+              ws.send(JSON.stringify(response));
+              return;
+            }
+
+            // Validate session using existing auth logic
+            const ipAddress = req.ip || req.connection?.remoteAddress || 'websocket';
+            const session = await dbStorage.validateSession(sessionToken, ipAddress);
+            
+            if (session) {
+              // Update client info with user data
+              clients.set(ws, { sessionToken, user: session.user });
+              
+              const response = {
+                type: 'auth_status_response',
+                data: {
+                  valid: true,
+                  user: session.user,
+                  message: 'Session valid'
+                },
+                timestamp: new Date().toISOString()
+              };
+              ws.send(JSON.stringify(response));
+            } else {
+              const response = {
+                type: 'session_expired',
+                data: {
+                  valid: false,
+                  message: 'Session expired or invalid'
+                },
+                timestamp: new Date().toISOString()
+              };
+              ws.send(JSON.stringify(response));
+            }
+          } catch (authError) {
+            console.error('WebSocket auth check error:', authError);
+            const response = {
+              type: 'auth_status_response',
+              data: {
+                valid: false,
+                message: 'Session validation failed'
+              },
+              timestamp: new Date().toISOString()
+            };
+            ws.send(JSON.stringify(response));
+          }
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -1403,7 +1473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: new Date().toISOString()
     });
 
-    clients.forEach((client) => {
+    clients.forEach((clientInfo, client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
       }

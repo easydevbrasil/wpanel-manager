@@ -124,6 +124,17 @@ export function useWebSocket() {
 
           // Handle different message types and invalidate queries
           switch (message.type) {
+            // Authentication messages
+            case 'auth_status_response':
+              // Handle auth status response (no toast needed)
+              console.log('Auth status response received via WebSocket:', message.data);
+              break;
+            
+            case 'session_expired':
+              console.log('Session expired notification via WebSocket');
+              // Let useAuth handle this
+              break;
+            
             // Client operations
             case 'client_created':
             case 'client_updated':
