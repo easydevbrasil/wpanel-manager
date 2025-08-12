@@ -221,7 +221,7 @@ async function runDockerCommand(command: string): Promise<{ stdout: string; stde
   try {
     console.log(`Executing Docker command: docker ${command}`);
     const { stdout, stderr } = await execAsync(`docker ${command}`, {
-      timeout: 30000, // 30 seconds timeout
+      timeout: 60000, // 60 seconds timeout for container operations
       maxBuffer: 1024 * 1024 * 10, // 10MB buffer
     });
     return { stdout, stderr };
@@ -250,18 +250,21 @@ async function listDockerContainers(): Promise<any[]> {
       
       // Parse status to determine state
       let state = 'unknown';
-      if (status.includes('Up')) {
-        if (status.includes('Paused')) {
+      const statusLower = status.toLowerCase();
+      if (statusLower.includes('up')) {
+        if (statusLower.includes('paused')) {
           state = 'paused';
         } else {
           state = 'running';
         }
-      } else if (status.includes('Exited')) {
+      } else if (statusLower.includes('exited')) {
         state = 'exited';
-      } else if (status.includes('Restarting')) {
+      } else if (statusLower.includes('restarting')) {
         state = 'restarting';
-      } else if (status.includes('Created')) {
+      } else if (statusLower.includes('created')) {
         state = 'created';
+      } else if (statusLower.includes('dead')) {
+        state = 'dead';
       }
       
       // Parse ports

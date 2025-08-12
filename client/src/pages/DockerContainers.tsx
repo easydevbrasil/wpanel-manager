@@ -216,8 +216,13 @@ export default function DockerContainers() {
         throw new Error(error.message || 'Falha de comunicação ao iniciar container');
       }
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
+    onSuccess: async (data) => {
+      // Wait a bit for Docker to update the container state
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
+        queryClient.refetchQueries({ queryKey: ["/api/docker/containers"] });
+      }, 1000);
+      
       toast({
         title: "▶️ Container iniciado",
         description: data.mock ? "Container iniciado (modo demo)" : "Container Docker iniciado com sucesso!",
@@ -261,8 +266,13 @@ export default function DockerContainers() {
         throw new Error(error.message || 'Falha de comunicação ao parar container');
       }
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
+    onSuccess: async (data) => {
+      // Wait a bit for Docker to update the container state
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
+        queryClient.refetchQueries({ queryKey: ["/api/docker/containers"] });
+      }, 1000);
+      
       toast({
         title: "⏹️ Container parado",
         description: data.mock ? "Container parado (modo demo)" : "Container Docker parado com sucesso!",
@@ -307,8 +317,13 @@ export default function DockerContainers() {
         throw new Error(error.message || 'Falha de comunicação ao reiniciar container');
       }
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
+    onSuccess: async (data) => {
+      // Wait a bit for Docker to update the container state
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
+        queryClient.refetchQueries({ queryKey: ["/api/docker/containers"] });
+      }, 1000);
+      
       toast({
         title: "🔄 Container reiniciado",
         description: data.mock ? "Container reiniciado (modo demo)" : "Container Docker reiniciado com sucesso!",
