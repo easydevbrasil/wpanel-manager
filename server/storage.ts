@@ -400,7 +400,11 @@ export class DatabaseStorage implements IStorage {
     // Database initialization - all data is now stored in PostgreSQL
     try {
       const existingUsers = await db.select().from(users).limit(1);
-      if (existingUsers.length === 0) {
+      const existingSuppliers = await db.select().from(suppliers).limit(1);
+      const existingSales = await db.select().from(sales).limit(1);
+      
+      if (existingUsers.length === 0 || existingSuppliers.length === 0 || existingSales.length === 0) {
+        console.log("Creating missing sample data...");
         await this.createSampleData();
         console.log("Database initialized with sample data");
       } else {
@@ -433,6 +437,131 @@ export class DatabaseStorage implements IStorage {
     // Fetch admin user to use their ID for permissions and other associations
     const [adminUser] = await db.select().from(users).where(eq(users.username, "admin")).limit(1);
 
+    // Create sample categories
+    const categoriesData = [
+      {
+        name: "Eletrônicos",
+        description: "Produtos eletrônicos em geral",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Móveis",
+        description: "Móveis para casa e escritório",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Roupas",
+        description: "Vestuário em geral",
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    await db.insert(categories).values(categoriesData);
+
+    // Create sample manufacturers
+    const manufacturersData = [
+      {
+        name: "TechCorp",
+        description: "Fabricante de eletrônicos",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "MobileFlex",
+        description: "Fabricante de móveis",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Fashion Brand",
+        description: "Marca de roupas",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "WearTech",
+        description: "Tecnologia vestível",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "GameGear",
+        description: "Equipamentos para jogos",
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    await db.insert(manufacturers).values(manufacturersData);
+
+    // Create sample product groups
+    const productGroupsData = [
+      {
+        name: "Smartphones",
+        description: "Telefones inteligentes",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Camisetas",
+        description: "Camisetas diversas",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Laptops",
+        description: "Computadores portáteis",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Cadeiras",
+        description: "Cadeiras de escritório",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Monitores",
+        description: "Monitores de computador",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Mesas",
+        description: "Mesas de escritório",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Wearables",
+        description: "Dispositivos vestíveis",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Calças",
+        description: "Calças diversas",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Periféricos",
+        description: "Periféricos de computador",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Estantes",
+        description: "Estantes e prateleiras",
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    await db.insert(productGroups).values(productGroupsData);
 
     // Create sample user
     const [user] = await db.insert(users).values({
