@@ -20,16 +20,7 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  Star, 
-  StarOff, 
-  Settings, 
-  Server, 
-  Shield, 
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Eye,
-  EyeOff
+  Star
 } from 'lucide-react';
 import { useWebSocket } from '@/hooks/use-websocket';
 
@@ -60,19 +51,7 @@ interface EmailAccount {
 const emailAccountSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('Email inválido'),
-  provider: z.string().min(1, 'Provedor é obrigatório'),
-  smtpHost: z.string().optional(),
-  smtpPort: z.number().min(1).max(65535).optional(),
-  smtpSecure: z.boolean().default(true),
-  imapHost: z.string().optional(),
-  imapPort: z.number().min(1).max(65535).optional(),
-  imapSecure: z.boolean().default(true),
-  username: z.string().min(1, 'Nome de usuário é obrigatório'),
-  password: z.string().min(1, 'Senha é obrigatória'),
-  syncFrequency: z.number().min(60).default(300),
   signature: z.string().optional(),
-  autoReply: z.boolean().default(false),
-  autoReplyMessage: z.string().optional(),
 });
 
 type EmailAccountFormData = z.infer<typeof emailAccountSchema>;
@@ -82,18 +61,11 @@ export default function EmailAccounts() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
-  const [showPasswords, setShowPasswords] = useState<{[key: number]: boolean}>({});
-
   useWebSocket();
 
   const form = useForm<EmailAccountFormData>({
     resolver: zodResolver(emailAccountSchema),
-    defaultValues: {
-      smtpSecure: true,
-      imapSecure: true,
-      syncFrequency: 300,
-      autoReply: false,
-    },
+    defaultValues: {},
   });
 
   const { data: accounts = [], isLoading } = useQuery<EmailAccount[]>({
@@ -218,19 +190,7 @@ export default function EmailAccounts() {
       form.reset({
         name: account.name,
         email: account.email,
-        provider: account.provider,
-        smtpHost: account.smtpHost || '',
-        smtpPort: account.smtpPort || 587,
-        smtpSecure: account.smtpSecure,
-        imapHost: account.imapHost || '',
-        imapPort: account.imapPort || 993,
-        imapSecure: account.imapSecure,
-        username: account.username,
-        password: account.password,
-        syncFrequency: account.syncFrequency,
         signature: account.signature || '',
-        autoReply: account.autoReply,
-        autoReplyMessage: account.autoReplyMessage || '',
       });
     } else {
       setEditingAccount(null);
@@ -239,21 +199,8 @@ export default function EmailAccounts() {
     setIsDialogOpen(true);
   };
 
-  const togglePasswordVisibility = (accountId: number) => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [accountId]: !prev[accountId]
-    }));
-  };
-
   const getProviderIcon = (provider: string) => {
-    switch (provider.toLowerCase()) {
-      case 'gmail': return '📧';
-      case 'outlook': return '📮';
-      case 'smtp': return '📨';
-      case 'imap': return '📬';
-      default: return '📧';
-    }
+    return '📧';
   };
 
   const getStatusColor = (status: string) => {
@@ -263,30 +210,6 @@ export default function EmailAccounts() {
       case 'error': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
-  };
-
-  // Check if we have SMTP environment variables
-  const hasSmtpEnvVars = () => {
-    // Check if any of the common SMTP environment variables exist
-    return !!(
-      (typeof window !== 'undefined' && window.location.hostname !== 'localhost') ||
-      process.env.REACT_APP_SMTP_HOST ||
-      process.env.SMTP_HOST ||
-      process.env.MAIL_HOST ||
-      process.env.EMAIL_HOST
-    );
-  };
-
-  // Check if we have IMAP environment variables
-  const hasImapEnvVars = () => {
-    // Check if any of the common IMAP environment variables exist
-    return !!(
-      (typeof window !== 'undefined' && window.location.hostname !== 'localhost') ||
-      process.env.REACT_APP_IMAP_HOST ||
-      process.env.IMAP_HOST ||
-      process.env.MAIL_IMAP_HOST ||
-      process.env.EMAIL_IMAP_HOST
-    );
   };
 
   return (
@@ -313,305 +236,51 @@ export default function EmailAccounts() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome da Conta</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Email Principal" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="usuario@empresa.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="provider"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Provedor</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o provedor" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="gmail">Gmail</SelectItem>
-                            <SelectItem value="outlook">Outlook</SelectItem>
-                            <SelectItem value="smtp">SMTP Personalizado</SelectItem>
-                            <SelectItem value="imap">IMAP Personalizado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome de Usuário</FormLabel>
-                        <FormControl>
-                          <Input placeholder="usuario@empresa.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <FormField
                   control={form.control}
-                  name="password"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Senha</FormLabel>
+                      <FormLabel>Nome da Conta</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input placeholder="Ex: Email Principal" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="usuario@empresa.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <Separator />
-
-                {!hasSmtpEnvVars() && (
-                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <h4 className="font-medium text-gray-900 dark:text-white">Configurações SMTP</h4>
-                    <FormField
-                      control={form.control}
-                      name="smtpHost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Servidor SMTP</FormLabel>
-                          <FormControl>
-                            <Input placeholder="smtp.gmail.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex space-x-2">
-                      <FormField
-                        control={form.control}
-                        name="smtpPort"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Porta SMTP</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="587" 
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 587)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="smtpSecure"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 pt-6">
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel>SSL/TLS</FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {hasSmtpEnvVars() && (
-                  <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                        Configurações SMTP definidas via variáveis de ambiente
-                      </span>
-                    </div>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      As configurações SMTP estão sendo carregadas automaticamente das variáveis de ambiente do servidor.
-                    </p>
-                  </div>
-                )}
-
-                {!hasImapEnvVars() && (
-                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <h4 className="font-medium text-gray-900 dark:text-white">Configurações IMAP</h4>
-                    <FormField
-                      control={form.control}
-                      name="imapHost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Servidor IMAP</FormLabel>
-                          <FormControl>
-                            <Input placeholder="imap.gmail.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex space-x-2">
-                      <FormField
-                        control={form.control}
-                        name="imapPort"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Porta IMAP</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="993" 
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 993)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="imapSecure"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 pt-6">
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel>SSL/TLS</FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {hasImapEnvVars() && (
-                  <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm text-green-700 dark:text-green-300 font-medium">
-                        Configurações IMAP definidas via variáveis de ambiente
-                      </span>
-                    </div>
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      As configurações IMAP estão sendo carregadas automaticamente das variáveis de ambiente do servidor.
-                    </p>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="font-semibold flex items-center">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Configurações Avançadas
-                  </h4>
-                  <FormField
-                    control={form.control}
-                    name="syncFrequency"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Frequência de Sincronização (segundos)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="300" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 300)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="signature"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Assinatura</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Sua assinatura de email..."
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center space-x-2">
-                    <FormField
-                      control={form.control}
-                      name="autoReply"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel>Resposta Automática</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  {form.watch('autoReply') && (
-                    <FormField
-                      control={form.control}
-                      name="autoReplyMessage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Mensagem de Resposta Automática</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Obrigado por entrar em contato..."
-                              rows={3}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <FormField
+                  control={form.control}
+                  name="signature"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assinatura</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Sua assinatura de email..."
+                          rows={4}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
+                />
 
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
@@ -675,74 +344,14 @@ export default function EmailAccounts() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">{account.email}</p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                {account.signature && (
                   <div>
-                    <div className="font-medium text-gray-600 dark:text-gray-400">Provedor</div>
-                    <div className="capitalize">{account.provider}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-600 dark:text-gray-400">Usuário</div>
-                    <div className="truncate">{account.username}</div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-600 dark:text-gray-400">SMTP</div>
-                    <div className="flex items-center space-x-1">
-                      <Server className="w-3 h-3" />
-                      <span>{account.smtpHost || 'N/A'}</span>
-                      {account.smtpSecure && <Shield className="w-3 h-3 text-green-600" />}
+                    <div className="font-medium text-gray-600 dark:text-gray-400 mb-1">Assinatura</div>
+                    <div className="text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded whitespace-pre-wrap">
+                      {account.signature}
                     </div>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-600 dark:text-gray-400">IMAP</div>
-                    <div className="flex items-center space-x-1">
-                      <Mail className="w-3 h-3" />
-                      <span>{account.imapHost || 'N/A'}</span>
-                      {account.imapSecure && <Shield className="w-3 h-3 text-green-600" />}
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <div className="font-medium text-gray-600 dark:text-gray-400">Senha</div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs">
-                        {showPasswords[account.id] ? account.password : '••••••••'}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => togglePasswordVisibility(account.id)}
-                      >
-                        {showPasswords[account.id] ? (
-                          <EyeOff className="w-3 h-3" />
-                        ) : (
-                          <Eye className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {account.lastSync && (
-                  <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
-                    <Clock className="w-3 h-3" />
-                    <span>Última sincronização: {new Date(account.lastSync).toLocaleString()}</span>
                   </div>
                 )}
-
-                <div className="flex items-center space-x-2">
-                  {account.autoReply && (
-                    <Badge variant="outline" className="text-xs">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Auto-resposta
-                    </Badge>
-                  )}
-                  {account.signature && (
-                    <Badge variant="outline" className="text-xs">
-                      <Edit className="w-3 h-3 mr-1" />
-                      Assinatura
-                    </Badge>
-                  )}
-                </div>
 
                 <Separator />
 
