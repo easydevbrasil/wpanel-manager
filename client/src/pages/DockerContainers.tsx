@@ -92,11 +92,12 @@ const getStatusColor = (state: string) => {
     case "exited":
       return "bg-red-500";
     case "paused":
-      return "bg-yellow-500";
+      return "bg-orange-500";
     case "restarting":
-      return "bg-blue-500";
+      return "bg-orange-500";
     case "created":
-      return "bg-gray-500";
+    case "starting":
+      return "bg-yellow-500";
     default:
       return "bg-gray-500";
   }
@@ -113,7 +114,9 @@ const getStatusText = (state: string) => {
     case "restarting":
       return "Reiniciando";
     case "created":
-      return "Criado";
+      return "Iniciando";
+    case "starting":
+      return "Iniciando";
     default:
       return state;
   }
