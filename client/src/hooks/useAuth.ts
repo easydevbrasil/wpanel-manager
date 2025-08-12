@@ -33,7 +33,17 @@ export function useAuthState() {
 
   useEffect(() => {
     checkAuthStatus();
-  }, []);
+    
+    // Check auth status every 5 minutes to keep session alive
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("sessionToken");
+      if (token && user) {
+        checkAuthStatus();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   const checkAuthStatus = async () => {
     const token = localStorage.getItem("sessionToken");
@@ -43,6 +53,8 @@ export function useAuthState() {
     }
 
     try {
+      console.log('Checking auth status with token:', token);
+      
       const response = await fetch("/api/auth/verify", {
         headers: {
           "session-token": token,
@@ -51,11 +63,14 @@ export function useAuthState() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Auth verification successful:', data);
         setUser(data.user);
       } else {
+        console.log('Auth verification failed:', response.status);
         localStorage.removeItem("sessionToken");
       }
     } catch (error) {
+      console.error('Auth verification error:', error);
       localStorage.removeItem("sessionToken");
     } finally {
       setIsLoading(false);

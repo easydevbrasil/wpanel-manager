@@ -64,7 +64,8 @@ import {
   type InsertDockerContainer,
   webhookConfigs,
   type WebhookConfig,
-  type InsertWebhookConfig
+  type InsertWebhookConfig,
+  sessions
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -232,7 +233,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  private sessions: Map<string, any> = new Map();
+  // private sessions: Map<string, any> = new Map(); // Removed in-memory session management
 
   constructor() {
     this.initializeData();
@@ -726,38 +727,41 @@ export class DatabaseStorage implements IStorage {
   // Authentication methods
   async authenticateUser(username: string, password: string): Promise<{ user: User; token: string } | null> {
     try {
-      const [user] = await db.select().from(users).where(eq(users.username, username));
+      console.log('Authenticating user:', username);
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
 
       if (!user) {
+        console.log('User not found:', username);
         return null;
       }
 
-      // Verify password with Argon2
-      let isValidPassword = false;
-      try {
-        isValidPassword = await argon2.verify(user.password, password);
-      } catch (error) {
-        // If Argon2 verification fails, try old hash method for backward compatibility
-        const hashedPassword = this.hashPassword(password);
-        isValidPassword = (user.password === hashedPassword);
-
-        // If old method works, update to Argon2
-        if (isValidPassword) {
-          const argonHash = await argon2.hash(password);
-          await db.update(users).set({ password: argonHash }).where(eq(users.id, user.id));
-        }
-      }
-
-      if (!isValidPassword) {
+      // Verify password using Argon2
+      const isValid = await argon2.verify(user.password, password);
+      if (!isValid) {
+        console.log('Invalid password for user:', username);
         return null;
       }
 
-      // Generate session token
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      // Remove any existing sessions for this user to prevent multiple sessions
+      await db.delete(sessions).where(eq(sessions.userId, user.id));
 
-      // Store session (you might want to create a sessions table)
-      await this.createSession(user.id, token, expiresAt);
+      // Create new session
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+      await db.insert(sessions).values({
+        userId: user.id,
+        token: sessionToken,
+        expiresAt: expiresAt.toISOString()
+      });
+
+      console.log('Session created successfully for user:', username, 'Token:', sessionToken);
 
       return {
         user: {
@@ -767,62 +771,100 @@ export class DatabaseStorage implements IStorage {
           role: user.role,
           avatar: user.avatar
         },
-        token
+        token: sessionToken // Changed from sessionToken to token to match interface
       };
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('Error authenticating user:', error);
       return null;
     }
   }
 
   async validateSession(sessionToken: string): Promise<{ user: any } | null> {
     try {
-      const session = this.sessions.get(sessionToken);
+      console.log('Validating session token:', sessionToken);
+
+      const [session] = await db
+        .select({
+          id: sessions.id,
+          userId: sessions.userId,
+          expiresAt: sessions.expiresAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            avatar: users.avatar
+          }
+        })
+        .from(sessions)
+        .innerJoin(users, eq(sessions.userId, users.id))
+        .where(eq(sessions.token, sessionToken))
+        .limit(1);
 
       if (!session) {
+        console.log('Session not found for token:', sessionToken);
         return null;
       }
 
       // Check if session is expired
-      if (Date.now() > session.expiresAt) {
-        this.sessions.delete(sessionToken);
+      const now = new Date();
+      const expiresAt = new Date(session.expiresAt);
+
+      console.log('Session expires at:', expiresAt);
+      console.log('Current time:', now);
+
+      if (now > expiresAt) {
+        console.log('Session expired, invalidating');
+        await this.invalidateSession(sessionToken);
         return null;
       }
 
-      return {
-        user: session.user
-      };
+      // Extend session expiration by 7 days from now
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+
+      await db
+        .update(sessions)
+        .set({ expiresAt: newExpiresAt.toISOString() })
+        .where(eq(sessions.token, sessionToken));
+
+      console.log('Session validated successfully for user:', session.user.username);
+      return { user: session.user };
     } catch (error) {
-      console.error('Session validation error:', error);
+      console.error('Error validating session:', error);
       return null;
     }
   }
 
   async invalidateSession(sessionToken: string): Promise<void> {
     try {
-      this.sessions.delete(sessionToken);
+      console.log('Invalidating session for token:', sessionToken);
+      await db.delete(sessions).where(eq(sessions.token, sessionToken));
+      console.log('Session invalidated successfully');
     } catch (error) {
       console.error('Session invalidation error:', error);
     }
   }
 
-  private async createSession(userId: number, token: string, expiresAt: Date) {
-    const user = await this.getUser(userId);
-    if (user) {
-      this.sessions.set(token, {
-        token,
-        userId,
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name,
-          role: user.role,
-          avatar: user.avatar
-        },
-        expiresAt
-      });
-    }
-  }
+  // Removed the old createSession method that used an in-memory map
+  // private async createSession(userId: number, token: string, expiresAt: Date) {
+  //   const user = await this.getUser(userId);
+  //   if (user) {
+  //     this.sessions.set(token, {
+  //       token,
+  //       userId,
+  //       user: {
+  //         id: user.id,
+  //         username: user.username,
+  //         name: user.name,
+  //         role: user.role,
+  //         avatar: user.avatar
+  //       },
+  //       expiresAt
+  //     });
+  //   }
+  // }
 
   // Utility methods for password hashing and session token generation
   private hashPassword(password: string): string {
