@@ -252,7 +252,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Always try to create admin user since you deleted all users
       console.log('Creating admin user with credentials: admin / admin123');
-      
+
       const hashedPassword = await argon2.hash('admin123');
 
       const [newUser] = await db
@@ -311,15 +311,6 @@ export class DatabaseStorage implements IStorage {
 
   private async createSampleData() {
     const now = new Date().toISOString();
-
-    // Create admin user with Argon2 hashed password (this part is now handled by createAdminUser)
-    // const [adminUser] = await db.insert(users).values({
-    //   username: "admin",
-    //   password: await argon2.hash("admin123"),
-    //   name: "Administrador",
-    //   role: "Admin",
-    //   avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-    // }).returning();
 
     // Fetch admin user to use their ID for permissions and other associations
     const [adminUser] = await db.select().from(users).where(eq(users.username, "admin")).limit(1);
@@ -622,9 +613,6 @@ export class DatabaseStorage implements IStorage {
 
     await db.insert(navigationItems).values(navItems);
 
-    // Create default permissions for the admin user (this is now called in createAdminUser)
-    // this.createDefaultPermissionsForUser(adminUser);
-
     // Sample docker containers
       const sampleContainers = [
         {
@@ -770,10 +758,9 @@ export class DatabaseStorage implements IStorage {
   // Authentication methods
   async authenticateUser(username: string, password: string, ipAddress?: string, userAgent?: string): Promise<{ user: User; sessionToken: string; refreshToken: string } | null> {
     try {
-      console.log('Authenticating user:', username);
+      console.log('Authenticating user with Argon2 verification:', username);
 
-      const [user] = await db
-        .select()
+      const [user] = await db.select()
         .from(users)
         .where(eq(users.username, username))
         .limit(1);
@@ -793,45 +780,28 @@ export class DatabaseStorage implements IStorage {
       // Remove any existing sessions for this user to prevent multiple sessions
       await db.delete(sessions).where(eq(sessions.userId, user.id));
 
-      // Generate secure tokens
-      const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
+      // Generate secure random tokens
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      const refreshToken = crypto.randomBytes(32).toString('hex');
 
-      // Session token (short-lived, 15 minutes)
-      const sessionPayload = {
-        userId: user.id,
-        username: user.username,
-        role: user.role,
-        type: 'session',
-        iat: Math.floor(Date.now() / 1000)
-      };
-      const sessionToken = jwt.sign(sessionPayload, sessionSecret, { expiresIn: '15m' });
-
-      // Refresh token (long-lived, 7 days)
-      const refreshPayload = {
-        userId: user.id,
-        username: user.username,
-        type: 'refresh',
-        iat: Math.floor(Date.now() / 1000)
-      };
-      const refreshToken = jwt.sign(refreshPayload, sessionSecret, { expiresIn: '7d' });
-
-      // Store session in database with additional security
+      // Hash tokens for storage
       const sessionHash = await argon2.hash(sessionToken);
       const refreshHash = await argon2.hash(refreshToken);
 
       const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes
+      expiresAt.setHours(expiresAt.getHours() + 4); // 4 hours
 
       const refreshExpiresAt = new Date();
-      refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 7); // 7 days
+      refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 30); // 30 days
 
       await db.insert(sessions).values({
         userId: user.id,
         token: sessionHash,
-        expiresAt: expiresAt, // Use Date object directly instead of toISOString()
+        refreshToken: refreshHash,
+        expiresAt: expiresAt,
         refreshExpiresAt: refreshExpiresAt,
-        ipAddress: ipAddress,
-        userAgent: userAgent
+        ipAddress: ipAddress || 'unknown',
+        userAgent: userAgent || 'unknown'
       });
 
       console.log('Secure session created successfully for user:', username);
@@ -855,18 +825,23 @@ export class DatabaseStorage implements IStorage {
 
   async validateSession(sessionToken: string, ipAddress?: string): Promise<{ user: any } | null> {
     try {
-      console.log('Validating Argon2 session token');
+      console.log('Validating session token');
 
       // Get all active sessions from database
-      const activeSessions = await db
-        .select()
-        .from(sessions)
-        .where(and(
-          eq(sessions.isActive, true),
-          sql`${sessions.expiresAt} > NOW()`
-        ));
+      const activeSessions = await db.select({
+        id: sessions.id,
+        userId: sessions.userId,
+        token: sessions.token,
+        expiresAt: sessions.expiresAt,
+        ipAddress: sessions.ipAddress,
+        userAgent: sessions.userAgent
+      })
+      .from(sessions)
+      .where(sql`${sessions.expiresAt} > NOW()`);
 
-      // Find matching session by verifying token hash
+      console.log(`Found ${activeSessions.length} active sessions`);
+
+      // Find matching session by comparing hashed tokens
       let matchingSession = null;
       for (const session of activeSessions) {
         try {
@@ -875,34 +850,21 @@ export class DatabaseStorage implements IStorage {
             matchingSession = session;
             break;
           }
-        } catch (verifyError) {
-          // Continue to next session
+        } catch (error) {
+          console.log('Error verifying session token:', error);
           continue;
         }
       }
 
       if (!matchingSession) {
-        console.log('Session not found or invalid');
+        console.log('No matching session found');
         return null;
       }
 
-      // Check if session is expired
-      if (new Date() > new Date(matchingSession.expiresAt)) {
-        console.log('Session expired');
-        await this.invalidateSessionById(matchingSession.id);
-        return null;
-      }
+      console.log('Session validated successfully for user:', matchingSession.userId);
 
-      // Get user data
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          avatar: users.avatar
-        })
+      // Get user information
+      const [user] = await db.select()
         .from(users)
         .where(eq(users.id, matchingSession.userId))
         .limit(1);
@@ -912,19 +874,17 @@ export class DatabaseStorage implements IStorage {
         return null;
       }
 
-      // Update last activity
-      await db
-        .update(sessions)
-        .set({
-          lastActivityAt: new Date(),
-          ipAddress: ipAddress || matchingSession.ipAddress
-        })
-        .where(eq(sessions.id, matchingSession.id));
-
-      console.log('Session validated successfully for user:', user.username);
-      return { user };
+      return {
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          avatar: user.avatar
+        }
+      };
     } catch (error) {
-      console.error('Error validating session:', error);
+      console.error('Session validation error:', error);
       return null;
     }
   }
@@ -933,79 +893,67 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('Refreshing session');
 
-      const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
+      // Get all sessions with valid refresh tokens
+      const activeSessions = await db.select()
+        .from(sessions)
+        .where(sql`${sessions.refreshExpiresAt} > NOW()`);
 
-      // Verify refresh token
-      let decoded: any;
-      try {
-        decoded = jwt.verify(refreshToken, sessionSecret) as any;
-      } catch (jwtError) {
-        console.log('Invalid refresh token:', jwtError);
+      // Find matching session by comparing hashed refresh tokens
+      let matchingSession = null;
+      for (const session of activeSessions) {
+        try {
+          if (session.refreshToken) {
+            const isValid = await argon2.verify(session.refreshToken, refreshToken);
+            if (isValid) {
+              matchingSession = session;
+              break;
+            }
+          }
+        } catch (error) {
+          console.log('Error verifying refresh token:', error);
+          continue;
+        }
+      }
+
+      if (!matchingSession) {
+        console.log('No matching refresh session found');
         return null;
       }
 
-      if (decoded.type !== 'refresh') {
-        console.log('Invalid refresh token type');
-        return null;
-      }
+      // Generate new secure random tokens
+      const newSessionToken = crypto.randomBytes(32).toString('hex');
+      const newRefreshToken = crypto.randomBytes(32).toString('hex');
 
-      // Get user
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, decoded.userId))
-        .limit(1);
-
-      if (!user) {
-        console.log('User not found for refresh token');
-        return null;
-      }
-
-      // Generate new tokens
-      const sessionPayload = {
-        userId: user.id,
-        username: user.username,
-        role: user.role,
-        type: 'session',
-        iat: Math.floor(Date.now() / 1000)
-      };
-      const newSessionToken = jwt.sign(sessionPayload, sessionSecret, { expiresIn: '15m' });
-
-      const refreshPayload = {
-        userId: user.id,
-        username: user.username,
-        type: 'refresh',
-        iat: Math.floor(Date.now() / 1000)
-      };
-      const newRefreshToken = jwt.sign(refreshPayload, sessionSecret, { expiresIn: '7d' });
+      // Hash new tokens
+      const newSessionHash = await argon2.hash(newSessionToken);
+      const newRefreshHash = await argon2.hash(newRefreshToken);
 
       // Update session in database
-      const sessionHash = await argon2.hash(newSessionToken);
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+      const newExpiresAt = new Date();
+      newExpiresAt.setHours(newExpiresAt.getHours() + 4); // 4 hours
 
-      const refreshExpiresAt = new Date();
-      refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 7);
+      const newRefreshExpiresAt = new Date();
+      newRefreshExpiresAt.setDate(newRefreshExpiresAt.getDate() + 30); // 30 days
 
-      await db
-        .update(sessions)
-        .set({ 
-          token: sessionHash,
-          expiresAt: expiresAt,
-          refreshExpiresAt: refreshExpiresAt,
-          ipAddress: ipAddress,
-          userAgent: userAgent,
-          lastActivityAt: new Date()
+      await db.update(sessions)
+        .set({
+          token: newSessionHash,
+          refreshToken: newRefreshHash,
+          expiresAt: newExpiresAt,
+          refreshExpiresAt: newRefreshExpiresAt,
+          ipAddress: ipAddress || 'unknown',
+          userAgent: userAgent || 'unknown'
         })
-        .where(eq(sessions.userId, user.id));
+        .where(eq(sessions.id, matchingSession.id));
 
-      console.log('Session refreshed successfully for user:', user.username);
+      console.log('Session refreshed successfully');
+
       return {
         sessionToken: newSessionToken,
         refreshToken: newRefreshToken
       };
     } catch (error) {
-      console.error('Error refreshing session:', error);
+      console.error('Session refresh error:', error);
       return null;
     }
   }
@@ -1014,17 +962,25 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('Invalidating session');
 
-      const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production';
+      // Get all sessions
+      const allSessions = await db.select()
+        .from(sessions);
 
-      let decoded: any;
-      try {
-        decoded = jwt.verify(sessionToken, sessionSecret) as any;
-        await db.delete(sessions).where(eq(sessions.userId, decoded.userId));
-      } catch (jwtError) {
-        console.log('Token already invalid or expired');
+      // Find and delete matching session
+      for (const session of allSessions) {
+        try {
+          const isValid = await argon2.verify(session.token, sessionToken);
+          if (isValid) {
+            await db.delete(sessions).where(eq(sessions.id, session.id));
+            console.log('Session invalidated successfully');
+            return;
+          }
+        } catch (error) {
+          continue;
+        }
       }
 
-      console.log('Session invalidated successfully');
+      console.log('Session not found for invalidation');
     } catch (error) {
       console.error('Session invalidation error:', error);
     }
@@ -1049,25 +1005,6 @@ export class DatabaseStorage implements IStorage {
       console.error('Error invalidating user sessions:', error);
     }
   }
-
-  // Removed the old createSession method that used an in-memory map
-  // private async createSession(userId: number, token: string, expiresAt: Date) {
-  //   const user = await this.getUser(userId);
-  //   if (user) {
-  //     this.sessions.set(token, {
-  //       token,
-  //       userId,
-  //       user: {
-  //         id: user.id,
-  //         username: user.username,
-  //         name: user.name,
-  //         role: user.role,
-  //         avatar: user.avatar
-  //       },
-  //       expiresAt
-  //     });
-  //   }
-  // }
 
   // Utility methods for password hashing and session token generation
   private hashPassword(password: string): string {
