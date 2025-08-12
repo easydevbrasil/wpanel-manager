@@ -7,6 +7,8 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import multer from "multer";
+import { spawn, exec } from "child_process";
+import { promisify } from "util";
 import os from "os";
 
 // Helper function to measure CPU usage
@@ -211,6 +213,195 @@ const upload = multer({
     }
   },
 });
+
+const execAsync = promisify(exec);
+
+// Função para executar comandos Docker via child_process
+async function runDockerCommand(command: string): Promise<{ stdout: string; stderr: string }> {
+  try {
+    console.log(`Executing Docker command: docker ${command}`);
+    const { stdout, stderr } = await execAsync(`docker ${command}`, {
+      timeout: 30000, // 30 seconds timeout
+      maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+    });
+    return { stdout, stderr };
+  } catch (error: any) {
+    console.error(`Docker command failed: docker ${command}`, error);
+    throw new Error(`Docker command failed: ${error.message}`);
+  }
+}
+
+// Função para listar containers Docker
+async function listDockerContainers(): Promise<any[]> {
+  try {
+    const { stdout } = await runDockerCommand(`ps -a --format "table {{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Command}}\\t{{.CreatedAt}}\\t{{.Status}}\\t{{.Ports}}" --no-trunc`);
+    
+    const lines = stdout.trim().split('\n');
+    if (lines.length <= 1) return []; // No containers or only header
+    
+    // Skip header line
+    const containerLines = lines.slice(1);
+    
+    const containers = containerLines.map(line => {
+      const parts = line.split('\t');
+      if (parts.length < 6) return null;
+      
+      const [id, names, image, command, createdAt, status, ports] = parts;
+      
+      // Parse status to determine state
+      let state = 'unknown';
+      if (status.includes('Up')) {
+        if (status.includes('Paused')) {
+          state = 'paused';
+        } else {
+          state = 'running';
+        }
+      } else if (status.includes('Exited')) {
+        state = 'exited';
+      } else if (status.includes('Restarting')) {
+        state = 'restarting';
+      } else if (status.includes('Created')) {
+        state = 'created';
+      }
+      
+      // Parse ports
+      const portMappings = ports ? ports.split(', ').map(portStr => {
+        const match = portStr.match(/(\d+\.\d+\.\d+\.\d+):(\d+)->(\d+)\/(\w+)/);
+        if (match) {
+          const [, ip, publicPort, privatePort, type] = match;
+          return {
+            IP: ip,
+            PrivatePort: parseInt(privatePort),
+            PublicPort: parseInt(publicPort),
+            Type: type
+          };
+        }
+        return null;
+      }).filter(Boolean) : [];
+      
+      return {
+        Id: id,
+        Names: names.split(',').map(name => name.startsWith('/') ? name : `/${name}`),
+        Image: image,
+        ImageID: `sha256:${id.substring(0, 12)}`,
+        Command: command,
+        Created: Math.floor(new Date(createdAt).getTime() / 1000),
+        Ports: portMappings,
+        Labels: {},
+        State: state,
+        Status: status,
+        HostConfig: { NetworkMode: "bridge" },
+        NetworkSettings: { Networks: { bridge: {} } },
+        Mounts: []
+      };
+    }).filter(Boolean);
+    
+    return containers;
+  } catch (error) {
+    console.error('Failed to list Docker containers:', error);
+    // Return mock data if Docker is not available
+    return getMockContainers();
+  }
+}
+
+// Função para obter containers mock quando Docker não está disponível
+function getMockContainers() {
+  return [
+    {
+      Id: "mock-nginx-001",
+      Names: ["/nginx-web-server"],
+      Image: "nginx:alpine",
+      ImageID: "sha256:abcd1234",
+      Command: "nginx -g 'daemon off;'",
+      Created: Math.floor(Date.now() / 1000) - 3600,
+      Ports: [
+        {
+          IP: "0.0.0.0",
+          PrivatePort: 80,
+          PublicPort: 8080,
+          Type: "tcp"
+        }
+      ],
+      Labels: {
+        "com.docker.compose.service": "web",
+        "description": "NGINX web server"
+      },
+      State: "running",
+      Status: "Up 1 hour",
+      HostConfig: { NetworkMode: "bridge" },
+      NetworkSettings: { Networks: { bridge: {} } },
+      Mounts: [
+        {
+          Type: "bind",
+          Source: "/var/www/html",
+          Destination: "/usr/share/nginx/html",
+          Mode: "rw",
+          RW: true,
+          Propagation: "rprivate"
+        }
+      ],
+    },
+    {
+      Id: "mock-postgres-002",
+      Names: ["/postgres-db"],
+      Image: "postgres:15-alpine",
+      ImageID: "sha256:efgh5678",
+      Command: "docker-entrypoint.sh postgres",
+      Created: Math.floor(Date.now() / 1000) - 7200,
+      Ports: [
+        {
+          IP: "0.0.0.0",
+          PrivatePort: 5432,
+          PublicPort: 5432,
+          Type: "tcp"
+        }
+      ],
+      Labels: {
+        "com.docker.compose.service": "database",
+        "description": "PostgreSQL database"
+      },
+      State: "running",
+      Status: "Up 2 hours",
+      HostConfig: { NetworkMode: "bridge" },
+      NetworkSettings: { Networks: { bridge: {} } },
+      Mounts: [
+        {
+          Type: "volume",
+          Source: "postgres_data",
+          Destination: "/var/lib/postgresql/data",
+          Mode: "rw",
+          RW: true,
+          Propagation: "rprivate"
+        }
+      ],
+    },
+    {
+      Id: "mock-redis-003",
+      Names: ["/redis-cache"],
+      Image: "redis:7-alpine",
+      ImageID: "sha256:ijkl9012",
+      Command: "redis-server",
+      Created: Math.floor(Date.now() / 1000) - 1800,
+      Ports: [
+        {
+          IP: "127.0.0.1",
+          PrivatePort: 6379,
+          PublicPort: 6379,
+          Type: "tcp"
+        }
+      ],
+      Labels: {
+        "com.docker.compose.service": "cache",
+        "description": "Redis cache server"
+      },
+      State: "exited",
+      Status: "Exited (0) 30 minutes ago",
+      HostConfig: { NetworkMode: "bridge" },
+      NetworkSettings: { Networks: { bridge: {} } },
+      Mounts: [],
+    }
+  ];
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files statically
@@ -1337,35 +1528,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Docker status endpoint
   app.get("/api/docker/status", authenticateToken, async (req, res) => {
     try {
-      const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
+      const { stdout } = await runDockerCommand("version --format '{{.Server.Version}}'");
+      const version = stdout.trim();
       
-      try {
-        const response = await fetch(`${dockerUri}/version`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(2000),
-        });
-
-        if (response.ok) {
-          const versionInfo = await response.json();
-          res.json({
-            available: true,
-            version: versionInfo.Version || 'unknown',
-            apiVersion: versionInfo.ApiVersion || 'unknown'
-          });
-        } else {
-          throw new Error('Docker API not responding');
-        }
-      } catch (dockerError) {
-        res.json({
-          available: false,
-          error: dockerError.message
-        });
-      }
+      res.json({
+        available: true,
+        version: version || 'unknown',
+        method: 'child_process'
+      });
     } catch (error) {
-      res.status(500).json({
+      res.json({
         available: false,
-        error: error.message
+        error: error.message,
+        method: 'child_process'
       });
     }
   });
@@ -1374,224 +1549,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
     try {
-      const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
-
-      // Try to connect to Docker API first
-      const response = await fetch(`${dockerUri}/containers/json?all=true`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: AbortSignal.timeout(2000), // 2 second timeout
-      });
-
-      if (!response.ok) {
-        throw new Error(`Docker API returned ${response.status}: ${response.statusText}`);
-      }
-
-      const containers = await response.json();
+      const containers = await listDockerContainers();
       res.json(containers);
     } catch (error) {
-      // Provide realistic mock containers when Docker API is unavailable
-      const mockContainers = [
-        {
-          Id: "mock-nginx-001",
-          Names: ["/nginx-web-server"],
-          Image: "nginx:alpine",
-          ImageID: "sha256:abcd1234",
-          Command: "nginx -g 'daemon off;'",
-          Created: Math.floor(Date.now() / 1000) - 3600,
-          Ports: [
-            {
-              IP: "0.0.0.0",
-              PrivatePort: 80,
-              PublicPort: 8080,
-              Type: "tcp"
-            }
-          ],
-          Labels: {
-            "com.docker.compose.service": "web",
-            "description": "NGINX web server"
-          },
-          State: "running",
-          Status: "Up 1 hour",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: { bridge: {} } },
-          Mounts: [
-            {
-              Type: "bind",
-              Source: "/var/www/html",
-              Destination: "/usr/share/nginx/html",
-              Mode: "rw",
-              RW: true,
-              Propagation: "rprivate"
-            }
-          ],
-        },
-        {
-          Id: "mock-postgres-002",
-          Names: ["/postgres-db"],
-          Image: "postgres:15-alpine",
-          ImageID: "sha256:efgh5678",
-          Command: "docker-entrypoint.sh postgres",
-          Created: Math.floor(Date.now() / 1000) - 7200,
-          Ports: [
-            {
-              IP: "0.0.0.0",
-              PrivatePort: 5432,
-              PublicPort: 5432,
-              Type: "tcp"
-            }
-          ],
-          Labels: {
-            "com.docker.compose.service": "database",
-            "description": "PostgreSQL database"
-          },
-          State: "running",
-          Status: "Up 2 hours",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: { bridge: {} } },
-          Mounts: [
-            {
-              Type: "volume",
-              Source: "postgres_data",
-              Destination: "/var/lib/postgresql/data",
-              Mode: "rw",
-              RW: true,
-              Propagation: "rprivate"
-            }
-          ],
-        },
-        {
-          Id: "mock-redis-003",
-          Names: ["/redis-cache"],
-          Image: "redis:7-alpine",
-          ImageID: "sha256:ijkl9012",
-          Command: "redis-server",
-          Created: Math.floor(Date.now() / 1000) - 1800,
-          Ports: [
-            {
-              IP: "127.0.0.1",
-              PrivatePort: 6379,
-              PublicPort: 6379,
-              Type: "tcp"
-            }
-          ],
-          Labels: {
-            "com.docker.compose.service": "cache",
-            "description": "Redis cache server"
-          },
-          State: "exited",
-          Status: "Exited (0) 30 minutes ago",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: { bridge: {} } },
-          Mounts: [],
-        },
-        {
-          Id: "mock-node-004",
-          Names: ["/node-app"],
-          Image: "node:18-alpine",
-          ImageID: "sha256:mnop3456",
-          Command: "npm start",
-          Created: Math.floor(Date.now() / 1000) - 900,
-          Ports: [
-            {
-              IP: "0.0.0.0",
-              PrivatePort: 3000,
-              PublicPort: 3000,
-              Type: "tcp"
-            }
-          ],
-          Labels: {
-            "com.docker.compose.service": "app",
-            "description": "Node.js application"
-          },
-          State: "paused",
-          Status: "Up 15 minutes (Paused)",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: { bridge: {} } },
-          Mounts: [
-            {
-              Type: "bind",
-              Source: "/app",
-              Destination: "/usr/src/app",
-              Mode: "rw",
-              RW: true,
-              Propagation: "rprivate"
-            }
-          ],
-        },
-        {
-          Id: "mock-mongodb-005",
-          Names: ["/mongodb"],
-          Image: "mongo:6-focal",
-          ImageID: "sha256:qrst7890",
-          Command: "mongod --bind_ip_all",
-          Created: Math.floor(Date.now() / 1000) - 5400,
-          Ports: [
-            {
-              IP: "0.0.0.0",
-              PrivatePort: 27017,
-              PublicPort: 27017,
-              Type: "tcp"
-            }
-          ],
-          Labels: {
-            "com.docker.compose.service": "database",
-            "description": "MongoDB database"
-          },
-          State: "restarting",
-          Status: "Restarting (1) 2 minutes ago",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: { bridge: {} } },
-          Mounts: [
-            {
-              Type: "volume",
-              Source: "mongodb_data",
-              Destination: "/data/db",
-              Mode: "rw",
-              RW: true,
-              Propagation: "rprivate"
-            }
-          ],
-        },
-        {
-          Id: "mock-mysql-006",
-          Names: ["/mysql-db"],
-          Image: "mysql:8.0",
-          ImageID: "sha256:uvwx1234",
-          Command: "mysqld",
-          Created: Math.floor(Date.now() / 1000) - 10800,
-          Ports: [
-            {
-              IP: "0.0.0.0",
-              PrivatePort: 3306,
-              PublicPort: 3306,
-              Type: "tcp"
-            }
-          ],
-          Labels: {
-            "com.docker.compose.service": "database",
-            "description": "MySQL database server"
-          },
-          State: "created",
-          Status: "Created",
-          HostConfig: { NetworkMode: "bridge" },
-          NetworkSettings: { Networks: { bridge: {} } },
-          Mounts: [
-            {
-              Type: "volume",
-              Source: "mysql_data",
-              Destination: "/var/lib/mysql",
-              Mode: "rw",
-              RW: true,
-              Propagation: "rprivate"
-            }
-          ],
-        }
-      ];
-
-      res.json(mockContainers);
+      console.error("Failed to list Docker containers:", error);
+      res.status(500).json({ 
+        message: "Falha ao listar containers Docker",
+        error: error.message 
+      });
     }
   });
 
@@ -1602,46 +1567,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
-
-        try {
-          const response = await fetch(
-            `${dockerUri}/containers/${containerId}/start`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(10000), // 10 second timeout
-            },
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Docker API error ${response.status}:`, errorText);
-            throw new Error(`Docker API returned ${response.status}: ${errorText}`);
-          }
-
-          console.log(`Successfully started container ${containerId}`);
-          res.json({ 
-            message: `Container iniciado com sucesso`,
-            containerId: containerId,
-            status: 'started'
-          });
-        } catch (dockerError) {
-          console.log(`Docker API unavailable, using mock: ${dockerError.message}`);
-          console.log(`Mock: Started container ${containerId}`);
-          res.json({ 
-            message: `Container iniciado com sucesso (modo demo)`,
-            containerId: containerId,
-            status: 'started',
-            mock: true
-          });
-        }
+        
+        await runDockerCommand(`start ${containerId}`);
+        
+        console.log(`Successfully started container ${containerId}`);
+        res.json({ 
+          message: `Container iniciado com sucesso`,
+          containerId: containerId,
+          status: 'started',
+          method: 'child_process'
+        });
       } catch (error) {
         console.error("Docker start error:", error);
-        res.status(500).json({ 
-          message: "Falha ao iniciar container",
-          error: error.message 
-        });
+        
+        // Fallback para modo demo se Docker não estiver disponível
+        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+          console.log(`Mock: Started container ${req.params.id}`);
+          res.json({ 
+            message: `Container iniciado com sucesso (modo demo)`,
+            containerId: req.params.id,
+            status: 'started',
+            mock: true,
+            method: 'child_process'
+          });
+        } else {
+          res.status(500).json({ 
+            message: "Falha ao iniciar container",
+            error: error.message 
+          });
+        }
       }
     },
   );
@@ -1652,46 +1606,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
-
-        try {
-          const response = await fetch(
-            `${dockerUri}/containers/${containerId}/stop?t=30`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(35000), // 35 second timeout for stop operation
-            },
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Docker API error ${response.status}:`, errorText);
-            throw new Error(`Docker API returned ${response.status}: ${errorText}`);
-          }
-
-          console.log(`Successfully stopped container ${containerId}`);
-          res.json({ 
-            message: `Container parado com sucesso`,
-            containerId: containerId,
-            status: 'stopped'
-          });
-        } catch (dockerError) {
-          console.log(`Docker API unavailable, using mock: ${dockerError.message}`);
-          console.log(`Mock: Stopped container ${containerId}`);
-          res.json({ 
-            message: `Container parado com sucesso (modo demo)`,
-            containerId: containerId,
-            status: 'stopped',
-            mock: true
-          });
-        }
+        
+        await runDockerCommand(`stop ${containerId}`);
+        
+        console.log(`Successfully stopped container ${containerId}`);
+        res.json({ 
+          message: `Container parado com sucesso`,
+          containerId: containerId,
+          status: 'stopped',
+          method: 'child_process'
+        });
       } catch (error) {
         console.error("Docker stop error:", error);
-        res.status(500).json({ 
-          message: "Falha ao parar container",
-          error: error.message 
-        });
+        
+        // Fallback para modo demo se Docker não estiver disponível
+        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+          console.log(`Mock: Stopped container ${req.params.id}`);
+          res.json({ 
+            message: `Container parado com sucesso (modo demo)`,
+            containerId: req.params.id,
+            status: 'stopped',
+            mock: true,
+            method: 'child_process'
+          });
+        } else {
+          res.status(500).json({ 
+            message: "Falha ao parar container",
+            error: error.message 
+          });
+        }
       }
     },
   );
@@ -1702,46 +1645,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
-
-        try {
-          const response = await fetch(
-            `${dockerUri}/containers/${containerId}/restart?t=10`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(15000), // 15 second timeout for restart
-            },
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Docker API error ${response.status}:`, errorText);
-            throw new Error(`Docker API returned ${response.status}: ${errorText}`);
-          }
-
-          console.log(`Successfully restarted container ${containerId}`);
-          res.json({ 
-            message: `Container reiniciado com sucesso`,
-            containerId: containerId,
-            status: 'restarted'
-          });
-        } catch (dockerError) {
-          console.log(`Docker API unavailable, using mock: ${dockerError.message}`);
-          console.log(`Mock: Restarted container ${containerId}`);
-          res.json({ 
-            message: `Container reiniciado com sucesso (modo demo)`,
-            containerId: containerId,
-            status: 'restarted',
-            mock: true
-          });
-        }
+        
+        await runDockerCommand(`restart ${containerId}`);
+        
+        console.log(`Successfully restarted container ${containerId}`);
+        res.json({ 
+          message: `Container reiniciado com sucesso`,
+          containerId: containerId,
+          status: 'restarted',
+          method: 'child_process'
+        });
       } catch (error) {
         console.error("Docker restart error:", error);
-        res.status(500).json({ 
-          message: "Falha ao reiniciar container",
-          error: error.message 
-        });
+        
+        // Fallback para modo demo se Docker não estiver disponível
+        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+          console.log(`Mock: Restarted container ${req.params.id}`);
+          res.json({ 
+            message: `Container reiniciado com sucesso (modo demo)`,
+            containerId: req.params.id,
+            status: 'restarted',
+            mock: true,
+            method: 'child_process'
+          });
+        } else {
+          res.status(500).json({ 
+            message: "Falha ao reiniciar container",
+            error: error.message 
+          });
+        }
       }
     },
   );
@@ -1752,32 +1684,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
-
-        try {
-          const response = await fetch(
-            `${dockerUri}/containers/${containerId}/pause`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(2000),
-            },
-          );
-
-          if (!response.ok) {
-            throw new Error(`Docker API returned ${response.status}`);
-          }
-
-          console.log(`Paused container ${containerId}`);
-          res.json({ message: `Container pausado com sucesso` });
-        } catch (dockerError) {
-          // Mock successful pause for demo purposes
-          console.log(`Mock: Paused container ${containerId}`);
-          res.json({ message: `Container pausado com sucesso (modo demo)` });
-        }
+        
+        await runDockerCommand(`pause ${containerId}`);
+        
+        console.log(`Successfully paused container ${containerId}`);
+        res.json({ 
+          message: `Container pausado com sucesso`,
+          containerId: containerId,
+          status: 'paused',
+          method: 'child_process'
+        });
       } catch (error) {
         console.error("Docker pause error:", error);
-        res.status(500).json({ message: "Falha ao pausar container" });
+        
+        // Fallback para modo demo se Docker não estiver disponível
+        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+          console.log(`Mock: Paused container ${req.params.id}`);
+          res.json({ 
+            message: `Container pausado com sucesso (modo demo)`,
+            containerId: req.params.id,
+            status: 'paused',
+            mock: true,
+            method: 'child_process'
+          });
+        } else {
+          res.status(500).json({ 
+            message: "Falha ao pausar container",
+            error: error.message 
+          });
+        }
       }
     },
   );

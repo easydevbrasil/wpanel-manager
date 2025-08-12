@@ -354,11 +354,11 @@ export default function DockerContainers() {
             </div>
             {dockerStatus?.available ? (
               <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full inline-block">
-                🐳 Docker API conectado (v{dockerStatus.version})
+                🐳 Docker conectado via {dockerStatus.method || 'child_process'} (v{dockerStatus.version})
               </div>
             ) : (
               <div className="px-3 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs rounded-full inline-block">
-                📋 Usando dados simulados - Docker API indisponível
+                📋 Usando dados simulados - Docker indisponível
               </div>
             )}
           </div>
