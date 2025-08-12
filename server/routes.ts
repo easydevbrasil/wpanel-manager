@@ -63,7 +63,7 @@ async function generateMailAccountsFile() {
 async function restartMailserverContainer() {
   try {
     const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
-    
+
     // First, try to find the mailserver container
     const containersResponse = await fetch(`${dockerUri}/containers/json?all=true`, {
       method: "GET",
@@ -76,7 +76,7 @@ async function restartMailserverContainer() {
     }
 
     const containers = await containersResponse.json();
-    const mailserverContainer = containers.find((container: any) => 
+    const mailserverContainer = containers.find((container: any) =>
       container.Names.some((name: string) => name.includes("mailserver")) ||
       container.Image.includes("mailserver") ||
       container.Image.includes("postfix") ||
@@ -1427,44 +1427,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
         },
         {
-
-
-  app.post(
-    "/api/docker/containers/:id/pause",
-    authenticateToken,
-    async (req, res) => {
-      try {
-        const containerId = req.params.id;
-        const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
-
-        try {
-          const response = await fetch(
-            `${dockerUri}/containers/${containerId}/pause`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(2000),
-            },
-          );
-
-          if (!response.ok) {
-            throw new Error(`Docker API returned ${response.status}`);
-          }
-
-          console.log(`Paused container ${containerId}`);
-          res.json({ message: `Container pausado com sucesso` });
-        } catch (dockerError) {
-          // Mock successful pause for demo purposes
-          console.log(`Mock: Paused container ${containerId}`);
-          res.json({ message: `Container pausado com sucesso (modo demo)` });
-        }
-      } catch (error) {
-        console.error("Docker pause error:", error);
-        res.status(500).json({ message: "Falha ao pausar container" });
-      }
-    },
-  );
-
           Id: "mock-redis-003",
           Names: ["/redis-cache"],
           Image: "redis:7-alpine",
@@ -1702,6 +1664,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Docker restart error:", error);
         res.status(500).json({ message: "Falha ao reiniciar container" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/docker/containers/:id/pause",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const containerId = req.params.id;
+        const dockerUri = process.env.DOCKER_URI || "http://127.0.0.1:2375";
+
+        try {
+          const response = await fetch(
+            `${dockerUri}/containers/${containerId}/pause`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(2000),
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(`Docker API returned ${response.status}`);
+          }
+
+          console.log(`Paused container ${containerId}`);
+          res.json({ message: `Container pausado com sucesso` });
+        } catch (dockerError) {
+          // Mock successful pause for demo purposes
+          console.log(`Mock: Paused container ${containerId}`);
+          res.json({ message: `Container pausado com sucesso (modo demo)` });
+        }
+      } catch (error) {
+        console.error("Docker pause error:", error);
+        res.status(500).json({ message: "Falha ao pausar container" });
       }
     },
   );
