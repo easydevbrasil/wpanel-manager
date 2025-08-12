@@ -1,3 +1,11 @@
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq, sql, desc, asc, and } from 'drizzle-orm';
+import * as crypto from 'crypto';
+import * as argon2 from 'argon2';
+import * as bcrypt from 'bcrypt';
+import jwt from "jsonwebtoken";
+
 import {
   users,
   userPreferences,
@@ -18,6 +26,11 @@ import {
   supportTicketMessages,
   supportCategories,
   chatwootSettings,
+  emailAccounts,
+  dockerContainers,
+  webhookConfigs,
+  sessions,
+  userAddresses,
   type User,
   type UserPreferences,
   type InsertUserPreferences,
@@ -56,23 +69,17 @@ import {
   type InsertSupportCategory,
   type ChatwootSettings,
   type InsertChatwootSettings,
-  emailAccounts,
   type EmailAccount,
   type InsertEmailAccount,
-  dockerContainers,
   type DockerContainer,
   type InsertDockerContainer,
-  webhookConfigs,
   type WebhookConfig,
   type InsertWebhookConfig,
-  sessions
+  type Session,
+  type InsertSession,
+  type UserAddress,
+  type InsertUserAddress
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, sql, and } from "drizzle-orm";
-import * as crypto from "crypto";
-import * as argon2 from "argon2";
-import * as bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 
 export interface IStorage {
   // Authentication
@@ -216,8 +223,8 @@ export interface IStorage {
   updateUserPermissions(userId: number, permissions: any[]): Promise<any[]>;
 
   // User Address
-  getUserAddress(userId: number): Promise<any>;
-  updateUserAddress(userId: number, address: any): Promise<any>;
+  getUserAddress(userId: number): Promise<UserAddress | null>;
+  updateUserAddress(userId: number, address: Partial<InsertUserAddress>): Promise<UserAddress>;
 
   // Docker Containers
   getDockerContainers(): Promise<DockerContainer[]>;
@@ -902,7 +909,7 @@ export class DatabaseStorage implements IStorage {
       // Fallback to in-memory sessions
       const activeSessions = (global as any).activeSessions || new Map();
       const session = activeSessions.get(sessionToken);
-      
+
       if (!session) {
         console.log('No matching session found in memory');
         return null;
@@ -1987,38 +1994,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User Address methods
-  async getUserAddress(userId: number): Promise<any> {
+  async getUserAddress(userId: number): Promise<UserAddress | null> {
     try {
-      (global as any).userAddresses = (global as any).userAddresses || [];
-      return (global as any).userAddresses.find((a: any) => a.userId === userId) || null;
+      const [address] = await db.select().from(userAddresses).where(eq(userAddresses.userId, userId));
+      return address || null;
     } catch (error) {
       console.error('Error getting user address:', error);
       return null;
     }
   }
 
-  async updateUserAddress(userId: number, address: any): Promise<any> {
+  async updateUserAddress(userId: number, data: Partial<InsertUserAddress>): Promise<UserAddress> {
     try {
-      (global as any).userAddresses = (global as any).userAddresses || [];
+      const existing = await this.getUserAddress(userId);
 
-      // Remove existing address for this user
-      (global as any).userAddresses = (global as any).userAddresses.filter((a: any) => a.userId !== userId);
-
-      // Add new address
-      const newAddress = {
-        id: Date.now(),
-        userId,
-        ...address,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      (global as any).userAddresses.push(newAddress);
-
-      return newAddress;
+      if (existing) {
+        const [updated] = await db
+          .update(userAddresses)
+          .set({
+            ...data,
+            updatedAt: new Date(),
+          })
+          .where(eq(userAddresses.userId, userId))
+          .returning();
+        return updated;
+      } else {
+        const [created] = await db
+          .insert(userAddresses)
+          .values({
+            userId,
+            ...data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+        return created;
+      }
     } catch (error) {
       console.error('Error updating user address:', error);
-      throw error;
+      throw new Error('Falha ao atualizar endereço do usuário');
     }
   }
 
@@ -2043,35 +2057,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createDockerContainer(data: {
-    name: string;
-    image: string;
-    tag?: string;
-    description?: string;
-    command?: string;
-    networkMode?: string;
-    restartPolicy?: string;
-    cpuLimit?: string;
-    memoryLimit?: string;
-    imageUrl?: string;
-    environment?: Record<string, string>;
-    volumes?: Array<{ host: string; container: string }>;
-  }): Promise<DockerContainer> {
+  async createDockerContainer(data: InsertDockerContainer): Promise<DockerContainer> {
     try {
       const [container] = await db
         .insert(dockerContainers)
         .values({
-          name: data.name,
-          image: data.image,
-          tag: data.tag || "latest",
-          description: data.description,
+          ...data,
           status: "stopped",
-          command: data.command,
           networkMode: data.networkMode || "bridge",
           restartPolicy: data.restartPolicy || "unless-stopped",
-          cpuLimit: data.cpuLimit,
-          memoryLimit: data.memoryLimit,
-          imageUrl: data.imageUrl,
           environment: data.environment ? JSON.stringify(data.environment) : null,
           volumes: data.volumes ? JSON.stringify(data.volumes) : null,
           createdAt: new Date(),
@@ -2085,34 +2079,12 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateDockerContainer(id: number, data: {
-    name?: string;
-    image?: string;
-    tag?: string;
-    description?: string;
-    command?: string;
-    networkMode?: string;
-    restartPolicy?: string;
-    cpuLimit?: string;
-    memoryLimit?: string;
-    imageUrl?: string;
-    environment?: Record<string, string>;
-    volumes?: Array<{ host: string; container: string }>;
-  }): Promise<DockerContainer> {
+  async updateDockerContainer(id: number, data: Partial<InsertDockerContainer>): Promise<DockerContainer> {
     try {
       const [container] = await db
         .update(dockerContainers)
         .set({
-          name: data.name,
-          image: data.image,
-          tag: data.tag,
-          description: data.description,
-          command: data.command,
-          networkMode: data.networkMode,
-          restartPolicy: data.restartPolicy,
-          cpuLimit: data.cpuLimit,
-          memoryLimit: data.memoryLimit,
-          imageUrl: data.imageUrl,
+          ...data,
           environment: data.environment ? JSON.stringify(data.environment) : null,
           volumes: data.volumes ? JSON.stringify(data.volumes) : null,
           updatedAt: new Date(),
@@ -2153,7 +2125,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Webhook Configuration Methods
-  async getWebhookConfigs(): Promise<any[]> {
+  async getWebhookConfigs(): Promise<WebhookConfig[]> {
     try {
       const configs = await db.select().from(webhookConfigs);
       return configs;
@@ -2163,7 +2135,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getWebhookConfig(id: number): Promise<any | undefined> {
+  async getWebhookConfig(id: number): Promise<WebhookConfig | undefined> {
     try {
       const [config] = await db.select().from(webhookConfigs).where(eq(webhookConfigs.id, id));
       return config;
@@ -2173,7 +2145,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createWebhookConfig(configData: any): Promise<any> {
+  async createWebhookConfig(configData: InsertWebhookConfig): Promise<WebhookConfig> {
     try {
       const [config] = await db.insert(webhookConfigs).values(configData).returning();
       return config;
@@ -2183,7 +2155,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateWebhookConfig(id: number, configData: any): Promise<any> {
+  async updateWebhookConfig(id: number, configData: Partial<InsertWebhookConfig>): Promise<WebhookConfig> {
     try {
       const [config] = await db
         .update(webhookConfigs)
@@ -2209,7 +2181,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateWebhookTestResult(id: number, status: string): Promise<any> {
+  async updateWebhookTestResult(id: number, status: string): Promise<WebhookConfig> {
     try {
       const [config] = await db
         .update(webhookConfigs)

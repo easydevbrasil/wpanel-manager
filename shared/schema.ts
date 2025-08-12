@@ -401,7 +401,7 @@ export const insertEmailAccountSchema = createInsertSchema(emailAccounts).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  password: z.string().optional(),
+  password: z.string().min(1, "Senha é obrigatória"),
   username: z.string().optional(),
   provider: z.string().optional(),
 });
@@ -422,9 +422,31 @@ export const sessions = pgTable("sessions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// User Addresses Table for User Profile
+export const userAddresses = pgTable("user_addresses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  street: text("street"),
+  number: text("number"),
+  complement: text("complement"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  country: text("country").default("Brasil"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertSessionSchema = createInsertSchema(sessions).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
@@ -475,6 +497,8 @@ export type EmailAccount = typeof emailAccounts.$inferSelect;
 export type InsertEmailAccount = z.infer<typeof insertEmailAccountSchema>;
 export type Session = typeof sessions.$inferSelect;
 export type InsertSession = z.infer<typeof insertSessionSchema>;
+export type UserAddress = typeof userAddresses.$inferSelect;
+export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
 
 // Docker Containers Table
 export const dockerContainers = pgTable("docker_containers", {

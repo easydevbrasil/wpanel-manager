@@ -39,22 +39,6 @@ function getCpuUsage(): Promise<number> {
   });
 }
 
-function getCpuUsageMeasure() {
-  const cpus = os.cpus();
-  let user = 0, nice = 0, sys = 0, idle = 0, irq = 0;
-
-  for (const cpu of cpus) {
-    user += cpu.times.user;
-    nice += cpu.times.nice;
-    sys += cpu.times.sys;
-    idle += cpu.times.idle;
-    irq += cpu.times.irq;
-  }
-
-  const total = user + nice + sys + idle + irq;
-  return { idle, total };
-}
-
 // Function to generate mail_accounts.cf file
 async function generateMailAccountsFile() {
   try {
