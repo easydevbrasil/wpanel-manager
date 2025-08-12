@@ -33,7 +33,7 @@ function getCpuUsage(): Promise<number> {
       const endMeasure = getCpuUsageMeasure();
       const idleDifference = endMeasure.idle - startMeasure.idle;
       const totalDifference = endMeasure.total - startMeasure.total;
-      const cpuPercentage = 100 - (100 * idleDifference / totalDifference);
+      const cpuPercentage = 100 - (100 * idleDifference) / totalDifference;
       resolve(Math.max(0, Math.min(100, Math.round(cpuPercentage))));
     }, 1000);
   });
@@ -43,60 +43,67 @@ function getCpuUsage(): Promise<number> {
 async function generateMailAccountsFile() {
   try {
     const accounts = await dbStorage.getEmailAccounts();
-    const lines = accounts.map(account => {
+    const lines = accounts.map((account) => {
       // For Postfix compatibility, we need to store the Argon2 hash directly
       // Postfix supports various formats including Argon2
       return `${account.email}|${account.password}`;
     });
 
-    const filePath = path.join(process.cwd(), 'mail_accounts.cf');
-    const content = lines.join('\n') + '\n';
+    const filePath = path.join(process.cwd(), "mail_accounts.cf");
+    const content = lines.join("\n") + "\n";
 
-    await fs.promises.writeFile(filePath, content, 'utf8');
+    await fs.promises.writeFile(filePath, content, "utf8");
     console.log(`Generated mail_accounts.cf with ${accounts.length} accounts`);
   } catch (error) {
-    console.error('Error generating mail_accounts.cf:', error);
+    console.error("Error generating mail_accounts.cf:", error);
   }
 }
 
 // Authentication middleware
 const authenticateToken = async (req: any, res: any, next: any) => {
-  const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-  const userAgent = req.get('User-Agent') || 'unknown';
+  const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
+  const userAgent = req.get("User-Agent") || "unknown";
 
   // Try to get token from different sources (cookies first, then headers)
-  let token = req.cookies.sessionToken || req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
+  let token =
+    req.cookies.sessionToken ||
+    req.headers["authorization"]?.split(" ")[1] ||
+    req.headers["session-token"];
 
   if (!token) {
     // Try to refresh token if session token is missing but refresh token exists
     const refreshToken = req.cookies.refreshToken;
     if (refreshToken) {
       try {
-        const result = await dbStorage.refreshSession(refreshToken, ipAddress, userAgent);
+        const result = await dbStorage.refreshSession(
+          refreshToken,
+          ipAddress,
+          userAgent,
+        );
         if (result) {
           // Set new cookies
-          const isProduction = process.env.NODE_ENV === 'production';
+          const isProduction = process.env.NODE_ENV === "production";
 
-          res.cookie('sessionToken', result.sessionToken, {
+          res.cookie("sessionToken", result.sessionToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
+            sameSite: isProduction ? "strict" : "lax",
             maxAge: 4 * 60 * 60 * 1000, // 4 hours
-            path: '/'
+            path: "/",
           });
 
-          res.cookie('refreshToken', result.refreshToken, {
+          res.cookie("refreshToken", result.refreshToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
+            sameSite: isProduction ? "strict" : "lax",
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-            path: '/'
+            path: "/",
           });
 
           token = result.sessionToken;
         }
       } catch (refreshError) {
-        console.error('Auto-refresh failed:', refreshError);
+        console.error("Auto-refresh failed:", refreshError);
       }
     }
 
@@ -109,11 +116,11 @@ const authenticateToken = async (req: any, res: any, next: any) => {
     const session = await dbStorage.validateSession(token, ipAddress);
     if (!session) {
       // Clear invalid cookies
-      res.clearCookie('sessionToken', { 
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-        path: '/' 
+      res.clearCookie("sessionToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        path: "/",
       });
 
       return res.status(401).json({ message: "Sessão inválida ou expirada" });
@@ -121,7 +128,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
     req.user = session.user;
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error("Authentication error:", error);
     return res.status(403).json({ message: "Token inválido" });
   }
 };
@@ -129,130 +136,153 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 // Configurar multer para upload de imagens
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads');
+    const uploadDir = path.join(process.cwd(), "uploads");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(
+      null,
+      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname),
+    );
+  },
 });
 
 const upload = multer({
   storage: multerStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
-      cb(new Error('Apenas arquivos de imagem são permitidos!'), false);
+      cb(new Error("Apenas arquivos de imagem são permitidos!"), false);
     }
-  }
+  },
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files statically
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // Upload routes
-  app.post("/api/upload/container-logo", authenticateToken, upload.single('image'), (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "Nenhum arquivo enviado" });
+  app.post(
+    "/api/upload/container-logo",
+    authenticateToken,
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
       }
+    },
+  );
 
-      const fileUrl = `/uploads/${req.file.filename}`;
-      res.json({ url: fileUrl, filename: req.file.filename });
-    } catch (error) {
-      res.status(500).json({ message: "Falha no upload da imagem" });
-    }
-  });
+  app.post(
+    "/api/upload/product-image",
+    authenticateToken,
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
 
-  app.post("/api/upload/product-image", authenticateToken, upload.single('image'), (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
       }
-
-      const fileUrl = `/uploads/${req.file.filename}`;
-      res.json({ url: fileUrl, filename: req.file.filename });
-    } catch (error) {
-      res.status(500).json({ message: "Falha no upload da imagem" });
-    }
-  });
+    },
+  );
 
   // Authentication routes (no auth required)
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-      const userAgent = req.get('User-Agent') || 'unknown';
+      const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
+      const userAgent = req.get("User-Agent") || "unknown";
 
       if (!username || !password) {
-        return res.status(400).json({ message: "Usuário e senha são obrigatórios" });
+        return res
+          .status(400)
+          .json({ message: "Usuário e senha são obrigatórios" });
       }
 
-      const result = await dbStorage.authenticateUser(username, password, ipAddress, userAgent);
+      const result = await dbStorage.authenticateUser(
+        username,
+        password,
+        ipAddress,
+        userAgent,
+      );
       if (!result) {
         return res.status(401).json({ message: "Credenciais inválidas" });
       }
 
       // Set secure HTTP-only cookies
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === "production";
 
-      res.cookie('sessionToken', result.sessionToken, {
+      res.cookie("sessionToken", result.sessionToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',
+        sameSite: isProduction ? "strict" : "lax",
         maxAge: 4 * 60 * 60 * 1000, // 4 hours
-        path: '/'
+        path: "/",
       });
 
-      res.cookie('refreshToken', result.refreshToken, {
+      res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',
+        sameSite: isProduction ? "strict" : "lax",
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        path: '/'
+        path: "/",
       });
 
       // Return user data without tokens for security
-      res.json({ 
+      res.json({
         user: result.user,
-        message: "Login realizado com sucesso" 
+        message: "Login realizado com sucesso",
       });
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   });
 
   app.post("/api/auth/logout", async (req: any, res) => {
     try {
-      const sessionToken = req.cookies.sessionToken || req.headers['authorization']?.split(' ')[1] || req.headers['session-token'];
+      const sessionToken =
+        req.cookies.sessionToken ||
+        req.headers["authorization"]?.split(" ")[1] ||
+        req.headers["session-token"];
 
       if (sessionToken) {
         await dbStorage.invalidateSession(sessionToken);
       }
 
       // Clear cookies
-      res.clearCookie('sessionToken', { 
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-        path: '/' 
+      res.clearCookie("sessionToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        path: "/",
       });
 
-      res.clearCookie('refreshToken', { 
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-        path: '/' 
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        path: "/",
       });
 
       res.json({ message: "Logout realizado com sucesso" });
@@ -264,40 +294,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/refresh", async (req, res) => {
     try {
       const refreshToken = req.cookies.refreshToken;
-      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-      const userAgent = req.get('User-Agent') || 'unknown';
+      const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
+      const userAgent = req.get("User-Agent") || "unknown";
 
       if (!refreshToken) {
-        return res.status(401).json({ message: "Token de atualização não encontrado" });
+        return res
+          .status(401)
+          .json({ message: "Token de atualização não encontrado" });
       }
 
-      const result = await dbStorage.refreshSession(refreshToken, ipAddress, userAgent);
+      const result = await dbStorage.refreshSession(
+        refreshToken,
+        ipAddress,
+        userAgent,
+      );
       if (!result) {
-        return res.status(401).json({ message: "Token de atualização inválido" });
+        return res
+          .status(401)
+          .json({ message: "Token de atualização inválido" });
       }
 
       // Set new secure cookies
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === "production";
 
-      res.cookie('sessionToken', result.sessionToken, {
+      res.cookie("sessionToken", result.sessionToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',
+        sameSite: isProduction ? "strict" : "lax",
         maxAge: 4 * 60 * 60 * 1000, // 4 hours
-        path: '/'
+        path: "/",
       });
 
-      res.cookie('refreshToken', result.refreshToken, {
+      res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax',
+        sameSite: isProduction ? "strict" : "lax",
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        path: '/'
+        path: "/",
       });
 
       res.json({ message: "Token atualizado com sucesso" });
     } catch (error) {
-      console.error('Refresh error:', error);
+      console.error("Refresh error:", error);
       res.status(500).json({ message: "Erro ao atualizar token" });
     }
   });
@@ -332,13 +370,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/user/preferences", authenticateToken, async (req: any, res) => {
     try {
-      const preferences = await dbStorage.updateUserPreferences(req.user.id, req.body);
+      const preferences = await dbStorage.updateUserPreferences(
+        req.user.id,
+        req.body,
+      );
       res.json(preferences);
 
       // Broadcast preferences update
-      broadcastUpdate('user_preferences_updated', {
+      broadcastUpdate("user_preferences_updated", {
         userId: req.user.id,
-        preferences
+        preferences,
       });
     } catch (error) {
       console.error("Error updating user preferences:", error);
@@ -511,8 +552,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get client" });
     }
   });
-
-
 
   app.put("/api/clients/:id", async (req, res) => {
     try {
@@ -693,12 +732,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get("/api/products", authenticateToken, async (req, res) => {
     try {
-      console.log('Fetching products...');
+      console.log("Fetching products...");
       const products = await dbStorage.getProducts();
-      console.log('Products found:', products.length);
+      console.log("Products found:", products.length);
       res.json(products);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error("Error fetching products:", error);
       res.status(500).json({ error: "Failed to fetch products" });
     }
   });
@@ -976,7 +1015,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/support/tickets/:id/messages", async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const message = await dbStorage.createSupportTicketMessage({ ...req.body, ticketId });
+      const message = await dbStorage.createSupportTicketMessage({
+        ...req.body,
+        ticketId,
+      });
       res.status(201).json(message);
     } catch (error) {
       res.status(500).json({ message: "Failed to create ticket message" });
@@ -1046,31 +1088,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cpu: {
           usage: cpuUsage,
           cores: cpus.length,
-          model: cpus[0]?.model || "Unknown"
+          model: cpus[0]?.model || "Unknown",
         },
         memory: {
           total: totalMem,
           used: usedMem,
           free: freeMem,
-          usagePercent: Math.round((usedMem / totalMem) * 100)
+          usagePercent: Math.round((usedMem / totalMem) * 100),
         },
         disk: {
           total: 100 * 1024 * 1024 * 1024, // Mock 100GB
-          used: 50 * 1024 * 1024 * 1024,   // Mock 50GB used
-          free: 50 * 1024 * 1024 * 1024,   // Mock 50GB free
-          usagePercent: 50
+          used: 50 * 1024 * 1024 * 1024, // Mock 50GB used
+          free: 50 * 1024 * 1024 * 1024, // Mock 50GB free
+          usagePercent: 50,
         },
         swap: {
           total: 0,
           used: 0,
           free: 0,
-          usagePercent: 0
+          usagePercent: 0,
         },
         uptime: os.uptime(),
         platform: os.platform(),
         arch: os.arch(),
         nodeVersion: process.version,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       res.json(systemStatus);
@@ -1107,7 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const account = await dbStorage.createEmailAccount(req.body);
       await generateMailAccountsFile();
-      broadcastUpdate('email_account_created', account);
+      broadcastUpdate("email_account_created", account);
       res.status(201).json(account);
     } catch (error) {
       res.status(400).json({ message: "Failed to create email account" });
@@ -1119,7 +1161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const account = await dbStorage.updateEmailAccount(id, req.body);
       await generateMailAccountsFile();
-      broadcastUpdate('email_account_updated', account);
+      broadcastUpdate("email_account_updated", account);
       res.json(account);
     } catch (error) {
       res.status(400).json({ message: "Failed to update email account" });
@@ -1131,7 +1173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await dbStorage.deleteEmailAccount(id);
       await generateMailAccountsFile();
-      broadcastUpdate('email_account_deleted', { id });
+      broadcastUpdate("email_account_deleted", { id });
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete email account" });
@@ -1143,7 +1185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const account = await dbStorage.setDefaultEmailAccount(id);
       await generateMailAccountsFile();
-      broadcastUpdate('email_account_default_updated', account);
+      broadcastUpdate("email_account_default_updated", account);
       res.json(account);
     } catch (error) {
       res.status(400).json({ message: "Failed to set default email account" });
@@ -1160,37 +1202,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:userId/permissions", authenticateToken, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      const permissions = await dbStorage.getUserPermissionsByUserId(userId);
-      res.json(permissions);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to get user permissions" });
-    }
-  });
+  app.get(
+    "/api/users/:userId/permissions",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        const permissions = await dbStorage.getUserPermissionsByUserId(userId);
+        res.json(permissions);
+      } catch (error) {
+        res.status(500).json({ message: "Failed to get user permissions" });
+      }
+    },
+  );
 
-  app.put("/api/users/:userId/permissions", authenticateToken, async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      const permissions = await dbStorage.updateUserPermissions(userId, req.body);
-      broadcastUpdate('user_permissions_updated', { userId, permissions });
-      res.json(permissions);
-    } catch (error) {
-      console.error('Error updating permissions:', error);
-      res.status(400).json({ message: "Failed to update user permissions" });
-    }
-  });
+  app.put(
+    "/api/users/:userId/permissions",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const userId = parseInt(req.params.userId);
+        const permissions = await dbStorage.updateUserPermissions(
+          userId,
+          req.body,
+        );
+        broadcastUpdate("user_permissions_updated", { userId, permissions });
+        res.json(permissions);
+      } catch (error) {
+        console.error("Error updating permissions:", error);
+        res.status(400).json({ message: "Failed to update user permissions" });
+      }
+    },
+  );
 
   // User Profile routes
   app.put("/api/users/:id", authenticateToken, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const user = await dbStorage.updateUser(id, req.body);
-      broadcastUpdate('user_updated', { user });
+      broadcastUpdate("user_updated", { user });
       res.json(user);
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      console.error("Error updating user profile:", error);
       res.status(400).json({ message: "Failed to update user profile" });
     }
   });
@@ -1209,10 +1262,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const address = await dbStorage.updateUserAddress(id, req.body);
-      broadcastUpdate('user_address_updated', { userId: id, address });
+      broadcastUpdate("user_address_updated", { userId: id, address });
       res.json(address);
     } catch (error) {
-      console.error('Error updating user address:', error);
+      console.error("Error updating user address:", error);
       res.status(400).json({ message: "Failed to update user address" });
     }
   });
@@ -1231,29 +1284,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // app.post("/api/docker-containers/:id/pause", authenticateToken, async (req, res) => { ... });
 
   // Rotas da API Docker real
+
   app.get("/api/docker/containers", authenticateToken, async (req, res) => {
     try {
-      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
+      const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
 
       console.log(`Connecting to Docker API at: ${dockerUri}`);
 
       // Fazer chamada real para a API Docker
       const response = await fetch(`${dockerUri}/containers/json?all=true`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        timeout: 10000, // 10 segundos timeout
       });
 
       if (!response.ok) {
-        throw new Error(`Docker API returned ${response.status}: ${response.statusText}`);
+        throw new Error(
+          `Docker API returned ${response.status}: ${response.statusText}`,
+        );
       }
 
       const containers = await response.json();
       res.json(containers);
     } catch (error) {
-      console.error('Docker API error:', error);
+      console.error("Docker API error:", error);
 
       // Fallback para containers mock se a API Docker não estiver disponível
       const mockContainers = [
@@ -1267,11 +1322,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           Ports: [],
           Labels: {},
           State: "exited",
-          Status: `Docker API indisponível em ${process.env.DOCKER_URI || 'http://localhost:2375'}`,
+          Status: `Docker API indisponível em ${process.env.DOCKER_URI || "http://localhost:2375"}`,
           HostConfig: { NetworkMode: "bridge" },
           NetworkSettings: { Networks: {} },
-          Mounts: []
-        }
+          Mounts: [],
+        },
       ];
 
       res.json(mockContainers);
@@ -1279,88 +1334,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Controles de containers via API Docker
-  app.post("/api/docker/containers/:id/start", authenticateToken, async (req, res) => {
-    try {
-      const containerId = req.params.id;
-      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
+  app.post(
+    "/api/docker/containers/:id/start",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const containerId = req.params.id;
+        const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
 
-      const response = await fetch(`${dockerUri}/containers/${containerId}/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+        const response = await fetch(
+          `${dockerUri}/containers/${containerId}/start`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          },
+        );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Docker API error ${response.status}:`, errorText);
-        return res.status(500).json({ message: `Falha ao iniciar container: ${response.status}` });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Docker API error ${response.status}:`, errorText);
+          return res
+            .status(500)
+            .json({
+              message: `Falha ao iniciar container: ${response.status}`,
+            });
+        }
+
+        console.log(`Started container ${containerId}`);
+        res.json({ message: `Container iniciado com sucesso` });
+      } catch (error) {
+        console.error("Docker start error:", error);
+        res.status(500).json({ message: "Falha ao iniciar container" });
       }
+    },
+  );
 
-      console.log(`Started container ${containerId}`);
-      res.json({ message: `Container iniciado com sucesso` });
-    } catch (error) {
-      console.error('Docker start error:', error);
-      res.status(500).json({ message: "Falha ao iniciar container" });
-    }
-  });
+  app.post(
+    "/api/docker/containers/:id/stop",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const containerId = req.params.id;
+        const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
 
-  app.post("/api/docker/containers/:id/stop", authenticateToken, async (req, res) => {
-    try {
-      const containerId = req.params.id;
-      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
+        const response = await fetch(
+          `${dockerUri}/containers/${containerId}/stop`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          },
+        );
 
-      const response = await fetch(`${dockerUri}/containers/${containerId}/stop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Docker API error ${response.status}:`, errorText);
+          return res
+            .status(500)
+            .json({ message: `Falha ao parar container: ${response.status}` });
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Docker API error ${response.status}:`, errorText);
-        return res.status(500).json({ message: `Falha ao parar container: ${response.status}` });
+        console.log(`Stopped container ${containerId}`);
+        res.json({ message: `Container parado com sucesso` });
+      } catch (error) {
+        console.error("Docker stop error:", error);
+        res.status(500).json({ message: "Falha ao parar container" });
       }
+    },
+  );
 
-      console.log(`Stopped container ${containerId}`);
-      res.json({ message: `Container parado com sucesso` });
-    } catch (error) {
-      console.error('Docker stop error:', error);
-      res.status(500).json({ message: "Falha ao parar container" });
-    }
-  });
+  app.post(
+    "/api/docker/containers/:id/restart",
+    authenticateToken,
+    async (req, res) => {
+      try {
+        const containerId = req.params.id;
+        const dockerUri = process.env.DOCKER_URI || "http://localhost:2375";
 
-  app.post("/api/docker/containers/:id/restart", authenticateToken, async (req, res) => {
-    try {
-      const containerId = req.params.id;
-      const dockerUri = process.env.DOCKER_URI || 'http://localhost:2375';
+        const response = await fetch(
+          `${dockerUri}/containers/${containerId}/restart`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          },
+        );
 
-      const response = await fetch(`${dockerUri}/containers/${containerId}/restart`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Docker API error ${response.status}:`, errorText);
+          return res
+            .status(500)
+            .json({
+              message: `Falha ao reiniciar container: ${response.status}`,
+            });
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Docker API error ${response.status}:`, errorText);
-        return res.status(500).json({ message: `Falha ao reiniciar container: ${response.status}` });
+        console.log(`Restarted container ${containerId}`);
+        res.json({ message: `Container reiniciado com sucesso` });
+      } catch (error) {
+        console.error("Docker restart error:", error);
+        res.status(500).json({ message: "Falha ao reiniciar container" });
       }
-
-      console.log(`Restarted container ${containerId}`);
-      res.json({ message: `Container reiniciado com sucesso` });
-    } catch (error) {
-      console.error('Docker restart error:', error);
-      res.status(500).json({ message: "Falha ao reiniciar container" });
-    }
-  });
+    },
+  );
 
   const httpServer = createServer(app);
 
   // WebSocket Server for real-time updates
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   // Store connected clients with session info
   const clients = new Map<WebSocket, { sessionToken?: string; user?: any }>();
 
-  wss.on('connection', (ws: WebSocket, req: any) => {
-    console.log('New WebSocket connection established');
+  wss.on("connection", (ws: WebSocket, req: any) => {
+    console.log("New WebSocket connection established");
 
     // Try to extract session token from cookies or headers
     let sessionToken: string | undefined;
@@ -1373,20 +1459,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     clients.set(ws, { sessionToken });
 
     // Send initial connection confirmation
-    ws.send(JSON.stringify({
-      type: 'connection',
-      status: 'connected',
-      timestamp: new Date().toISOString()
-    }));
+    ws.send(
+      JSON.stringify({
+        type: "connection",
+        status: "connected",
+        timestamp: new Date().toISOString(),
+      }),
+    );
 
     // Handle client messages
-    ws.on('message', async (message: string) => {
+    ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
 
-        if (data.type === 'ping') {
-          ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
-        } else if (data.type === 'auth_status_request') {
+        if (data.type === "ping") {
+          ws.send(
+            JSON.stringify({
+              type: "pong",
+              timestamp: new Date().toISOString(),
+            }),
+          );
+        } else if (data.type === "auth_status_request") {
           // Handle auth status request via WebSocket
           try {
             const clientInfo = clients.get(ws);
@@ -1394,73 +1487,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (!sessionToken) {
               const response = {
-                type: 'auth_status_response',
+                type: "auth_status_response",
                 data: {
                   valid: false,
-                  message: 'No session token found'
+                  message: "No session token found",
                 },
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               };
               ws.send(JSON.stringify(response));
               return;
             }
 
             // Validate session using existing auth logic
-            const ipAddress = req.ip || req.connection?.remoteAddress || 'websocket';
-            const session = await dbStorage.validateSession(sessionToken, ipAddress);
+            const ipAddress =
+              req.ip || req.connection?.remoteAddress || "websocket";
+            const session = await dbStorage.validateSession(
+              sessionToken,
+              ipAddress,
+            );
 
             if (session) {
               // Update client info with user data
               clients.set(ws, { sessionToken, user: session.user });
 
               const response = {
-                type: 'auth_status_response',
+                type: "auth_status_response",
                 data: {
                   valid: true,
                   user: session.user,
-                  message: 'Session valid'
+                  message: "Session valid",
                 },
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               };
               ws.send(JSON.stringify(response));
             } else {
               const response = {
-                type: 'session_expired',
+                type: "session_expired",
                 data: {
                   valid: false,
-                  message: 'Session expired or invalid'
+                  message: "Session expired or invalid",
                 },
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
               };
               ws.send(JSON.stringify(response));
             }
           } catch (authError) {
-            console.error('WebSocket auth check error:', authError);
+            console.error("WebSocket auth check error:", authError);
             const response = {
-              type: 'auth_status_response',
+              type: "auth_status_response",
               data: {
                 valid: false,
-                message: 'Session validation failed'
+                message: "Session validation failed",
               },
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             };
             ws.send(JSON.stringify(response));
           }
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error("Error parsing WebSocket message:", error);
       }
     });
 
     // Handle disconnection
-    ws.on('close', () => {
-      console.log('WebSocket connection closed');
+    ws.on("close", () => {
+      console.log("WebSocket connection closed");
       clients.delete(ws);
     });
 
     // Handle errors
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+    ws.on("error", (error) => {
+      console.error("WebSocket error:", error);
       clients.delete(ws);
     });
   });
@@ -1470,7 +1567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const message = JSON.stringify({
       type,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     clients.forEach((clientInfo, client) => {
@@ -1484,9 +1581,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function broadcastDashboardUpdate() {
     try {
       const stats = await dbStorage.getDashboardStats(1);
-      broadcastUpdate('dashboard_stats_updated', stats);
+      broadcastUpdate("dashboard_stats_updated", stats);
     } catch (error) {
-      console.error('Failed to broadcast dashboard update:', error);
+      console.error("Failed to broadcast dashboard update:", error);
     }
   }
 
@@ -1496,7 +1593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", async (req, res) => {
     try {
       const client = await dbStorage.createClient(req.body);
-      broadcastUpdate('client_created', client);
+      broadcastUpdate("client_created", client);
       broadcastDashboardUpdate(); // Update dashboard counters
       res.status(201).json(client);
     } catch (error) {
@@ -1508,7 +1605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const client = await dbStorage.updateClient(id, req.body);
-      broadcastUpdate('client_updated', client);
+      broadcastUpdate("client_updated", client);
       res.json(client);
     } catch (error) {
       res.status(500).json({ message: "Failed to update client" });
@@ -1519,7 +1616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteClient(id);
-      broadcastUpdate('client_deleted', { id });
+      broadcastUpdate("client_deleted", { id });
       broadcastDashboardUpdate(); // Update dashboard counters
       res.json({ success: true });
     } catch (error) {
@@ -1531,7 +1628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products", async (req, res) => {
     try {
       const product = await dbStorage.createProduct(req.body);
-      broadcastUpdate('product_created', product);
+      broadcastUpdate("product_created", product);
       broadcastDashboardUpdate();
       res.status(201).json(product);
     } catch (error) {
@@ -1543,7 +1640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const product = await dbStorage.updateProduct(id, req.body);
-      broadcastUpdate('product_updated', product);
+      broadcastUpdate("product_updated", product);
       res.json(product);
     } catch (error) {
       res.status(500).json({ message: "Failed to update product" });
@@ -1554,7 +1651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteProduct(id);
-      broadcastUpdate('product_deleted', { id });
+      broadcastUpdate("product_deleted", { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
@@ -1566,7 +1663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/suppliers", async (req, res) => {
     try {
       const supplier = await dbStorage.createSupplier(req.body);
-      broadcastUpdate('supplier_created', supplier);
+      broadcastUpdate("supplier_created", supplier);
       broadcastDashboardUpdate();
       res.status(201).json(supplier);
     } catch (error) {
@@ -1578,7 +1675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const supplier = await dbStorage.updateSupplier(id, req.body);
-      broadcastUpdate('supplier_updated', supplier);
+      broadcastUpdate("supplier_updated", supplier);
       res.json(supplier);
     } catch (error) {
       res.status(500).json({ message: "Failed to update supplier" });
@@ -1589,7 +1686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteSupplier(id);
-      broadcastUpdate('supplier_deleted', { id });
+      broadcastUpdate("supplier_deleted", { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
@@ -1601,7 +1698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/sales", async (req, res) => {
     try {
       const sale = await dbStorage.createSale(req.body);
-      broadcastUpdate('sale_created', sale);
+      broadcastUpdate("sale_created", sale);
       broadcastDashboardUpdate();
       res.status(201).json(sale);
     } catch (error) {
@@ -1613,7 +1710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const sale = await dbStorage.updateSale(id, req.body);
-      broadcastUpdate('sale_updated', sale);
+      broadcastUpdate("sale_updated", sale);
       res.json(sale);
     } catch (error) {
       res.status(500).json({ message: "Failed to update sale" });
@@ -1624,7 +1721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteSale(id);
-      broadcastUpdate('sale_deleted', { id });
+      broadcastUpdate("sale_deleted", { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
@@ -1636,7 +1733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/support/tickets", async (req, res) => {
     try {
       const ticket = await dbStorage.createSupportTicket(req.body);
-      broadcastUpdate('ticket_created', ticket);
+      broadcastUpdate("ticket_created", ticket);
       broadcastDashboardUpdate();
       res.status(201).json(ticket);
     } catch (error) {
@@ -1648,7 +1745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const ticket = await dbStorage.updateSupportTicket(id, req.body);
-      broadcastUpdate('ticket_updated', ticket);
+      broadcastUpdate("ticket_updated", ticket);
       res.json(ticket);
     } catch (error) {
       res.status(500).json({ message: "Failed to update support ticket" });
@@ -1659,7 +1756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteSupportTicket(id);
-      broadcastUpdate('ticket_deleted', { id });
+      broadcastUpdate("ticket_deleted", { id });
       broadcastDashboardUpdate();
       res.json({ success: true });
     } catch (error) {
@@ -1671,8 +1768,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/support/tickets/:id/messages", async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const message = await dbStorage.createSupportTicketMessage({ ...req.body, ticketId });
-      broadcastUpdate('ticket_message_created', { ticketId, message });
+      const message = await dbStorage.createSupportTicketMessage({
+        ...req.body,
+        ticketId,
+      });
+      broadcastUpdate("ticket_message_created", { ticketId, message });
       res.status(201).json(message);
     } catch (error) {
       res.status(500).json({ message: "Failed to create ticket message" });
@@ -1705,7 +1805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", async (req, res) => {
     try {
       const user = await dbStorage.createUser(req.body);
-      broadcastUpdate('user_created', user);
+      broadcastUpdate("user_created", user);
       res.status(201).json(user);
     } catch (error) {
       res.status(500).json({ message: "Failed to create user" });
@@ -1716,7 +1816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const user = await dbStorage.updateUser(id, req.body);
-      broadcastUpdate('user_updated', user);
+      broadcastUpdate("user_updated", user);
       res.json(user);
     } catch (error) {
       res.status(500).json({ message: "Failed to update user" });
@@ -1727,7 +1827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await dbStorage.deleteUser(id);
-      broadcastUpdate('user_deleted', { id });
+      broadcastUpdate("user_deleted", { id });
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete user" });
