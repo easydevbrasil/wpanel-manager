@@ -779,6 +779,495 @@ export class DatabaseStorage implements IStorage {
       ];
 
       await db.insert(dockerContainers).values(sampleContainers);
+
+    // Create sample suppliers
+    const suppliersData = [
+      {
+        name: "Distribuidora Tech Solutions",
+        companyName: "Tech Solutions LTDA",
+        email: "vendas@techsolutions.com.br",
+        phone: "(11) 3456-7890",
+        whatsapp: "(11) 99876-5432",
+        website: "https://www.techsolutions.com.br",
+        cnpj: "12.345.678/0001-90",
+        address: "Rua das Tecnologias, 123 - Vila Digital",
+        city: "São Paulo",
+        state: "SP",
+        zipCode: "01234-567",
+        country: "Brasil",
+        contactPerson: "João Silva",
+        contactRole: "Gerente Comercial",
+        paymentTerms: "30 dias",
+        deliveryTime: "5-7 dias úteis",
+        minimumOrder: "R$ 2.000,00",
+        categories: ["1", "2"], // Eletrônicos, Móveis
+        manufacturers: ["1", "2"], // TechCorp, MobileFlex
+        productGroups: ["1", "2"], // Smartphones, Camisetas
+        notes: "Fornecedor confiável com ótimos prazos de entrega",
+        status: "active",
+        rating: 5,
+        image: "/uploads/tech-solutions-logo.png",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Global Electronics Distribuição",
+        companyName: "Global Electronics S.A.",
+        email: "contato@globalelectronics.com.br",
+        phone: "(21) 2345-6789",
+        whatsapp: "(21) 98765-4321",
+        website: "https://www.globalelectronics.com.br",
+        cnpj: "23.456.789/0001-01",
+        address: "Av. Industrial, 456 - Zona Sul",
+        city: "Rio de Janeiro",
+        state: "RJ",
+        zipCode: "20000-000",
+        country: "Brasil",
+        contactPerson: "Maria Santos",
+        contactRole: "Diretora de Vendas",
+        paymentTerms: "45 dias",
+        deliveryTime: "3-5 dias úteis",
+        minimumOrder: "R$ 5.000,00",
+        categories: ["1"], // Eletrônicos
+        manufacturers: ["1"], // TechCorp
+        productGroups: ["1"], // Smartphones
+        notes: "Especializada em eletrônicos importados",
+        status: "active",
+        rating: 4,
+        image: "/uploads/global-electronics-logo.png",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Móveis & Design",
+        companyName: "Móveis & Design LTDA",
+        email: "vendas@moveisedesign.com.br",
+        phone: "(31) 3456-7890",
+        whatsapp: "(31) 97654-3210",
+        website: "https://www.moveisedesign.com.br",
+        cnpj: "34.567.890/0001-12",
+        address: "Rua dos Móveis, 789 - Centro",
+        city: "Belo Horizonte",
+        state: "MG",
+        zipCode: "30000-000",
+        country: "Brasil",
+        contactPerson: "Carlos Oliveira",
+        contactRole: "Supervisor de Vendas",
+        paymentTerms: "60 dias",
+        deliveryTime: "10-15 dias úteis",
+        minimumOrder: "R$ 3.000,00",
+        categories: ["2"], // Móveis
+        manufacturers: ["2"], // MobileFlex
+        productGroups: [], 
+        notes: "Móveis corporativos e residenciais de alta qualidade",
+        status: "active",
+        rating: 5,
+        image: "/uploads/moveis-design-logo.png",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Fashion Distribuidora",
+        companyName: "Fashion Dist. e Com. LTDA",
+        email: "pedidos@fashiondist.com.br",
+        phone: "(41) 2345-6789",
+        whatsapp: "(41) 96543-2109",
+        website: "https://www.fashiondist.com.br",
+        cnpj: "45.678.901/0001-23",
+        address: "Rua da Moda, 321 - Bairro Fashion",
+        city: "Curitiba",
+        state: "PR",
+        zipCode: "80000-000",
+        country: "Brasil",
+        contactPerson: "Ana Costa",
+        contactRole: "Gerente de Contas",
+        paymentTerms: "28 dias",
+        deliveryTime: "7-10 dias úteis",
+        minimumOrder: "R$ 1.500,00",
+        categories: ["3"], // Roupas
+        manufacturers: [],
+        productGroups: ["2"], // Camisetas
+        notes: "Especializada em moda feminina e masculina",
+        status: "active",
+        rating: 4,
+        image: "/uploads/fashion-dist-logo.png",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Mega Suprimentos",
+        companyName: "Mega Suprimentos Industriais LTDA",
+        email: "vendas@megasuprimentos.com.br",
+        phone: "(51) 3456-7890",
+        whatsapp: "(51) 95432-1098",
+        website: "https://www.megasuprimentos.com.br",
+        cnpj: "56.789.012/0001-34",
+        address: "Av. Industrial, 1000 - Distrito Industrial",
+        city: "Porto Alegre",
+        state: "RS",
+        zipCode: "90000-000",
+        country: "Brasil",
+        contactPerson: "Roberto Silva",
+        contactRole: "Diretor Comercial",
+        paymentTerms: "90 dias",
+        deliveryTime: "15-20 dias úteis",
+        minimumOrder: "R$ 10.000,00",
+        categories: ["1", "2"], // Eletrônicos, Móveis
+        manufacturers: ["1", "2"], // TechCorp, MobileFlex
+        productGroups: ["1"],
+        notes: "Fornecedor de grande porte para projetos industriais",
+        status: "active",
+        rating: 3,
+        image: "/uploads/mega-suprimentos-logo.png",
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    await db.insert(suppliers).values(suppliersData);
+
+    // Create sample products
+    const productsData = [
+      {
+        name: "Smartphone X",
+        description: "Último lançamento com câmera de alta resolução e processador rápido.",
+        price: "3500.00",
+        stockQuantity: 50,
+        categoryId: 1, // Eletrônicos
+        manufacturerId: 1, // TechCorp
+        productGroupId: 1, // Smartphones
+        sku: "SPX-TC-001",
+        imageUrl: "https://images.unsplash.com/photo-1585109000021-781262a127f3?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Laptop Ultrabook Z",
+        description: "Leve e potente, ideal para profissionais que precisam de mobilidade.",
+        price: "7200.00",
+        stockQuantity: 30,
+        categoryId: 1, // Eletrônicos
+        manufacturerId: 1, // TechCorp
+        productGroupId: 3, // Laptops
+        sku: "ULZ-TC-002",
+        imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Cadeira Ergonômica Conforto",
+        description: "Design ergonômico para máximo conforto durante longas horas de trabalho.",
+        price: "850.00",
+        stockQuantity: 100,
+        categoryId: 2, // Móveis
+        manufacturerId: 2, // MobileFlex
+        productGroupId: 4, // Cadeiras
+        sku: "CEC-MF-003",
+        imageUrl: "https://images.unsplash.com/photo-1555040758-45827510971b?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Camiseta Algodão Premium",
+        description: "Malha 100% algodão, toque macio e caimento perfeito.",
+        price: "79.90",
+        stockQuantity: 200,
+        categoryId: 3, // Roupas
+        manufacturerId: 3, // Fashion Brand
+        productGroupId: 2, // Camisetas
+        sku: "CAP-FB-004",
+        imageUrl: "https://images.unsplash.com/photo-1564529075151-c3b5748c558c?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Monitor Ultrawide 34''",
+        description: "Experiência imersiva com alta taxa de atualização e cores vibrantes.",
+        price: "4800.00",
+        stockQuantity: 25,
+        categoryId: 1, // Eletrônicos
+        manufacturerId: 1, // TechCorp
+        productGroupId: 5, // Monitores
+        sku: "MUW-TC-005",
+        imageUrl: "https://images.unsplash.com/photo-1606394739880-56064031a0b2?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Mesa de Escritório Moderna",
+        description: "Design clean e funcional, com espaço para organizar seus equipamentos.",
+        price: "1500.00",
+        stockQuantity: 40,
+        categoryId: 2, // Móveis
+        manufacturerId: 2, // MobileFlex
+        productGroupId: 6, // Mesas
+        sku: "MEM-MF-006",
+        imageUrl: "https://images.unsplash.com/photo-1580522172926-1271e217904e?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Smartwatch Fitness Tracker",
+        description: "Monitore sua saúde e atividades físicas com este smartwatch completo.",
+        price: "1200.00",
+        stockQuantity: 75,
+        categoryId: 1, // Eletrônicos
+        manufacturerId: 4, // WearTech
+        productGroupId: 7, // Wearables
+        sku: "SFT-WT-007",
+        imageUrl: "https://images.unsplash.com/photo-1546868871-707f84b8462c?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Calça Jeans Slim Fit",
+        description: "Jeans de alta qualidade com corte moderno e confortável.",
+        price: "189.90",
+        stockQuantity: 150,
+        categoryId: 3, // Roupas
+        manufacturerId: 3, // Fashion Brand
+        productGroupId: 8, // Calças
+        sku: "CJS-FB-008",
+        imageUrl: "https://images.unsplash.com/photo-1591076604308-77671226056f?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Teclado Mecânico Gamer RGB",
+        description: "Teclado com switches mecânicos de alta performance e iluminação RGB personalizável.",
+        price: "450.00",
+        stockQuantity: 60,
+        categoryId: 1, // Eletrônicos
+        manufacturerId: 5, // GameGear
+        productGroupId: 9, // Periféricos
+        sku: "TMG-GG-009",
+        imageUrl: "https://images.unsplash.com/photo-1604887795504-053a221f7814?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        name: "Estante Modular Decorativa",
+        description: "Estante versátil para organizar livros e objetos de decoração.",
+        price: "950.00",
+        stockQuantity: 80,
+        categoryId: 2, // Móveis
+        manufacturerId: 2, // MobileFlex
+        productGroupId: 7, // Estantes
+        sku: "EMD-MF-010",
+        imageUrl: "https://images.unsplash.com/photo-1618172198085-41a450b77097?w=200&h=200&fit=crop&crop=face",
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    const [
+      smartphone,
+      laptop,
+      chair,
+      tshirt,
+      monitor,
+      desk,
+      smartwatch,
+      jeans,
+      keyboard,
+      shelf
+    ] = await db.insert(products).values(productsData).returning();
+
+
+    // Create sample sales
+    const salesData = [
+      {
+        saleNumber: "VDA-001",
+        clientId: client1.id,
+        userId: user.id,
+        saleDate: "2024-01-15",
+        status: "entregue",
+        paymentMethod: "cartao",
+        paymentStatus: "pago",
+        subtotal: "1299.90",
+        discount: "50.00",
+        tax: "0.00",
+        shipping: "29.90",
+        total: "1279.80",
+        notes: "Primeira compra do cliente - desconto especial aplicado",
+        deliveryAddress: "Rua das Flores, 123 - São Paulo, SP",
+        deliveryDate: "2024-01-20",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        saleNumber: "VDA-002", 
+        clientId: client2.id,
+        userId: user.id,
+        saleDate: "2024-01-18",
+        status: "enviada",
+        paymentMethod: "pix",
+        paymentStatus: "pago",
+        subtotal: "799.80",
+        discount: "0.00",
+        tax: "15.99",
+        shipping: "49.90",
+        total: "865.69",
+        notes: "Entrega expressa solicitada",
+        deliveryAddress: "Av. Principal, 456 - Rio de Janeiro, RJ",
+        deliveryDate: "2024-01-25",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        saleNumber: "VDA-003",
+        clientId: client3.id,
+        userId: user.id,
+        saleDate: "2024-01-20",
+        status: "confirmada",
+        paymentMethod: "boleto",
+        paymentStatus: "pendente",
+        subtotal: "2499.75",
+        discount: "100.00",
+        tax: "49.99",
+        shipping: "99.90",
+        total: "2549.64",
+        notes: "Aguardando confirmação do pagamento via boleto",
+        deliveryAddress: "Rua Comercial, 789 - Belo Horizonte, MG",
+        deliveryDate: "2024-02-01",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        saleNumber: "VDA-004",
+        clientId: client1.id,
+        userId: user.id,
+        saleDate: "2024-01-22",
+        status: "pendente",
+        paymentMethod: "credito",
+        paymentStatus: "pendente",
+        subtotal: "3299.85",
+        discount: "200.00",
+        tax: "65.99",
+        shipping: "79.90",
+        total: "3245.74",
+        notes: "Venda parcelada em 12x - análise de crédito aprovada",
+        deliveryAddress: "Rua das Flores, 123 - São Paulo, SP",
+        deliveryDate: "2024-02-05",
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        saleNumber: "VDA-005",
+        clientId: client2.id,
+        userId: user.id,
+        saleDate: "2024-01-25",
+        status: "entregue",
+        paymentMethod: "dinheiro",
+        paymentStatus: "pago",
+        subtotal: "599.90",
+        discount: "0.00",
+        tax: "0.00",
+        shipping: "0.00",
+        total: "599.90",
+        notes: "Retirada no balcão - pagamento à vista",
+        deliveryAddress: null,
+        deliveryDate: null,
+        createdAt: now,
+        updatedAt: now
+      },
+      {
+        saleNumber: "VDA-006",
+        clientId: client3.id,
+        userId: user.id,
+        saleDate: "2024-01-28",
+        status: "cancelada",
+        paymentMethod: "pix",
+        paymentStatus: "cancelado",
+        subtotal: "1899.80",
+        discount: "0.00",
+        tax: "37.99",
+        shipping: "59.90",
+        total: "1997.69",
+        notes: "Produto fora de estoque - venda cancelada e valor estornado",
+        deliveryAddress: "Rua Comercial, 789 - Belo Horizonte, MG",
+        deliveryDate: null,
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+
+    const [sale1, sale2, sale3, sale4, sale5, sale6] = await db.insert(sales).values(salesData).returning();
+
+    // Create sample sale items
+    const saleItemsData = [
+      // Sale 1 items
+      {
+        saleId: sale1.id,
+        productId: smartphone.id,
+        quantity: 1,
+        unitPrice: "1299.90",
+        discount: "50.00",
+        total: "1249.90",
+        createdAt: now
+      },
+      // Sale 2 items  
+      {
+        saleId: sale2.id,
+        productId: chair.id,
+        quantity: 1,
+        unitPrice: "799.80",
+        discount: "0.00",
+        total: "799.80",
+        createdAt: now
+      },
+      // Sale 3 items
+      {
+        saleId: sale3.id,
+        productId: laptop.id,
+        quantity: 1,
+        unitPrice: "2499.75",
+        discount: "100.00",
+        total: "2399.75",
+        createdAt: now
+      },
+      // Sale 4 items - Multiple products
+      {
+        saleId: sale4.id,
+        productId: smartphone.id,
+        quantity: 2,
+        unitPrice: "1299.90",
+        discount: "100.00",
+        total: "2499.80",
+        createdAt: now
+      },
+      {
+        saleId: sale4.id,
+        productId: chair.id,
+        quantity: 1,
+        unitPrice: "799.80",
+        discount: "100.00",
+        total: "699.80",
+        createdAt: now
+      },
+      // Sale 5 items
+      {
+        saleId: sale5.id,
+        productId: tshirt.id,
+        quantity: 3,
+        unitPrice: "199.90",
+        discount: "0.00",
+        total: "599.70",
+        createdAt: now
+      },
+      // Sale 6 items (cancelled)
+      {
+        saleId: sale6.id,
+        productId: laptop.id,
+        quantity: 1,
+        unitPrice: "1899.80",
+        discount: "0.00",
+        total: "1899.80",
+        createdAt: now
+      }
+    ];
+
+    await db.insert(saleItems).values(saleItemsData);
   }
 
   private createDefaultPermissionsForUser(user: any) {
@@ -1314,7 +1803,7 @@ export class DatabaseStorage implements IStorage {
         id: 3,
         userId,
         productName: "Custom Integration",
-        productImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=100&h=100&fit=crop",
+        productImage: "https://images.unsplash.com/photo-15187706604308-77671226056f?w=100&h=100&fit=crop",
         price: 299.00,
         quantity: 1,
         createdAt: now
@@ -1586,7 +2075,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Category CRUD operations
-  async getCategories(): Promise<Category[]> {
+  async getCategories(): Promise<Category[]>;
+  async getCategories() {
     try {
       const allCategories = await db.select().from(categories);
       return allCategories;
@@ -1625,7 +2115,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Manufacturer CRUD operations
-  async getManufacturers(): Promise<Manufacturer[]> {
+  async getManufacturers(): Promise<Manufacturer[]>;
+  async getManufacturers() {
     try {
       const allManufacturers = await db.select().from(manufacturers);
       return allManufacturers;
