@@ -250,36 +250,31 @@ export class DatabaseStorage implements IStorage {
 
   private async createAdminUser() {
     try {
-      // Check if admin user already exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, 'admin'))
-        .limit(1);
+      // Always try to create admin user since you deleted all users
+      console.log('Creating admin user with credentials: admin / admin123');
+      
+      const hashedPassword = await argon2.hash('admin123');
 
-      if (!existingUser) {
-        // Create admin user
-        const hashedPassword = await argon2.hash('admin123');
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username: 'admin',
+          password: hashedPassword,
+          name: 'Administrator',
+          role: 'Admin',
+          avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+        })
+        .returning();
 
-        const [newUser] = await db
-          .insert(users)
-          .values({
-            username: 'admin',
-            password: hashedPassword,
-            name: 'Administrator',
-            role: 'Admin',
-            avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-          })
-          .returning();
-
-        console.log('Admin user created successfully:', newUser.username);
-        // Create default permissions for the newly created admin user
-        this.createDefaultPermissionsForUser(newUser);
-      } else {
-        console.log('Admin user already exists');
-      }
+      console.log('Admin user created successfully:', newUser.username);
+      // Create default permissions for the newly created admin user
+      this.createDefaultPermissionsForUser(newUser);
     } catch (error) {
       console.error('Error creating admin user:', error);
+      // If user already exists, just log it
+      if (error instanceof Error && error.message.includes('duplicate key')) {
+        console.log('Admin user already exists');
+      }
     }
   }
 
@@ -773,7 +768,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Authentication methods
-  async authenticateUser(username: string, password: string): Promise<{ user: User; sessionToken: string; refreshToken: string } | null> {
+  async authenticateUser(username: string, password: string, ipAddress?: string, userAgent?: string): Promise<{ user: User; sessionToken: string; refreshToken: string } | null> {
     try {
       console.log('Authenticating user:', username);
 
@@ -833,7 +828,10 @@ export class DatabaseStorage implements IStorage {
       await db.insert(sessions).values({
         userId: user.id,
         token: sessionHash,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt, // Use Date object directly instead of toISOString()
+        refreshExpiresAt: refreshExpiresAt,
+        ipAddress: ipAddress,
+        userAgent: userAgent
       });
 
       console.log('Secure session created successfully for user:', username);
@@ -919,8 +917,7 @@ export class DatabaseStorage implements IStorage {
         .update(sessions)
         .set({
           lastActivityAt: new Date(),
-          ipAddress: ipAddress || matchingSession.ipAddress,
-          updatedAt: new Date()
+          ipAddress: ipAddress || matchingSession.ipAddress
         })
         .where(eq(sessions.id, matchingSession.id));
 
@@ -932,7 +929,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async refreshSession(refreshToken: string): Promise<{ sessionToken: string; refreshToken: string } | null> {
+  async refreshSession(refreshToken: string, ipAddress?: string, userAgent?: string): Promise<{ sessionToken: string; refreshToken: string } | null> {
     try {
       console.log('Refreshing session');
 
@@ -987,11 +984,18 @@ export class DatabaseStorage implements IStorage {
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
+      const refreshExpiresAt = new Date();
+      refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 7);
+
       await db
         .update(sessions)
         .set({ 
           token: sessionHash,
-          expiresAt: expiresAt.toISOString()
+          expiresAt: expiresAt,
+          refreshExpiresAt: refreshExpiresAt,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+          lastActivityAt: new Date()
         })
         .where(eq(sessions.userId, user.id));
 
