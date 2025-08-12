@@ -83,7 +83,7 @@ export default function Login() {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            ProjectHub
+            wPanel
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Sistema de Gerenciamento Empresarial
