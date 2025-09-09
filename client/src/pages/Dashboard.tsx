@@ -60,6 +60,9 @@ interface SystemStatus {
   };
   uptime: number;
   platform: string;
+  arch: string;
+  nodeVersion: string;
+  timestamp: string;
 }
 
 interface ProtonDriveStatus {
@@ -172,7 +175,12 @@ export default function Dashboard() {
   // Merge system status with Proton Drive data
   const mergedSystemStatus = systemStatus ? {
     ...systemStatus,
-    swap: protonStatus || systemStatus.swap
+    swap: (protonStatus as ProtonDriveStatus) || {
+      total: 0,
+      used: 0,
+      free: 0,
+      usagePercent: 0
+    }
   } : null;
 
   const stats = statsData as any;
