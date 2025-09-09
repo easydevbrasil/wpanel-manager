@@ -20,6 +20,8 @@ import {
   ShoppingCart,
   Truck,
   Headphones,
+  BarChart3,
+  Activity,
 } from "lucide-react";
 import type { DashboardStats } from "@shared/schema";
 
@@ -49,9 +51,19 @@ interface SystemStatus {
   };
   uptime: number;
   platform: string;
-  arch: string;
-  nodeVersion: string;
-  timestamp: string;
+}
+
+interface ProtonDriveStatus {
+  total: number;
+  used: number;
+  free: number;
+  usagePercent: number;
+}
+
+interface ChartData {
+  data: number[];
+  labels: string[];
+  current: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -134,6 +146,18 @@ export default function Dashboard() {
   const { data: protonStatus } = useQuery({
     queryKey: ["/api/proton/status"],
     refetchInterval: 30000, // Update every 30 seconds
+  });
+
+  // Fetch CPU chart data (every 2 seconds)
+  const { data: cpuChartData } = useQuery<ChartData>({
+    queryKey: ["/api/charts/cpu"],
+    refetchInterval: 2000, // Update every 2 seconds
+  });
+
+  // Fetch RAM chart data (every 2 seconds)
+  const { data: ramChartData } = useQuery<ChartData>({
+    queryKey: ["/api/charts/ram"],
+    refetchInterval: 2000, // Update every 2 seconds
   });
 
   // Merge system status with Proton Drive data
@@ -390,6 +414,85 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* Real-time Charts Section */}
+      <div className="mb-6 md:mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* CPU Chart */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                CPU em Tempo Real
+                <Badge variant="outline" className="ml-auto">
+                  {cpuChartData?.current || 0}%
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="h-32 flex items-end justify-between gap-1">
+                {cpuChartData?.data.map((value, index) => (
+                  <div
+                    key={index}
+                    className="bg-blue-500 rounded-t-sm min-w-[8px] transition-all duration-300"
+                    style={{
+                      height: `${Math.max(value, 2)}%`,
+                      opacity: index === cpuChartData.data.length - 1 ? 1 : 0.7 - (cpuChartData.data.length - index) * 0.03
+                    }}
+                    title={`${value}% - ${cpuChartData.labels[index]}`}
+                  />
+                )) || (
+                  <div className="text-center text-gray-500 dark:text-gray-400 w-full">
+                    Carregando dados...
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                Últimos {cpuChartData?.data.length || 0} pontos (atualizações a cada 2s)
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* RAM Chart */}
+          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <BarChart3 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                RAM em Tempo Real
+                <Badge variant="outline" className="ml-auto">
+                  {ramChartData?.current || 0}%
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="h-32 flex items-end justify-between gap-1">
+                {ramChartData?.data.map((value, index) => (
+                  <div
+                    key={index}
+                    className="bg-green-500 rounded-t-sm min-w-[8px] transition-all duration-300"
+                    style={{
+                      height: `${Math.max(value, 2)}%`,
+                      opacity: index === ramChartData.data.length - 1 ? 1 : 0.7 - (ramChartData.data.length - index) * 0.03
+                    }}
+                    title={`${value}% - ${ramChartData.labels[index]}`}
+                  />
+                )) || (
+                  <div className="text-center text-gray-500 dark:text-gray-400 w-full">
+                    Carregando dados...
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                Últimos {ramChartData?.data.length || 0} pontos (atualizações a cada 2s)
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Data Counters Section */}

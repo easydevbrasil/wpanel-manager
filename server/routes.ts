@@ -36,9 +36,18 @@ function getCpuUsage(): Promise<number> {
       const endMeasure = getCpuUsageMeasure();
       const idleDifference = endMeasure.idle - startMeasure.idle;
       const totalDifference = endMeasure.total - startMeasure.total;
-      const cpuPercentage = 100 - (100 * idleDifference) / totalDifference;
-      resolve(Math.max(0, Math.min(100, Math.round(cpuPercentage))));
-    }, 1000);
+      
+      if (totalDifference === 0) {
+        resolve(0);
+        return;
+      }
+      
+      const cpuPercentage = Math.max(0, Math.min(100, 
+        Math.round(100 - (100 * idleDifference) / totalDifference)
+      ));
+      
+      resolve(cpuPercentage);
+    }, 500); // Reduced timeout for more responsive updates
   });
 }
 
@@ -283,6 +292,34 @@ function getSwapUsage(): Promise<{ total: number; used: number; free: number; us
 let protonDriveCache: { total: number; used: number; free: number; usagePercent: number } | null = null;
 let protonDriveCacheTime = 0;
 const PROTON_CACHE_DURATION = 30000; // 30 seconds
+
+// Memory and CPU history for charts
+let cpuHistory: number[] = [];
+let ramHistory: number[] = [];
+const MAX_HISTORY_LENGTH = 20; // Keep last 20 data points
+
+// Update history arrays
+function updateSystemHistory() {
+  getCpuUsage().then(cpu => {
+    cpuHistory.push(cpu);
+    if (cpuHistory.length > MAX_HISTORY_LENGTH) {
+      cpuHistory.shift();
+    }
+  });
+
+  const totalMemory = os.totalmem();
+  const freeMemory = os.freemem();
+  const usedMemory = totalMemory - freeMemory;
+  const ramUsage = Math.round((usedMemory / totalMemory) * 100);
+  
+  ramHistory.push(ramUsage);
+  if (ramHistory.length > MAX_HISTORY_LENGTH) {
+    ramHistory.shift();
+  }
+}
+
+// Start updating history every 2 seconds
+setInterval(updateSystemHistory, 2000);
 
 // Function to get Proton Drive usage
 function getProtonDriveUsage(): Promise<{ total: number; used: number; free: number; usagePercent: number }> {
@@ -1653,6 +1690,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting system status:", error);
       res.status(500).json({ error: "Failed to get system status" });
+    }
+  });
+
+  // Real-time chart data routes
+  app.get("/api/charts/cpu", authenticateToken, async (req, res) => {
+    try {
+      res.json({
+        data: cpuHistory,
+        labels: cpuHistory.map((_, index) => `${index * 2}s ago`).reverse(),
+        current: cpuHistory[cpuHistory.length - 1] || 0
+      });
+    } catch (error) {
+      console.error("Error getting CPU chart data:", error);
+      res.status(500).json({ error: "Failed to get CPU chart data" });
+    }
+  });
+
+  app.get("/api/charts/ram", authenticateToken, async (req, res) => {
+    try {
+      res.json({
+        data: ramHistory,
+        labels: ramHistory.map((_, index) => `${index * 2}s ago`).reverse(),
+        current: ramHistory[ramHistory.length - 1] || 0
+      });
+    } catch (error) {
+      console.error("Error getting RAM chart data:", error);
+      res.status(500).json({ error: "Failed to get RAM chart data" });
     }
   });
 
