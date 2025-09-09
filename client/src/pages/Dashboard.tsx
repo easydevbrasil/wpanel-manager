@@ -15,7 +15,7 @@ import {
   Cpu,
   HardDrive,
   MemoryStick,
-  Activity,
+  Cloud,
   Package,
   ShoppingCart,
   Truck,
@@ -124,11 +124,23 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  // Fetch real system status from API
+  // Fetch real system status from API (CPU, RAM, Disk - every 5 seconds)
   const { data: systemStatus, isLoading: isLoadingSystemStatus } = useQuery<SystemStatus>({
     queryKey: ["/api/system/status"],
     refetchInterval: 5000, // Update every 5 seconds
   });
+
+  // Fetch Proton Drive status separately (every 30 seconds)
+  const { data: protonStatus } = useQuery({
+    queryKey: ["/api/proton/status"],
+    refetchInterval: 30000, // Update every 30 seconds
+  });
+
+  // Merge system status with Proton Drive data
+  const mergedSystemStatus = systemStatus ? {
+    ...systemStatus,
+    swap: protonStatus || systemStatus.swap
+  } : null;
 
   const stats = statsData as any;
 
@@ -223,7 +235,7 @@ export default function Dashboard() {
           Status do Sistema
         </h2>
         
-        {!systemStatus ? (
+        {!mergedSystemStatus ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {[...Array(4)].map((_, i) => (
               <Card key={i} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
@@ -237,7 +249,7 @@ export default function Dashboard() {
               </Card>
             ))}
           </div>
-        ) : systemStatus ? (
+        ) : mergedSystemStatus ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* CPU Card with Gauge */}
             <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
@@ -248,16 +260,16 @@ export default function Dashboard() {
                       CPU
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {systemStatus.cpu.cores} cores
+                      {mergedSystemStatus.cpu.cores} cores
                     </p>
                   </div>
                   <div className="bg-blue-100 dark:bg-blue-900 p-2 md:p-3 rounded-lg">
                     <Cpu className="w-5 h-5 md:w-6 md:h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
-                <SystemGauge usage={Math.round(systemStatus.cpu.usage)} color="#3b82f6" />
+                <SystemGauge usage={Math.round(mergedSystemStatus.cpu.usage)} color="#3b82f6" />
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
-                  {systemStatus.cpu.model.substring(0, 30)}...
+                  {mergedSystemStatus.cpu.model.substring(0, 30)}...
                 </p>
               </CardContent>
             </Card>
@@ -271,18 +283,18 @@ export default function Dashboard() {
                       Memória RAM
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {formatBytes(systemStatus.memory.total)}
+                      {formatBytes(mergedSystemStatus.memory.total)}
                     </p>
                   </div>
                   <div className="bg-green-100 dark:bg-green-900 p-2 md:p-3 rounded-lg">
                     <MemoryStick className="w-5 h-5 md:w-6 md:h-6 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
-                <SystemGauge usage={systemStatus.memory.usagePercent} color="#10b981" />
+                <SystemGauge usage={mergedSystemStatus.memory.usagePercent} color="#10b981" />
                 <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
-                  <span>{formatBytes(systemStatus.memory.used)}</span>
+                  <span>{formatBytes(mergedSystemStatus.memory.used)}</span>
                   <span className="mx-1">/</span>
-                  <span>{formatBytes(systemStatus.memory.total)}</span>
+                  <span>{formatBytes(mergedSystemStatus.memory.total)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -296,45 +308,45 @@ export default function Dashboard() {
                       Armazenamento
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {formatBytes(systemStatus.disk.total)}
+                      {formatBytes(mergedSystemStatus.disk.total)}
                     </p>
                   </div>
                   <div className="bg-purple-100 dark:bg-purple-900 p-2 md:p-3 rounded-lg">
                     <HardDrive className="w-5 h-5 md:w-6 md:h-6 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
-                <SystemGauge usage={systemStatus.disk.usagePercent} color="#8b5cf6" />
+                <SystemGauge usage={mergedSystemStatus.disk.usagePercent} color="#8b5cf6" />
                 <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
-                  <span>{formatBytes(systemStatus.disk.used)}</span>
+                  <span>{formatBytes(mergedSystemStatus.disk.used)}</span>
                   <span className="mx-1">/</span>
-                  <span>{formatBytes(systemStatus.disk.total)}</span>
+                  <span>{formatBytes(mergedSystemStatus.disk.total)}</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Swap Card with Gauge */}
+            {/* Proton Drive Card with Gauge */}
             <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Swap
+                      Proton Drive
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {systemStatus.swap.total > 0 ? formatBytes(systemStatus.swap.total) : "N/A"}
+                      {mergedSystemStatus.swap.total > 0 ? formatBytes(mergedSystemStatus.swap.total) : "N/A"}
                     </p>
                   </div>
                   <div className="bg-orange-100 dark:bg-orange-900 p-2 md:p-3 rounded-lg">
-                    <Activity className="w-5 h-5 md:w-6 md:h-6 text-orange-600 dark:text-orange-400" />
+                    <Cloud className="w-5 h-5 md:w-6 md:h-6 text-orange-600 dark:text-orange-400" />
                   </div>
                 </div>
-                <SystemGauge usage={systemStatus.swap.usagePercent} color="#f97316" />
+                <SystemGauge usage={mergedSystemStatus.swap.usagePercent} color="#f97316" />
                 <div className="text-xs text-gray-500 dark:text-gray-500 mt-2 text-center">
-                  {systemStatus.swap.total > 0 ? (
+                  {mergedSystemStatus.swap.total > 0 ? (
                     <>
-                      <span>{formatBytes(systemStatus.swap.used)}</span>
+                      <span>{formatBytes(mergedSystemStatus.swap.used)}</span>
                       <span className="mx-1">/</span>
-                      <span>{formatBytes(systemStatus.swap.total)}</span>
+                      <span>{formatBytes(mergedSystemStatus.swap.total)}</span>
                     </>
                   ) : (
                     <span>Não disponível</span>
@@ -346,32 +358,32 @@ export default function Dashboard() {
         ) : null}
         
         {/* System Info */}
-        {systemStatus && (
+        {mergedSystemStatus && (
           <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 mt-4">
             <CardContent className="p-4 md:p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Uptime</p>
                   <p className="font-semibold text-gray-900 dark:text-white">
-                    {formatUptime(systemStatus.uptime)}
+                    {formatUptime(mergedSystemStatus.uptime)}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Plataforma</p>
                   <p className="font-semibold text-gray-900 dark:text-white capitalize">
-                    {systemStatus.platform} {systemStatus.arch}
+                    {mergedSystemStatus.platform} {mergedSystemStatus.arch}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Node.js</p>
                   <p className="font-semibold text-gray-900 dark:text-white">
-                    {systemStatus.nodeVersion}
+                    {mergedSystemStatus.nodeVersion}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Atualizado</p>
                   <p className="font-semibold text-gray-900 dark:text-white">
-                    {new Date(systemStatus.timestamp).toLocaleTimeString('pt-BR')}
+                    {new Date(mergedSystemStatus.timestamp).toLocaleTimeString('pt-BR')}
                   </p>
                 </div>
               </div>
