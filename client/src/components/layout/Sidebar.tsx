@@ -212,7 +212,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   };
 
   // Group items by parent
-  const parentItems = navigationItems.filter(item => !item.parentId && item.href !== "/docker-containers");
+  const parentItems = navigationItems.filter(item => !item.parentId && item.href !== "/docker-containers" && item.href !== "/containers");
   const childItems = navigationItems.filter(item => item.parentId);
   const childrenByParent = childItems.reduce((acc, item) => {
     if (!item.parentId) return acc;
