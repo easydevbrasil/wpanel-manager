@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { 
   Play, 
   Square, 
@@ -13,9 +14,13 @@ import {
   Server,
   Database,
   Globe,
-  HardDrive
+  HardDrive,
+  Clock,
+  Network,
+  Activity
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
 
 // Docker icon component usando a imagem fornecida
 const DockerIcon = ({ className = "w-6 h-6" }) => (
@@ -77,12 +82,118 @@ const getContainerName = (container: DockerApiContainer): string => {
 };
 
 const getContainerPorts = (container: DockerApiContainer) => {
-  return container.Ports.map(port => {
-    if (port.PublicPort) {
-      return `${port.PublicPort}:${port.PrivatePort}/${port.Type}`;
+  const externalPorts = container.Ports
+    .filter(port => port.PublicPort) // Only show ports that are externally exposed
+    .map(port => `${port.PublicPort}`)
+    .join(', ');
+  
+  return externalPorts || 'Nenhuma porta externa';
+};
+
+const getContainerIP = (container: DockerApiContainer): string => {
+  const networks = container.NetworkSettings?.Networks;
+  if (!networks) return 'N/A';
+  
+  const networkNames = Object.keys(networks);
+  if (networkNames.length === 0) return 'N/A';
+  
+  const firstNetwork = networks[networkNames[0]];
+  return firstNetwork?.IPAddress || 'N/A';
+};
+
+const getUptime = (status: string): string => {
+  // Parse the uptime from status string like "Up 2 hours" or "Exited (0) 5 minutes ago"
+  if (status.startsWith('Up ')) {
+    const uptimeText = status.replace('Up ', '');
+    
+    // Parse different formats
+    const timeMatch = uptimeText.match(/(\d+)\s*(second|minute|hour|day)s?/gi);
+    if (timeMatch) {
+      let totalMinutes = 0;
+      
+      timeMatch.forEach(match => {
+        const [, value, unit] = match.match(/(\d+)\s*(second|minute|hour|day)s?/i) || [];
+        const num = parseInt(value);
+        
+        switch (unit.toLowerCase()) {
+          case 'second':
+            totalMinutes += num / 60;
+            break;
+          case 'minute':
+            totalMinutes += num;
+            break;
+          case 'hour':
+            totalMinutes += num * 60;
+            break;
+          case 'day':
+            totalMinutes += num * 60 * 24;
+            break;
+        }
+      });
+      
+      const days = Math.floor(totalMinutes / (60 * 24));
+      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+      const minutes = Math.floor(totalMinutes % 60);
+      
+      if (days > 0) return `${days}d ${hours}h`;
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
     }
-    return `${port.PrivatePort}/${port.Type}`;
-  }).join(', ') || 'Nenhuma porta exposta';
+    
+    // Fallback: return simplified version
+    return uptimeText;
+  }
+  
+  // If not running, show stopped status
+  if (status.includes('Exited')) {
+    return 'Parado';
+  }
+  
+  return 'N/A';
+};
+
+// Mock data for usage charts - in real implementation, this would come from container stats API
+const generateMockUsageData = () => {
+  // Generate more realistic usage data with some trend
+  const baseValue = Math.random() * 50 + 20; // Base between 20-70%
+  return Array.from({ length: 20 }, (_, i) => {
+    const trend = Math.sin(i * 0.3) * 10; // Small wave pattern
+    const noise = (Math.random() - 0.5) * 15; // Random variation
+    const value = Math.max(0, Math.min(100, baseValue + trend + noise));
+    
+    return {
+      time: i,
+      cpu: value,
+      memory: Math.max(0, Math.min(100, value + (Math.random() - 0.5) * 20)),
+    };
+  });
+};
+
+// Usage Chart Component
+const UsageChart = ({ data, type }: { data: any[], type: 'cpu' | 'memory' }) => {
+  const config: ChartConfig = {
+    [type]: {
+      label: type === 'cpu' ? 'CPU' : 'Memória',
+      color: type === 'cpu' ? '#3b82f6' : '#10b981',
+    },
+  };
+
+  return (
+    <ChartContainer config={config} className="h-16 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data}>
+          <Area
+            type="monotone"
+            dataKey={type}
+            stroke={config[type].color}
+            fill={config[type].color}
+            fillOpacity={0.3}
+            strokeWidth={1.5}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  );
 };
 
 const getStatusColor = (state: string) => {
@@ -165,11 +276,6 @@ export default function DockerContainers() {
     // Use Docker logo as default for all containers
     return <img src="/uploads/docker-logo.png" alt="Docker" className="w-full h-4/5 object-contain" />;
   };
-
-  const { data: dockerStatus } = useQuery({
-    queryKey: ["/api/docker/status"],
-    refetchInterval: 10000, // Check Docker status every 10 seconds
-  });
 
   const { data: allContainers = [], isLoading } = useQuery<DockerApiContainer[]>({
     queryKey: ["/api/docker/containers"],
@@ -363,20 +469,6 @@ export default function DockerContainers() {
           <p className="text-gray-600 dark:text-gray-400">
             Visualize e controle containers Docker em tempo real
           </p>
-          <div className="mt-2 flex gap-2">
-            <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full inline-block">
-              🔄 Atualização em tempo real (2s)
-            </div>
-            {dockerStatus?.available ? (
-              <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full inline-block">
-                🐳 Docker conectado via {dockerStatus.method || 'child_process'} (v{dockerStatus.version})
-              </div>
-            ) : (
-              <div className="px-3 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs rounded-full inline-block">
-                📋 Usando dados simulados - Docker indisponível
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -453,16 +545,78 @@ export default function DockerContainers() {
                   </CardHeader>
 
                   <CardContent className="space-y-4 flex-1">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      <p><strong>Status:</strong> {container.Status}</p>
-                      <p><strong>Portas:</strong> {getContainerPorts(container)}</p>
-                      <p><strong>Rede:</strong> {container.HostConfig.NetworkMode}</p>
-                      {container.Command && (
-                        <p><strong>Comando:</strong> {container.Command.length > 50 ? container.Command.substring(0, 50) + '...' : container.Command}</p>
-                      )}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
+                          <Activity className="w-3 h-3" />
+                          Status
+                        </p>
+                        <p className="text-gray-900 dark:text-white">{container.Status}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
+                          <Globe className="w-3 h-3" />
+                          Portas Externas
+                        </p>
+                        <p className="text-gray-900 dark:text-white font-mono">{getContainerPorts(container)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
+                          <Network className="w-3 h-3" />
+                          IP do Container
+                        </p>
+                        <p className="text-gray-900 dark:text-white font-mono">{getContainerIP(container)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Uptime
+                        </p>
+                        <p className="text-gray-900 dark:text-white">{getUptime(container.Status)}</p>
+                      </div>
                     </div>
 
-                    <div className="flex gap-1">
+                    {/* Usage Charts */}
+                    {container.State === "running" && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Uso de Recursos</h4>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Dados simulados</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          {(() => {
+                            const data = generateMockUsageData();
+                            const currentCpu = data[data.length - 1]?.cpu || 0;
+                            const currentMemory = data[data.length - 1]?.memory || 0;
+                            
+                            return (
+                              <>
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500 dark:text-gray-400">CPU</span>
+                                    <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                      {currentCpu.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <UsageChart data={data} type="cpu" />
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500 dark:text-gray-400">Memória</span>
+                                    <span className="text-green-600 dark:text-green-400 font-medium">
+                                      {currentMemory.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <UsageChart data={data} type="memory" />
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mt-4">
                       {container.State === "running" ? (
                         <>
                           <Button
@@ -470,20 +624,22 @@ export default function DockerContainers() {
                             variant="outline"
                             onClick={() => handleContainerAction(container.Id, 'stop')}
                             disabled={stopMutation.isPending}
-                            className="p-2"
+                            className="flex items-center gap-1"
                             title="Parar container"
                           >
                             <Square className="w-3 h-3" />
+                            Parar
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleContainerAction(container.Id, 'restart')}
                             disabled={restartMutation.isPending}
-                            className="p-2"
+                            className="flex items-center gap-1"
                             title="Reiniciar container"
                           >
                             <RotateCcw className="w-3 h-3" />
+                            Reiniciar
                           </Button>
                         </>
                       ) : (
@@ -492,10 +648,11 @@ export default function DockerContainers() {
                           variant="outline"
                           onClick={() => handleContainerAction(container.Id, 'start')}
                           disabled={startMutation.isPending}
-                          className="p-2"
+                          className="flex items-center gap-1"
                           title="Iniciar container"
                         >
                           <Play className="w-3 h-3" />
+                          Iniciar
                         </Button>
                       )}
                     </div>
