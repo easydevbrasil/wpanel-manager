@@ -23,6 +23,15 @@ import {
   BarChart3,
   Activity,
 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 import type { DashboardStats } from "@shared/schema";
 
 interface SystemStatus {
