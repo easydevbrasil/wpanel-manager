@@ -80,6 +80,24 @@ interface ChartData {
   data: number[];
   labels: string[];
   current: number;
+  details?: {
+    cores?: number;
+    model?: string;
+    frequency?: string;
+    minUsage?: string;
+    maxUsage?: string;
+    avgUsage?: string;
+    architecture?: string;
+    threads?: number;
+    total?: string;
+    used?: string;
+    free?: string;
+    totalBytes?: number;
+    usedBytes?: number;
+    freeBytes?: number;
+    platform?: string;
+    buffers?: string;
+  };
 }
 
 interface NetworkChartData {
@@ -474,13 +492,25 @@ export default function Dashboard() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Activity className="w-4 h-4 text-blue-600" />
                   CPU
-                  <Badge variant="outline" className="ml-auto">
-                    {cpuChartData.current.toFixed(1)}%
-                  </Badge>
+                  <div className="ml-auto flex flex-col gap-1">
+                    <Badge variant="outline" className="text-xs">
+                      {cpuChartData.current.toFixed(1)}%
+                    </Badge>
+                    {cpuChartData.details && (
+                      <div className="flex gap-1 text-xs">
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                          {cpuChartData.details.cores} cores
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                          Avg: {cpuChartData.details.avgUsage}%
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="h-32">
+                <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={cpuChartData.data.map((value, index) => ({
                       time: `${(cpuChartData.data.length - index - 1) * 2}s`,
@@ -527,6 +557,17 @@ export default function Dashboard() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+                {cpuChartData.details && (
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                    <div>Min: {cpuChartData.details.minUsage}%</div>
+                    <div>Max: {cpuChartData.details.maxUsage}%</div>
+                    {cpuChartData.details.frequency && (
+                      <div className="col-span-2 truncate" title={cpuChartData.details.model}>
+                        {cpuChartData.details.frequency}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -538,13 +579,25 @@ export default function Dashboard() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-green-600" />
                   RAM
-                  <Badge variant="outline" className="ml-auto">
-                    {ramChartData.current.toFixed(1)}%
-                  </Badge>
+                  <div className="ml-auto flex flex-col gap-1">
+                    <Badge variant="outline" className="text-xs">
+                      {ramChartData.current.toFixed(1)}%
+                    </Badge>
+                    {ramChartData.details && (
+                      <div className="flex gap-1 text-xs">
+                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+                          {ramChartData.details.used}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                          Avg: {ramChartData.details.avgUsage}%
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="h-32">
+                <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={ramChartData.data.map((value, index) => ({
                       time: `${(ramChartData.data.length - index - 1) * 2}s`,
@@ -591,6 +644,14 @@ export default function Dashboard() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+                {ramChartData.details && (
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                    <div>Min: {ramChartData.details.minUsage}%</div>
+                    <div>Max: {ramChartData.details.maxUsage}%</div>
+                    <div>Free: {ramChartData.details.free}</div>
+                    <div>Total: {ramChartData.details.total}</div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

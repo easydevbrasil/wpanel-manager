@@ -1767,10 +1767,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Real-time chart data routes
   app.get("/api/charts/cpu", authenticateToken, async (req, res) => {
     try {
+      const cpuInfo = os.cpus();
+      const currentCpu = cpuHistory[cpuHistory.length - 1] || 0;
+      
+      // Calculate average frequency
+      const avgFrequency = cpuInfo.reduce((sum, cpu) => sum + cpu.speed, 0) / cpuInfo.length;
+      
+      // Get min and max values for the chart period
+      const minUsage = cpuHistory.length > 0 ? Math.min(...cpuHistory) : 0;
+      const maxUsage = cpuHistory.length > 0 ? Math.max(...cpuHistory) : 0;
+      const avgUsage = cpuHistory.length > 0 ? 
+        cpuHistory.reduce((sum, val) => sum + val, 0) / cpuHistory.length : 0;
+
       res.json({
         data: cpuHistory,
         labels: cpuHistory.map((_, index) => `${index * 2}s ago`).reverse(),
-        current: cpuHistory[cpuHistory.length - 1] || 0
+        current: currentCpu,
+        details: {
+          cores: cpuInfo.length,
+          model: cpuInfo[0]?.model || 'Unknown',
+          frequency: `${avgFrequency} MHz`,
+          minUsage: minUsage.toFixed(1),
+          maxUsage: maxUsage.toFixed(1),
+          avgUsage: avgUsage.toFixed(1),
+          architecture: os.arch(),
+          threads: cpuInfo.length // Assuming 1 thread per core for simplicity
+        }
       });
     } catch (error) {
       console.error("Error getting CPU chart data:", error);
@@ -1780,10 +1802,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/charts/ram", authenticateToken, async (req, res) => {
     try {
+      const memInfo = os.totalmem();
+      const freeMemInfo = os.freemem();
+      const usedMem = memInfo - freeMemInfo;
+      const currentRam = ramHistory[ramHistory.length - 1] || 0;
+      
+      // Get min and max values for the chart period
+      const minUsage = ramHistory.length > 0 ? Math.min(...ramHistory) : 0;
+      const maxUsage = ramHistory.length > 0 ? Math.max(...ramHistory) : 0;
+      const avgUsage = ramHistory.length > 0 ? 
+        ramHistory.reduce((sum, val) => sum + val, 0) / ramHistory.length : 0;
+
+      // Format bytes helper
+      const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      };
+
       res.json({
         data: ramHistory,
         labels: ramHistory.map((_, index) => `${index * 2}s ago`).reverse(),
-        current: ramHistory[ramHistory.length - 1] || 0
+        current: currentRam,
+        details: {
+          total: formatBytes(memInfo),
+          used: formatBytes(usedMem),
+          free: formatBytes(freeMemInfo),
+          totalBytes: memInfo,
+          usedBytes: usedMem,
+          freeBytes: freeMemInfo,
+          minUsage: minUsage.toFixed(1),
+          maxUsage: maxUsage.toFixed(1),
+          avgUsage: avgUsage.toFixed(1),
+          platform: os.platform(),
+          buffers: 'N/A' // Could be enhanced with /proc/meminfo on Linux
+        }
       });
     } catch (error) {
       console.error("Error getting RAM chart data:", error);
