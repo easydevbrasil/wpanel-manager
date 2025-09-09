@@ -2060,7 +2060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.json({
         available: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         method: 'child_process'
       });
     }
@@ -2076,7 +2076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Failed to list Docker containers:", error);
       res.status(500).json({ 
         message: "Falha ao listar containers Docker",
-        error: error.message 
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -2102,7 +2102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Docker start error:", error);
         
         // Fallback para modo demo se Docker não estiver disponível
-        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+        if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Started container ${req.params.id}`);
           res.json({ 
             message: `Container iniciado com sucesso (modo demo)`,
@@ -2114,7 +2114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           res.status(500).json({ 
             message: "Falha ao iniciar container",
-            error: error.message 
+            error: error instanceof Error ? error.message : 'Unknown error'
           });
         }
       }
@@ -2141,7 +2141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Docker stop error:", error);
         
         // Fallback para modo demo se Docker não estiver disponível
-        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+        if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Stopped container ${req.params.id}`);
           res.json({ 
             message: `Container parado com sucesso (modo demo)`,
@@ -2153,7 +2153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           res.status(500).json({ 
             message: "Falha ao parar container",
-            error: error.message 
+            error: error instanceof Error ? error.message : 'Unknown error'
           });
         }
       }
@@ -2180,7 +2180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Docker restart error:", error);
         
         // Fallback para modo demo se Docker não estiver disponível
-        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+        if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Restarted container ${req.params.id}`);
           res.json({ 
             message: `Container reiniciado com sucesso (modo demo)`,
@@ -2192,7 +2192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           res.status(500).json({ 
             message: "Falha ao reiniciar container",
-            error: error.message 
+            error: error instanceof Error ? error.message : 'Unknown error'
           });
         }
       }
@@ -2219,7 +2219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Docker pause error:", error);
         
         // Fallback para modo demo se Docker não estiver disponível
-        if (error.message.includes('command not found') || error.message.includes('Cannot connect')) {
+        if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Paused container ${req.params.id}`);
           res.json({ 
             message: `Container pausado com sucesso (modo demo)`,
@@ -2231,7 +2231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           res.status(500).json({ 
             message: "Falha ao pausar container",
-            error: error.message 
+            error: error instanceof Error ? error.message : 'Unknown error'
           });
         }
       }
