@@ -41,8 +41,10 @@ export function MainLayout({ children }: MainLayoutProps) {
         <div ref={sidebarRef}>
           <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         </div>
-        <main className="flex-1 p-4 md:p-6 overflow-auto bg-gray-50 dark:bg-gray-900">
-          {children}
+        <main className="flex-1 p-2 md:p-4 overflow-auto bg-gray-50 dark:bg-gray-900 w-full">
+          <div className="w-full max-w-none mx-auto" style={{ width: '90%' }}>
+            {children}
+          </div>
         </main>
       </div>
       <WebSocketIndicator />

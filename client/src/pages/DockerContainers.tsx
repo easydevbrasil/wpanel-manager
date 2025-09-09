@@ -353,7 +353,7 @@ export default function DockerContainers() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+    <div className="w-full p-4 sm:p-6 space-y-6">
       <div className="flex items-center space-x-3">
         <DockerIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
         <div>

@@ -910,7 +910,7 @@ export default function Help() {
   const endpoints = getEndpointsForCategory(selectedCategory);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 w-full">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Central de Ajuda

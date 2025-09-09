@@ -289,7 +289,7 @@ export default function Suppliers() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="w-full">
       {/* Page Header */}
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
