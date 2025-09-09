@@ -169,15 +169,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const getSidebarColorClasses = (color: string) => {
     switch (color) {
       case 'blue':
-        return 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800';
+        return 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-200/70 dark:border-blue-800/50';
       case 'green':
-        return 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800';
+        return 'bg-green-50/50 dark:bg-green-950/30 border-green-200/70 dark:border-green-800/50';
       case 'purple':
-        return 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800';
+        return 'bg-purple-50/50 dark:bg-purple-950/30 border-purple-200/70 dark:border-purple-800/50';
       case 'red':
-        return 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800';
+        return 'bg-red-50/50 dark:bg-red-950/30 border-red-200/70 dark:border-red-800/50';
       default:
-        return 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700';
+        return 'bg-white/80 dark:bg-gray-900/80 border-gray-200/70 dark:border-gray-700/50';
     }
   };
 
@@ -185,34 +185,34 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (isActive) {
       switch (color) {
         case 'blue':
-          return 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100';
+          return 'bg-blue-100/80 dark:bg-blue-900/60 text-blue-700 dark:text-blue-200 shadow-sm';
         case 'green':
-          return 'bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-100';
+          return 'bg-green-100/80 dark:bg-green-900/60 text-green-700 dark:text-green-200 shadow-sm';
         case 'purple':
-          return 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100';
+          return 'bg-purple-100/80 dark:bg-purple-900/60 text-purple-700 dark:text-purple-200 shadow-sm';
         case 'red':
-          return 'bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-100';
+          return 'bg-red-100/80 dark:bg-red-900/60 text-red-700 dark:text-red-200 shadow-sm';
         default:
-          return 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white';
+          return 'bg-gray-100/80 dark:bg-gray-800/60 text-gray-800 dark:text-gray-200 shadow-sm';
       }
     }
     
     switch (color) {
       case 'blue':
-        return 'text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900';
+        return 'text-gray-600 dark:text-gray-400 hover:bg-blue-50/80 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-300';
       case 'green':
-        return 'text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900';
+        return 'text-gray-600 dark:text-gray-400 hover:bg-green-50/80 dark:hover:bg-green-900/40 hover:text-green-700 dark:hover:text-green-300';
       case 'purple':
-        return 'text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900';
+        return 'text-gray-600 dark:text-gray-400 hover:bg-purple-50/80 dark:hover:bg-purple-900/40 hover:text-purple-700 dark:hover:text-purple-300';
       case 'red':
-        return 'text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900';
+        return 'text-gray-600 dark:text-gray-400 hover:bg-red-50/80 dark:hover:bg-red-900/40 hover:text-red-700 dark:hover:text-red-300';
       default:
-        return 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800';
+        return 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 hover:text-gray-800 dark:hover:text-gray-200';
     }
   };
 
   // Group items by parent
-  const parentItems = navigationItems.filter(item => !item.parentId);
+  const parentItems = navigationItems.filter(item => !item.parentId && item.href !== "/docker-containers");
   const childItems = navigationItems.filter(item => item.parentId);
   const childrenByParent = childItems.reduce((acc, item) => {
     if (!item.parentId) return acc;
@@ -234,7 +234,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const renderIcon = (iconName: string) => {
     const Icon = iconMap[iconName as keyof typeof iconMap];
-    return Icon ? <Icon className={collapsed ? "w-7 h-7" : "w-6 h-6"} /> : <LayoutDashboard className={collapsed ? "w-7 h-7" : "w-6 h-6"} />;
+    return Icon ? <Icon className={collapsed ? "w-5 h-5" : "w-4 h-4"} /> : <LayoutDashboard className={collapsed ? "w-5 h-5" : "w-4 h-4"} />;
   };
 
   const isActive = (href: string | null) => {
@@ -246,30 +246,30 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <>
       <aside
         className={cn(
-          "border-r transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col",
+          "border-r transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col backdrop-blur-sm",
           getSidebarColorClasses(userPreferences.sidebarColor),
-          collapsed ? "w-24" : "w-64"
+          collapsed ? "w-16" : "w-60"
         )}
       >
         {/* Main Navigation */}
-        <div className="flex-1 p-4 overflow-y-auto">
+        <div className="flex-1 p-2 overflow-y-auto">
           {/* Toggle Button */}
-          <div className="mb-4">
+          <div className="mb-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={onToggle}
               className={cn(
-                "p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800",
+                "p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/80 rounded-md transition-all duration-200",
                 collapsed ? "w-full justify-center" : "ml-auto"
               )}
               data-sidebar-toggle
             >
-              {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </Button>
           </div>
           
-          <nav className="space-y-2">
+          <nav className="space-y-1">
             {parentItems.map((item) => {
               const children = childrenByParent[item.id] || [];
               const hasChildren = children.length > 0;
@@ -286,33 +286,33 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-between",
+                          "w-full justify-between rounded-md transition-all duration-200 group",
                           getSidebarItemClasses(userPreferences.sidebarColor, false),
-                          collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
+                          collapsed ? "justify-center px-2 py-2 h-10" : "px-3 py-2 h-9"
                         )}
                       >
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-3">
                           {renderIcon(item.icon)}
                           {!collapsed && (
-                            <span className="ml-3">{item.label}</span>
+                            <span className="text-sm font-medium">{item.label}</span>
                           )}
                         </div>
                         {!collapsed && hasChildren && (
                           <ChevronDown
                             className={cn(
-                              "w-4 h-4 transition-transform",
+                              "w-3 h-3 transition-transform duration-200 opacity-60 group-hover:opacity-100",
                               isOpen && "rotate-180"
                             )}
                           />
                         )}
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1">
+                    <CollapsibleContent className="space-y-1 mt-1">
                       {children.map((child) => (
                         <Link key={child.id} href={child.href || "#"}>
                           <div
                             className={cn(
-                              "block ml-8 px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                              "block ml-6 px-3 py-1.5 text-sm rounded-md transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-current",
                               getSidebarItemClasses(userPreferences.sidebarColor, isActive(child.href))
                             )}
                           >
@@ -328,14 +328,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Link key={item.id} href={item.href || "#"}>
                     <div
                       className={cn(
-                        "flex items-center rounded-lg transition-colors cursor-pointer",
+                        "flex items-center gap-3 rounded-md transition-all duration-200 cursor-pointer group",
                         getSidebarItemClasses(userPreferences.sidebarColor, isActive(item.href)),
-                        collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
+                        collapsed ? "justify-center px-2 py-2 h-10" : "px-3 py-2 h-9"
                       )}
                     >
                       {renderIcon(item.icon)}
                       {!collapsed && (
-                        <span className="ml-3">{item.label}</span>
+                        <span className="text-sm font-medium">{item.label}</span>
                       )}
                     </div>
                   </Link>
@@ -344,20 +344,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             })}
             
             {/* Separador */}
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700"></div>
+            <div className="my-3 border-t border-gray-200/60 dark:border-gray-700/60"></div>
             
             {/* Link fixo para Docker Containers */}
             <Link href="/docker-containers">
               <div
                 className={cn(
-                  "flex items-center rounded-lg transition-colors cursor-pointer",
+                  "flex items-center gap-3 rounded-md transition-all duration-200 cursor-pointer group",
                   getSidebarItemClasses(userPreferences.sidebarColor, isActive("/docker-containers")),
-                  collapsed ? "justify-center px-2 py-3" : "px-3 py-2"
+                  collapsed ? "justify-center px-2 py-2 h-10" : "px-3 py-2 h-9"
                 )}
               >
-                <Container className={collapsed ? "w-7 h-7" : "w-6 h-6"} />
+                <Container className={collapsed ? "w-5 h-5" : "w-4 h-4"} />
                 {!collapsed && (
-                  <span className="ml-3">Docker Containers</span>
+                  <span className="text-sm font-medium">Docker Containers</span>
                 )}
               </div>
             </Link>
@@ -365,18 +365,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
 
         {/* Configuration Section */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="border-t border-gray-200/60 dark:border-gray-700/60 p-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800",
-                  collapsed ? "justify-center px-2 py-3" : "justify-start px-3 py-2"
+                  "w-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/80 rounded-md transition-all duration-200",
+                  collapsed ? "justify-center px-2 py-2 h-10" : "justify-start px-3 py-2 h-9"
                 )}
               >
-                <Settings className={collapsed ? "w-7 h-7" : "w-6 h-6"} />
-                {!collapsed && <span className="ml-3">Configurações</span>}
+                <Settings className={collapsed ? "w-5 h-5" : "w-4 h-4"} />
+                {!collapsed && <span className="ml-3 text-sm font-medium">Configurações</span>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent 
