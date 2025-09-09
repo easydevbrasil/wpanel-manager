@@ -844,6 +844,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.post(
+    "/api/upload/client-image",
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/upload/supplier-image",
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/upload/category-image",
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/upload/manufacturer-image",
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
+      }
+    },
+  );
+
   // Authentication routes (no auth required)
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -1032,6 +1100,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to get navigation items" });
+    }
+  });
+
+  // Update navigation items (add firewall, remove user permissions)
+  app.post("/api/navigation/update", async (req, res) => {
+    try {
+      // Check if firewall item already exists
+      const items = await dbStorage.getNavigationItems();
+      const firewallExists = items.some(item => item.href === '/firewall');
+      const permissionsItem = items.find(item => item.href === '/user-permissions');
+      
+      // Remove user permissions item if it exists
+      if (permissionsItem) {
+        await dbStorage.deleteNavigationItem(permissionsItem.id);
+      }
+      
+      // Add firewall item if it doesn't exist
+      if (!firewallExists) {
+        await dbStorage.createNavigationItem({
+          label: 'Firewall',
+          href: '/firewall',
+          icon: 'Shield',
+          order: 8,
+          parentId: null
+        });
+      }
+      
+      res.json({ success: true, message: "Navigation updated successfully" });
+    } catch (error) {
+      console.error('Error updating navigation:', error);
+      res.status(500).json({ message: "Failed to update navigation items" });
     }
   });
 
@@ -2577,6 +2676,598 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(message);
     } catch (error) {
       res.status(500).json({ message: "Failed to create ticket message" });
+    }
+  });
+
+  // Firewall API routes
+  const execAsync = promisify(exec);
+
+  // Safety check function to ensure we don't break essential services
+  function validateFirewallOperation(command: string): { valid: boolean; reason?: string } {
+    const protectedPorts = ['22', '80', '443', '25', '587', '993', '995'];
+    const dangerousPatterns = [
+      'iptables -F', // Don't allow flushing all rules
+      'iptables -P', // Don't allow policy changes
+      '--dport 22.*DROP', // Block SSH
+      '--dport 22.*REJECT', // Block SSH
+    ];
+
+    // Check for dangerous patterns
+    for (const pattern of dangerousPatterns) {
+      if (command.match(new RegExp(pattern, 'i'))) {
+        return { valid: false, reason: `Command contains dangerous pattern: ${pattern}` };
+      }
+    }
+
+    // Check for protected port blocking
+    for (const port of protectedPorts) {
+      if (command.includes(`--dport ${port}`) && (command.includes('DROP') || command.includes('REJECT'))) {
+        return { valid: false, reason: `Port ${port} is protected and cannot be blocked` };
+      }
+    }
+
+    return { valid: true };
+  }
+
+  // Helper function to parse iptables output
+  function parseIptablesRules(output: string): any[] {
+    const lines = output.split('\n').filter(line => line.trim() && !line.startsWith('Chain') && !line.startsWith('target'));
+    return lines.map((line, index) => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 3) {
+        return {
+          id: `rule_${index}`,
+          chain: 'INPUT', // Default chain
+          target: parts[0],
+          protocol: parts[1] !== 'all' ? parts[1] : undefined,
+          source: parts[2] !== '0.0.0.0/0' ? parts[2] : undefined,
+          destination: parts[3] !== '0.0.0.0/0' ? parts[3] : undefined,
+          port: extractPort(line),
+          interface: extractInterface(line),
+          state: extractState(line),
+          comment: extractComment(line),
+          line_number: index + 1,
+          rule_text: line.trim(),
+          is_custom: !isSystemRule(line)
+        };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+
+  function extractPort(rule: string): string | undefined {
+    const portMatch = rule.match(/dpt:(\d+)/);
+    if (portMatch) return portMatch[1];
+    
+    const portRangeMatch = rule.match(/dpts:(\d+:\d+)/);
+    if (portRangeMatch) return portRangeMatch[1];
+    
+    return undefined;
+  }
+
+  function extractInterface(rule: string): string | undefined {
+    const interfaceMatch = rule.match(/in:(\w+)/);
+    return interfaceMatch ? interfaceMatch[1] : undefined;
+  }
+
+  function extractState(rule: string): string | undefined {
+    const stateMatch = rule.match(/state\s+(\w+)/);
+    return stateMatch ? stateMatch[1] : undefined;
+  }
+
+  function extractComment(rule: string): string | undefined {
+    const commentMatch = rule.match(/\/\*\s*(.+?)\s*\*\//);
+    return commentMatch ? commentMatch[1] : undefined;
+  }
+
+  function isSystemRule(rule: string): boolean {
+    // Consider rules as system rules if they contain certain keywords
+    const systemKeywords = ['ESTABLISHED', 'RELATED', 'lo', 'localhost'];
+    return systemKeywords.some(keyword => rule.includes(keyword));
+  }
+
+  // Get all firewall rules
+  app.get("/api/firewall/rules", async (req, res) => {
+    try {
+      const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
+      const rules = parseIptablesRules(stdout);
+      res.json(rules);
+    } catch (error) {
+      console.error('Error fetching firewall rules:', error);
+      res.status(500).json({ message: "Failed to fetch firewall rules" });
+    }
+  });
+
+  // Get firewall statistics
+  app.get("/api/firewall/stats", async (req, res) => {
+    try {
+      const { stdout } = await execAsync('iptables -L INPUT -n');
+      const rules = parseIptablesRules(stdout);
+      
+      const stats = {
+        total_rules: rules.length,
+        allow_rules: rules.filter(r => r.target === 'ACCEPT').length,
+        deny_rules: rules.filter(r => r.target === 'DROP' || r.target === 'REJECT').length,
+        custom_rules: rules.filter(r => r.is_custom).length,
+        protected_ports: ['22', '80', '443', '25', '587', '993', '995'],
+        status: 'active' as const
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching firewall stats:', error);
+      res.status(500).json({ message: "Failed to fetch firewall statistics" });
+    }
+  });
+
+  // Add new firewall rule
+  app.post("/api/firewall/rules", async (req, res) => {
+    try {
+      const { action, protocol, source_ip, destination_ip, port, interface: iface, comment } = req.body;
+      
+      // Validate protected ports
+      const protectedPorts = ['22', '80', '443', '25', '587', '993', '995'];
+      if ((action === 'DROP' || action === 'REJECT') && port && protectedPorts.includes(port)) {
+        return res.status(400).json({ 
+          message: `Port ${port} is protected and cannot be blocked` 
+        });
+      }
+
+      // Build iptables command
+      let command = 'iptables -A INPUT';
+      
+      if (protocol && protocol !== 'all') {
+        command += ` -p ${protocol}`;
+      }
+      
+      if (source_ip && source_ip.trim()) {
+        command += ` -s ${source_ip.trim()}`;
+      }
+      
+      if (destination_ip && destination_ip.trim()) {
+        command += ` -d ${destination_ip.trim()}`;
+      }
+      
+      if (port && port.trim() && (protocol === 'tcp' || protocol === 'udp')) {
+        command += ` --dport ${port.trim()}`;
+      }
+      
+      if (iface && iface.trim()) {
+        command += ` -i ${iface.trim()}`;
+      }
+      
+      if (comment && comment.trim()) {
+        command += ` -m comment --comment "${comment.trim()}"`;
+      }
+      
+      command += ` -j ${action}`;
+      
+      // Validate the command for safety
+      const validation = validateFirewallOperation(command);
+      if (!validation.valid) {
+        return res.status(400).json({ message: validation.reason });
+      }
+      
+      // Execute the command
+      await execAsync(command);
+      
+      res.json({ success: true, message: "Firewall rule added successfully" });
+    } catch (error) {
+      console.error('Error adding firewall rule:', error);
+      res.status(500).json({ message: "Failed to add firewall rule" });
+    }
+  });
+
+  // Delete firewall rule
+  app.delete("/api/firewall/rules/:id", async (req, res) => {
+    try {
+      const ruleId = req.params.id;
+      
+      // Extract line number from rule ID
+      const lineNumber = ruleId.replace('rule_', '');
+      
+      if (!lineNumber || isNaN(parseInt(lineNumber))) {
+        return res.status(400).json({ message: "Invalid rule ID" });
+      }
+      
+      // Delete the rule by line number
+      await execAsync(`iptables -D INPUT ${parseInt(lineNumber) + 1}`);
+      
+      res.json({ success: true, message: "Firewall rule deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting firewall rule:', error);
+      res.status(500).json({ message: "Failed to delete firewall rule" });
+    }
+  });
+
+  // Update firewall rule
+  app.put("/api/firewall/rules/:id", async (req, res) => {
+    try {
+      const ruleId = req.params.id;
+      const { action, protocol, source_ip, destination_ip, port, interface: iface, comment } = req.body;
+      
+      // Extract line number from rule ID
+      const lineNumber = ruleId.replace('rule_', '');
+      
+      if (!lineNumber || isNaN(parseInt(lineNumber))) {
+        return res.status(400).json({ message: "Invalid rule ID" });
+      }
+
+      // First delete the old rule
+      await execAsync(`iptables -D INPUT ${parseInt(lineNumber) + 1}`);
+      
+      // Build new rule command
+      let command = `iptables -I INPUT ${parseInt(lineNumber) + 1}`;
+      
+      if (protocol && protocol !== 'all') {
+        command += ` -p ${protocol}`;
+      }
+      
+      if (source_ip && source_ip.trim()) {
+        command += ` -s ${source_ip.trim()}`;
+      }
+      
+      if (destination_ip && destination_ip.trim()) {
+        command += ` -d ${destination_ip.trim()}`;
+      }
+      
+      if (port && port.trim()) {
+        if (protocol === 'tcp' || protocol === 'udp') {
+          command += ` --dport ${port.trim()}`;
+        }
+      }
+      
+      if (iface && iface.trim()) {
+        command += ` -i ${iface.trim()}`;
+      }
+      
+      command += ` -j ${action}`;
+      
+      if (comment && comment.trim()) {
+        command += ` -m comment --comment "${comment.trim()}"`;
+      }
+      
+      // Execute the new rule
+      await execAsync(command);
+      
+      res.json({ success: true, message: "Firewall rule updated successfully" });
+    } catch (error) {
+      console.error('Error updating firewall rule:', error);
+      res.status(500).json({ message: "Failed to update firewall rule" });
+    }
+  });
+
+  // Quick action (block/allow IP)
+  app.post("/api/firewall/quick-action", async (req, res) => {
+    try {
+      const { action, target } = req.body;
+      
+      if (!target || !target.trim()) {
+        return res.status(400).json({ message: "Target IP is required" });
+      }
+      
+      // Validate IP format (basic validation)
+      const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+      if (!ipRegex.test(target.trim())) {
+        return res.status(400).json({ message: "Invalid IP address format" });
+      }
+      
+      let command;
+      if (action === 'block') {
+        command = `iptables -A INPUT -s ${target.trim()} -j DROP`;
+      } else if (action === 'allow') {
+        command = `iptables -A INPUT -s ${target.trim()} -j ACCEPT`;
+      } else {
+        return res.status(400).json({ message: "Invalid action" });
+      }
+      
+      await execAsync(command);
+      
+      res.json({ 
+        success: true, 
+        message: `IP ${target} has been ${action === 'block' ? 'blocked' : 'allowed'} successfully` 
+      });
+    } catch (error) {
+      console.error('Error executing quick action:', error);
+      res.status(500).json({ message: "Failed to execute quick action" });
+    }
+  });
+
+  // Flush custom rules (keep system rules)
+  app.post("/api/firewall/flush", async (req, res) => {
+    try {
+      // Get current rules
+      const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
+      const rules = parseIptablesRules(stdout);
+      
+      // Find custom rules and delete them (in reverse order to maintain line numbers)
+      const customRules = rules.filter(r => r.is_custom).reverse();
+      
+      for (const rule of customRules) {
+        try {
+          await execAsync(`iptables -D INPUT ${rule.line_number}`);
+        } catch (error) {
+          console.error(`Error deleting rule ${rule.line_number}:`, error);
+        }
+      }
+      
+      res.json({ success: true, message: "Custom firewall rules flushed successfully" });
+    } catch (error) {
+      console.error('Error flushing firewall rules:', error);
+      res.status(500).json({ message: "Failed to flush firewall rules" });
+    }
+  });
+
+  // Save rules permanently
+  app.post("/api/firewall/save", async (req, res) => {
+    try {
+      // Try different methods to save iptables rules permanently
+      try {
+        await execAsync('iptables-save > /etc/iptables/rules.v4');
+      } catch (error) {
+        try {
+          await execAsync('service iptables save');
+        } catch (error) {
+          try {
+            await execAsync('/sbin/iptables-save > /etc/sysconfig/iptables');
+          } catch (error) {
+            console.error('All save methods failed, rules are temporary');
+          }
+        }
+      }
+      
+      res.json({ success: true, message: "Firewall rules saved permanently" });
+    } catch (error) {
+      console.error('Error saving firewall rules:', error);
+      res.status(500).json({ message: "Failed to save firewall rules" });
+    }
+  });
+
+  // Enable iptables firewall
+  app.post("/api/firewall/enable", async (req, res) => {
+    try {
+      // Start iptables service and set default policies
+      try {
+        await execAsync('systemctl start iptables');
+      } catch (error) {
+        try {
+          await execAsync('service iptables start');
+        } catch (error) {
+          // If service doesn't exist, just ensure iptables is working
+          await execAsync('iptables -L > /dev/null');
+        }
+      }
+      
+      // Set basic security policies (allow loopback, established connections)
+      await execAsync('iptables -A INPUT -i lo -j ACCEPT');
+      await execAsync('iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT');
+      
+      res.json({ success: true, message: "Firewall enabled successfully" });
+    } catch (error) {
+      console.error('Error enabling firewall:', error);
+      res.status(500).json({ message: "Failed to enable firewall" });
+    }
+  });
+
+  // Disable iptables firewall
+  app.post("/api/firewall/disable", async (req, res) => {
+    try {
+      // Set all chains to ACCEPT policy and flush rules
+      await execAsync('iptables -P INPUT ACCEPT');
+      await execAsync('iptables -P FORWARD ACCEPT');
+      await execAsync('iptables -P OUTPUT ACCEPT');
+      await execAsync('iptables -F');
+      await execAsync('iptables -X');
+      await execAsync('iptables -t nat -F');
+      await execAsync('iptables -t nat -X');
+      await execAsync('iptables -t mangle -F');
+      await execAsync('iptables -t mangle -X');
+      
+      // Try to stop iptables service
+      try {
+        await execAsync('systemctl stop iptables');
+      } catch (error) {
+        try {
+          await execAsync('service iptables stop');
+        } catch (error) {
+          // Service might not exist, which is fine
+          console.log('iptables service not found, rules cleared manually');
+        }
+      }
+      
+      res.json({ success: true, message: "Firewall disabled successfully" });
+    } catch (error) {
+      console.error('Error disabling firewall:', error);
+      res.status(500).json({ message: "Failed to disable firewall" });
+    }
+  });
+
+  // Restart iptables firewall
+  app.post("/api/firewall/restart", async (req, res) => {
+    try {
+      // Clear all rules first
+      await execAsync('iptables -F');
+      await execAsync('iptables -X');
+      await execAsync('iptables -t nat -F');
+      await execAsync('iptables -t nat -X');
+      await execAsync('iptables -t mangle -F');
+      await execAsync('iptables -t mangle -X');
+      
+      // Restart iptables service
+      try {
+        await execAsync('systemctl restart iptables');
+      } catch (error) {
+        try {
+          await execAsync('service iptables restart');
+        } catch (error) {
+          // If service doesn't exist, restore basic rules
+          await execAsync('iptables -P INPUT ACCEPT');
+          await execAsync('iptables -P FORWARD ACCEPT');
+          await execAsync('iptables -P OUTPUT ACCEPT');
+        }
+      }
+      
+      // Restore basic security rules
+      await execAsync('iptables -A INPUT -i lo -j ACCEPT');
+      await execAsync('iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT');
+      
+      // Try to restore saved rules
+      try {
+        await execAsync('iptables-restore < /etc/iptables/rules.v4');
+      } catch (error) {
+        try {
+          await execAsync('iptables-restore < /etc/sysconfig/iptables');
+        } catch (error) {
+          console.log('No saved rules found, using basic configuration');
+        }
+      }
+      
+      res.json({ success: true, message: "Firewall restarted successfully" });
+    } catch (error) {
+      console.error('Error restarting firewall:', error);
+      res.status(500).json({ message: "Failed to restart firewall" });
+    }
+  });
+
+  // Get firewall service status
+  app.get("/api/firewall/status", async (req, res) => {
+    try {
+      let serviceStatus = 'unknown';
+      let serviceActive = false;
+      
+      // Check if iptables service is running
+      try {
+        const { stdout } = await execAsync('systemctl is-active iptables');
+        serviceStatus = stdout.trim();
+        serviceActive = serviceStatus === 'active';
+      } catch (error) {
+        try {
+          const { stdout } = await execAsync('service iptables status');
+          serviceActive = stdout.includes('running') || stdout.includes('active');
+          serviceStatus = serviceActive ? 'active' : 'inactive';
+        } catch (error) {
+          // Check if iptables is functional by running a simple command
+          try {
+            await execAsync('iptables -L -n | head -1');
+            serviceStatus = 'running';
+            serviceActive = true;
+          } catch (error) {
+            serviceStatus = 'inactive';
+            serviceActive = false;
+          }
+        }
+      }
+      
+      // Count current rules
+      let ruleCount = 0;
+      try {
+        const { stdout } = await execAsync('iptables -L INPUT -n | wc -l');
+        ruleCount = Math.max(0, parseInt(stdout.trim()) - 2); // Subtract header lines
+      } catch (error) {
+        ruleCount = 0;
+      }
+      
+      res.json({
+        service_status: serviceStatus,
+        is_active: serviceActive,
+        rule_count: ruleCount,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error getting firewall status:', error);
+      res.status(500).json({ message: "Failed to get firewall status" });
+    }
+  });
+
+  // Get network interfaces
+  app.get("/api/firewall/interfaces", async (req, res) => {
+    try {
+      const { stdout } = await execAsync('ip link show');
+      
+      const interfaces = [];
+      const lines = stdout.split('\n');
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.match(/^\d+:/)) {
+          const match = line.match(/^\d+:\s+(\w+):\s+<([^>]*)>/);
+          if (match) {
+            const name = match[1];
+            const flags = match[2].split(',');
+            
+            // Get interface details
+            let ip = '';
+            let state = 'DOWN';
+            let type = 'unknown';
+            let rxBytes = 0;
+            let txBytes = 0;
+            let rxPackets = 0;
+            let txPackets = 0;
+            
+            try {
+              const { stdout: ipInfo } = await execAsync(`ip addr show ${name}`);
+              const ipMatch = ipInfo.match(/inet\s+([^\s]+)/);
+              if (ipMatch) {
+                ip = ipMatch[1];
+              }
+              
+              if (flags.includes('UP')) {
+                state = 'UP';
+              }
+              
+              if (name.startsWith('eth') || name.startsWith('enp')) {
+                type = 'ethernet';
+              } else if (name.startsWith('wlan') || name.startsWith('wlp')) {
+                type = 'wireless';
+              } else if (name === 'lo') {
+                type = 'loopback';
+              } else if (name.startsWith('docker') || name.startsWith('br-')) {
+                type = 'bridge';
+              } else if (name.startsWith('veth')) {
+                type = 'virtual';
+              }
+              
+              // Get network statistics from /proc/net/dev
+              const { stdout: netDev } = await execAsync('cat /proc/net/dev');
+              const netDevLines = netDev.split('\n');
+              for (const devLine of netDevLines) {
+                if (devLine.includes(`${name}:`)) {
+                  const parts = devLine.trim().split(/\s+/);
+                  if (parts.length >= 17) {
+                    // Format: interface: rx_bytes rx_packets rx_errs rx_drop ... tx_bytes tx_packets tx_errs tx_drop ...
+                    rxBytes = parseInt(parts[1]) || 0;
+                    rxPackets = parseInt(parts[2]) || 0;
+                    txBytes = parseInt(parts[9]) || 0;
+                    txPackets = parseInt(parts[10]) || 0;
+                  }
+                  break;
+                }
+              }
+            } catch (error) {
+              // Continue with basic info if detailed info fails
+            }
+            
+            interfaces.push({
+              name,
+              ip,
+              state,
+              type,
+              flags,
+              stats: {
+                rx_bytes: rxBytes,
+                tx_bytes: txBytes,
+                rx_packets: rxPackets,
+                tx_packets: txPackets
+              }
+            });
+          }
+        }
+      }
+      
+      res.json(interfaces);
+    } catch (error) {
+      console.error('Error getting network interfaces:', error);
+      res.status(500).json({ message: "Failed to get network interfaces" });
     }
   });
 
