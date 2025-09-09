@@ -296,7 +296,65 @@ const PROTON_CACHE_DURATION = 30000; // 30 seconds
 // Memory and CPU history for charts
 let cpuHistory: number[] = [];
 let ramHistory: number[] = [];
+let networkHistory: { rx: number; tx: number }[] = [];
 const MAX_HISTORY_LENGTH = 20; // Keep last 20 data points
+
+// Network stats tracking
+let lastNetworkStats = { rx: 0, tx: 0, timestamp: 0 };
+
+// Function to get network usage
+function getNetworkUsage(): Promise<{ rx: number; tx: number }> {
+  return new Promise((resolve) => {
+    exec('cat /proc/net/dev', (error, stdout, stderr) => {
+      if (error) {
+        console.error('Error getting network stats:', error);
+        resolve({ rx: 0, tx: 0 });
+        return;
+      }
+
+      try {
+        const lines = stdout.trim().split('\n');
+        let totalRx = 0;
+        let totalTx = 0;
+
+        // Skip header lines and parse interface stats
+        for (let i = 2; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line && !line.includes('lo:')) { // Skip loopback interface
+            const parts = line.split(/\s+/);
+            if (parts.length >= 10) {
+              const interfaceName = parts[0].replace(':', '');
+              // Skip virtual interfaces
+              if (!interfaceName.includes('docker') && !interfaceName.includes('veth') && !interfaceName.includes('br-')) {
+                totalRx += parseInt(parts[1]) || 0; // Received bytes
+                totalTx += parseInt(parts[9]) || 0; // Transmitted bytes
+              }
+            }
+          }
+        }
+
+        const now = Date.now();
+        const timeDiff = (now - lastNetworkStats.timestamp) / 1000; // seconds
+
+        let rxRate = 0;
+        let txRate = 0;
+
+        if (lastNetworkStats.timestamp > 0 && timeDiff > 0) {
+          const rxDiff = totalRx - lastNetworkStats.rx;
+          const txDiff = totalTx - lastNetworkStats.tx;
+          rxRate = Math.max(0, Math.round(rxDiff / timeDiff / 1024)); // KB/s
+          txRate = Math.max(0, Math.round(txDiff / timeDiff / 1024)); // KB/s
+        }
+
+        lastNetworkStats = { rx: totalRx, tx: totalTx, timestamp: now };
+        resolve({ rx: rxRate, tx: txRate });
+      } catch (parseError) {
+        console.error('Error parsing network stats:', parseError);
+        resolve({ rx: 0, tx: 0 });
+      }
+    });
+  });
+}
 
 // Update history arrays
 function updateSystemHistory() {
@@ -316,6 +374,13 @@ function updateSystemHistory() {
   if (ramHistory.length > MAX_HISTORY_LENGTH) {
     ramHistory.shift();
   }
+
+  getNetworkUsage().then(network => {
+    networkHistory.push(network);
+    if (networkHistory.length > MAX_HISTORY_LENGTH) {
+      networkHistory.shift();
+    }
+  });
 }
 
 // Start updating history every 2 seconds
@@ -1717,6 +1782,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting RAM chart data:", error);
       res.status(500).json({ error: "Failed to get RAM chart data" });
+    }
+  });
+
+  app.get("/api/charts/network", authenticateToken, async (req, res) => {
+    try {
+      res.json({
+        data: networkHistory,
+        labels: networkHistory.map((_, index) => `${index * 2}s ago`).reverse(),
+        current: networkHistory[networkHistory.length - 1] || { rx: 0, tx: 0 }
+      });
+    } catch (error) {
+      console.error("Error getting network chart data:", error);
+      res.status(500).json({ error: "Failed to get network chart data" });
     }
   });
 

@@ -22,6 +22,9 @@ import {
   Headphones,
   BarChart3,
   Activity,
+  Wifi,
+  Download,
+  Upload,
 } from "lucide-react";
 import {
   AreaChart,
@@ -76,6 +79,12 @@ interface ChartData {
   data: number[];
   labels: string[];
   current: number;
+}
+
+interface NetworkChartData {
+  data: { rx: number; tx: number }[];
+  labels: string[];
+  current: { rx: number; tx: number };
 }
 
 function formatBytes(bytes: number): string {
@@ -169,6 +178,12 @@ export default function Dashboard() {
   // Fetch RAM chart data (every 2 seconds)
   const { data: ramChartData } = useQuery<ChartData>({
     queryKey: ["/api/charts/ram"],
+    refetchInterval: 2000, // Update every 2 seconds
+  });
+
+  // Fetch network chart data (every 2 seconds)
+  const { data: networkChartData } = useQuery<NetworkChartData>({
+    queryKey: ["/api/charts/network"],
     refetchInterval: 2000, // Update every 2 seconds
   });
 
@@ -435,14 +450,14 @@ export default function Dashboard() {
 
       {/* Real-time Charts Section */}
       <div className="mb-6 md:mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* CPU Chart */}
           {cpuChartData && (
             <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Activity className="w-4 h-4 text-blue-600" />
-                  CPU em Tempo Real
+                  CPU
                   <Badge variant="outline" className="ml-auto">
                     {cpuChartData.current.toFixed(1)}%
                   </Badge>
@@ -506,7 +521,7 @@ export default function Dashboard() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-green-600" />
-                  RAM em Tempo Real
+                  RAM
                   <Badge variant="outline" className="ml-auto">
                     {ramChartData.current.toFixed(1)}%
                   </Badge>
@@ -555,6 +570,95 @@ export default function Dashboard() {
                         stroke="#10b981"
                         strokeWidth={2}
                         fill="url(#gradient-ram)"
+                        fillOpacity={1}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Network Chart */}
+          {networkChartData && (
+            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-purple-600" />
+                  Rede
+                  <div className="ml-auto flex gap-1">
+                    <Badge variant="outline" className="text-xs">
+                      <Download className="w-3 h-3 mr-1" />
+                      {networkChartData.current.rx} KB/s
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      <Upload className="w-3 h-3 mr-1" />
+                      {networkChartData.current.tx} KB/s
+                    </Badge>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={networkChartData.data.map((item, index) => ({
+                      time: `${(networkChartData.data.length - index - 1) * 2}s`,
+                      rx: item.rx,
+                      tx: item.tx,
+                      index: index
+                    })).reverse()}>
+                      <defs>
+                        <linearGradient id="gradient-rx" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="gradient-tx" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                      <XAxis 
+                        dataKey="time" 
+                        fontSize={10}
+                        stroke="#6B7280"
+                        tick={{ fill: '#6B7280' }}
+                      />
+                      <YAxis 
+                        fontSize={10}
+                        stroke="#6B7280"
+                        tick={{ fill: '#6B7280' }}
+                        domain={[0, 'dataMax']}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: '#1F2937',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#F9FAFB'
+                        }}
+                        formatter={(value: any, name: string) => [
+                          `${value} KB/s`, 
+                          name === 'rx' ? 'Download' : 'Upload'
+                        ]}
+                        labelFormatter={(label) => `${label} atrás`}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="rx"
+                        stackId="1"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        fill="url(#gradient-rx)"
+                        fillOpacity={1}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="tx"
+                        stackId="2"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        fill="url(#gradient-tx)"
                         fillOpacity={1}
                       />
                     </AreaChart>
