@@ -492,6 +492,52 @@ export default function Products() {
     }
   };
 
+  // Category image upload function
+  const uploadCategoryImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload/category-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Category image upload error:', error);
+      throw error;
+    }
+  };
+
+  // Manufacturer image upload function
+  const uploadManufacturerImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload/manufacturer-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Manufacturer image upload error:', error);
+      throw error;
+    }
+  };
+
   // Upload handlers
   const handleProductImageUpload = async (files: FileList) => {
     try {
@@ -513,7 +559,7 @@ export default function Products() {
 
   const handleCategoryImageUpload = async (files: FileList) => {
     try {
-      const imageUrl = await uploadImage(files[0]);
+      const imageUrl = await uploadCategoryImage(files[0]);
       setCategoryImage(imageUrl);
       toast({
         title: "Imagem carregada",
@@ -530,7 +576,7 @@ export default function Products() {
 
   const handleManufacturerImageUpload = async (files: FileList) => {
     try {
-      const imageUrl = await uploadImage(files[0]);
+      const imageUrl = await uploadManufacturerImage(files[0]);
       setManufacturerImage(imageUrl);
       toast({
         title: "Imagem carregada",

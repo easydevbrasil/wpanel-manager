@@ -60,6 +60,8 @@ import {
   Tag,
   Building,
   User,
+  Upload,
+  X,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Supplier, InsertSupplier, Category, Manufacturer, ProductGroup } from "@shared/schema";
@@ -90,10 +92,78 @@ const supplierFormSchema = z.object({
   notes: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
   rating: z.number().min(0).max(5).default(0),
-  image: z.string().url().optional().or(z.literal("")),
+  image: z.string().optional(),
 });
 
 type SupplierFormData = z.infer<typeof supplierFormSchema>;
+
+// Componente para upload com drag & drop
+const DragDropUpload = ({ 
+  onFileSelect, 
+  className = "" 
+}: { 
+  onFileSelect: (files: FileList) => void;
+  className?: string;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      onFileSelect(files);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onFileSelect(e.target.files);
+    }
+  };
+
+  return (
+    <div
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        isDragging 
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+      } ${className}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className="flex flex-col items-center space-y-2">
+        <Upload className="w-8 h-8 text-gray-400" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Arraste e solte uma imagem aqui ou
+        </p>
+        <label className="cursor-pointer">
+          <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            clique para selecionar
+          </span>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileInput}
+          />
+        </label>
+      </div>
+    </div>
+  );
+};
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -149,6 +219,47 @@ export default function Suppliers() {
       image: "",
     },
   });
+
+  // Image upload function
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload/supplier-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (files: FileList) => {
+    try {
+      const imageUrl = await uploadImage(files[0]);
+      form.setValue('image', imageUrl);
+      toast({
+        title: "Imagem carregada",
+        description: "A imagem foi carregada com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro no upload",
+        description: "Falha ao carregar a imagem. Tente novamente.",
+      });
+    }
+  };
 
   const createSupplierMutation = useMutation({
     mutationFn: (data: InsertSupplier) => apiRequest("POST", "/api/suppliers", data),
@@ -616,6 +727,43 @@ export default function Suppliers() {
                         )}
                       />
                     </div>
+                  </div>
+                  
+                  {/* Image Upload */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Imagem</h3>
+                    <FormField
+                      control={form.control}
+                      name="image"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-900 dark:text-white">Imagem do Fornecedor</FormLabel>
+                          <div className="space-y-4">
+                            {field.value ? (
+                              <div className="relative">
+                                <img 
+                                  src={field.value} 
+                                  alt="Preview" 
+                                  className="w-full max-w-xs h-48 object-cover rounded-lg border"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-2 right-2"
+                                  onClick={() => field.onChange("")}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <DragDropUpload onFileSelect={handleImageUpload} />
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
                   <FormField

@@ -54,6 +54,8 @@ import {
   Building,
   User,
   MoreVertical,
+  Upload,
+  X,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, InsertClient } from "@shared/schema";
@@ -65,12 +67,80 @@ const clientFormSchema = z.object({
   phone: z.string().optional(),
   company: z.string().optional(),
   position: z.string().optional(),
-  image: z.string().url("URL da imagem inválida").optional().or(z.literal("")),
+  image: z.string().optional(),
   status: z.enum(["active", "inactive", "pending"]).default("active"),
   notes: z.string().optional(),
 });
 
 type ClientFormData = z.infer<typeof clientFormSchema>;
+
+// Componente para upload com drag & drop
+const DragDropUpload = ({ 
+  onFileSelect, 
+  className = "" 
+}: { 
+  onFileSelect: (files: FileList) => void;
+  className?: string;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      onFileSelect(files);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onFileSelect(e.target.files);
+    }
+  };
+
+  return (
+    <div
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        isDragging 
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+          : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+      } ${className}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className="flex flex-col items-center space-y-2">
+        <Upload className="w-8 h-8 text-gray-400" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Arraste e solte uma imagem aqui ou
+        </p>
+        <label className="cursor-pointer">
+          <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            clique para selecionar
+          </span>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileInput}
+          />
+        </label>
+      </div>
+    </div>
+  );
+};
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -97,6 +167,47 @@ export default function Clients() {
       notes: "",
     },
   });
+
+  // Image upload function
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload/client-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (files: FileList) => {
+    try {
+      const imageUrl = await uploadImage(files[0]);
+      form.setValue('image', imageUrl);
+      toast({
+        title: "Imagem carregada",
+        description: "A imagem foi carregada com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro no upload",
+        description: "Falha ao carregar a imagem. Tente novamente.",
+      });
+    }
+  };
 
   const createClientMutation = useMutation({
     mutationFn: (data: InsertClient) => apiRequest("POST", "/api/clients", data),
@@ -335,13 +446,41 @@ export default function Clients() {
                     name="image"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">URL da Imagem</FormLabel>
+                        <FormLabel className="text-gray-900 dark:text-white">Imagem do Cliente</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="https://exemplo.com/imagem.jpg" 
-                            {...field} 
-                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
-                          />
+                          <div className="space-y-3">
+                            {field.value && (
+                              <div className="relative inline-block">
+                                <img 
+                                  src={field.value} 
+                                  alt="Preview" 
+                                  className="w-24 h-24 rounded-lg object-cover border border-gray-300 dark:border-gray-600"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute -top-2 -right-2 w-6 h-6 p-0 rounded-full"
+                                  onClick={() => field.onChange("")}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
+                            <DragDropUpload 
+                              onFileSelect={handleImageUpload}
+                              className="w-full"
+                            />
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Ou insira uma URL da imagem:
+                            </div>
+                            <Input 
+                              placeholder="https://exemplo.com/imagem.jpg" 
+                              value={field.value || ""} 
+                              onChange={(e) => field.onChange(e.target.value)}
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
