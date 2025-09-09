@@ -1,7 +1,7 @@
 // Toast notification sounds utility
 export class ToastSounds {
   // Generate different sound types
-  static playSound(type: 'success' | 'error' | 'info' | 'warning') {
+  static playSound(type: 'success' | 'error' | 'info' | 'warning' | 'monitoring-warning' | 'monitoring-danger') {
     try {
       let frequency: number;
       let duration: number;
@@ -27,6 +27,23 @@ export class ToastSounds {
           frequency = 440; // A4
           duration = 0.25;
           this.playTone(frequency, duration);
+          break;
+        
+        case 'monitoring-warning':
+          // Double beep for system warning (>=80%)
+          frequency = 523; // C5
+          duration = 0.15;
+          this.playTone(frequency, duration);
+          setTimeout(() => this.playTone(523, 0.15), 200);
+          break;
+        
+        case 'monitoring-danger':
+          // Triple urgent beep for system danger (>=90%)
+          frequency = 698; // F5
+          duration = 0.2;
+          this.playTone(frequency, duration);
+          setTimeout(() => this.playTone(698, 0.2), 250);
+          setTimeout(() => this.playTone(698, 0.2), 500);
           break;
         
         case 'info':

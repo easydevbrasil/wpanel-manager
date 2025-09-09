@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { WebSocketIndicator } from "../WebSocketIndicator";
+import { SystemAlerts } from "../SystemAlerts";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -48,6 +49,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         </main>
       </div>
       <WebSocketIndicator />
+      <SystemAlerts interval={5000} enabled={true} />
     </div>
   );
 }

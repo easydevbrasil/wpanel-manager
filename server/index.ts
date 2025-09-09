@@ -1,3 +1,7 @@
+// Load environment variables from .env file
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
@@ -10,6 +14,9 @@ app.use(cookieParser());
 
 // Trust proxy for accurate IP address detection
 app.set("trust proxy", 1);
+
+// Removed global API key authentication to allow web interface access
+// app.use(authenticateApiKey);
 
 app.use((req, res, next) => {
   const start = Date.now();

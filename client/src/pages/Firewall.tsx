@@ -253,6 +253,8 @@ export default function Firewall() {
         title: "Regra adicionada",
         description: "A regra de firewall foi adicionada com sucesso.",
       });
+      // Auto-save after adding rule
+      autoSaveRules();
     },
     onError: (error: any) => {
       toast({
@@ -273,6 +275,8 @@ export default function Firewall() {
         title: "Regra removida",
         description: "A regra de firewall foi removida com sucesso.",
       });
+      // Auto-save after deleting rule
+      autoSaveRules();
     },
     onError: (error: any) => {
       toast({
@@ -296,6 +300,8 @@ export default function Firewall() {
         title: "Regra atualizada",
         description: "A regra de firewall foi atualizada com sucesso.",
       });
+      // Auto-save after editing rule
+      autoSaveRules();
     },
     onError: (error: any) => {
       toast({
@@ -319,6 +325,8 @@ export default function Firewall() {
         title: "Ação executada",
         description: `IP ${quickActionTarget} foi ${quickActionType === 'block' ? 'bloqueado' : 'liberado'} com sucesso.`,
       });
+      // Auto-save after quick action
+      autoSaveRules();
     },
     onError: (error: any) => {
       toast({
@@ -339,6 +347,8 @@ export default function Firewall() {
         title: "Regras limpas",
         description: "Todas as regras personalizadas foram removidas.",
       });
+      // Auto-save after flushing rules
+      autoSaveRules();
     },
     onError: (error: any) => {
       toast({
@@ -349,7 +359,18 @@ export default function Firewall() {
     },
   });
 
-  // Save rules mutation
+  // Auto-save function
+  const autoSaveRules = async () => {
+    try {
+      await apiRequest("POST", "/api/firewall/save");
+      console.log("Rules auto-saved successfully");
+    } catch (error) {
+      console.warn("Auto-save failed:", error);
+      // Silent fail for auto-save to not interrupt user experience
+    }
+  };
+
+  // Save rules mutation (kept for manual saves if needed)
   const saveRulesMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/firewall/save"),
     onSuccess: () => {
@@ -558,10 +579,10 @@ export default function Firewall() {
   };
 
   return (
-    <div className="w-full max-w-full p-6 space-y-6">
+    <div className="w-full max-w-full p-6 space-y-6 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Firewall Controller
           </h1>
@@ -569,7 +590,7 @@ export default function Firewall() {
             Gerencie regras de iptables e controle o tráfego de rede
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button
             variant="outline"
             onClick={() => refetchRules()}
@@ -577,13 +598,6 @@ export default function Firewall() {
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingRules ? 'animate-spin' : ''}`} />
             Atualizar
-          </Button>
-          <Button
-            onClick={() => saveRulesMutation.mutate()}
-            disabled={saveRulesMutation.isPending}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Salvar Regras
           </Button>
         </div>
       </div>
@@ -597,7 +611,7 @@ export default function Firewall() {
       </Alert>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -623,23 +637,19 @@ export default function Firewall() {
                 }
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant={serviceStatus?.is_active ? "secondary" : "default"}
                 onClick={() => enableFirewallMutation.mutate()}
                 disabled={enableFirewallMutation.isPending || serviceStatus?.is_active}
+                title="Ativar Firewall"
+                className="px-2"
               >
                 {enableFirewallMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Ativando...
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <Shield className="h-3 w-3 mr-1" />
-                    Ativar
-                  </>
+                  <Shield className="h-4 w-4" />
                 )}
               </Button>
               <Button
@@ -647,17 +657,13 @@ export default function Firewall() {
                 variant={serviceStatus?.is_active ? "destructive" : "secondary"}
                 onClick={() => disableFirewallMutation.mutate()}
                 disabled={disableFirewallMutation.isPending || !serviceStatus?.is_active}
+                title="Desativar Firewall"
+                className="px-2"
               >
                 {disableFirewallMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Desativando...
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <ShieldOff className="h-3 w-3 mr-1" />
-                    Desativar
-                  </>
+                  <ShieldOff className="h-4 w-4" />
                 )}
               </Button>
               <Button
@@ -665,17 +671,13 @@ export default function Firewall() {
                 variant="outline"
                 onClick={() => restartFirewallMutation.mutate()}
                 disabled={restartFirewallMutation.isPending}
+                title="Reiniciar Firewall"
+                className="px-2"
               >
                 {restartFirewallMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Reiniciando...
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <RotateCcw className="h-3 w-3 mr-1" />
-                    Reiniciar
-                  </>
+                  <RotateCcw className="h-4 w-4" />
                 )}
               </Button>
             </div>
@@ -1121,71 +1123,17 @@ export default function Firewall() {
                   {rules.map((rule) => (
                     <div 
                       key={rule.id}
-                      className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      className="flex flex-col lg:flex-row lg:items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 gap-4"
                     >
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-3 flex-1 min-w-0">
+                        {/* Header badges */}
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge className={getActionBadgeColor(rule.target)}>
                             {getActionIcon(rule.target)}
                             {rule.target}
                           </Badge>
                           <Badge variant="outline">{rule.chain}</Badge>
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm text-gray-900 dark:text-white">
-                              {formatRuleDescription(rule)}
-                            </p>
-                            {rule.interface && (
-                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                <Network className="w-3 h-3" />
-                                {rule.interface}
-                              </Badge>
-                            )}
-                            {(rule.source && rule.source !== '0.0.0.0/0' && rule.source !== 'anywhere') && (
-                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                <Upload className="w-3 h-3" />
-                                {rule.source}
-                              </Badge>
-                            )}
-                            {(rule.destination && rule.destination !== '0.0.0.0/0' && rule.destination !== 'anywhere') && (
-                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                <Download className="w-3 h-3" />
-                                {rule.destination}
-                              </Badge>
-                            )}
-                          </div>
-                          {rule.comment && (
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              Comentário: {rule.comment}
-                            </p>
-                          )}
-                          <details className="mt-2">
-                            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1">
-                              <Settings className="w-3 h-3" />
-                              Ver comando técnico
-                            </summary>
-                            <p className="font-mono text-xs text-gray-600 dark:text-gray-400 mt-1 bg-gray-100 dark:bg-gray-700 p-2 rounded">
-                              {rule.rule_text}
-                            </p>
-                          </details>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {rule.protocol && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              {getProtocolIcon(rule.protocol)}
-                              {rule.protocol.toUpperCase()}
-                            </Badge>
-                          )}
-                          {rule.port && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              {getPortIcon(rule.port)}
-                              :{rule.port}
-                            </Badge>
-                          )}
+                          
                           {rule.is_custom ? (
                             <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 flex items-center gap-1">
                               {getRuleTypeIcon(rule.is_custom)}
@@ -1198,25 +1146,92 @@ export default function Firewall() {
                             </Badge>
                           )}
                         </div>
+                        
+                        {/* Rule description */}
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-900 dark:text-white break-words">
+                            {formatRuleDescription(rule)}
+                          </p>
+                        </div>
+
+                        {/* Additional info badges */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {rule.protocol && (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              {getProtocolIcon(rule.protocol)}
+                              {rule.protocol.toUpperCase()}
+                            </Badge>
+                          )}
+                          {rule.port && (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              {getPortIcon(rule.port)}
+                              :{rule.port}
+                            </Badge>
+                          )}
+                          {rule.interface && (
+                            <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                              <Network className="w-3 h-3" />
+                              {rule.interface}
+                            </Badge>
+                          )}
+                          {(rule.source && rule.source !== '0.0.0.0/0' && rule.source !== 'anywhere') && (
+                            <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                              <Upload className="w-3 h-3" />
+                              <span className="truncate max-w-[120px]" title={rule.source}>{rule.source}</span>
+                            </Badge>
+                          )}
+                          {(rule.destination && rule.destination !== '0.0.0.0/0' && rule.destination !== 'anywhere') && (
+                            <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                              <Download className="w-3 h-3" />
+                              <span className="truncate max-w-[120px]" title={rule.destination}>{rule.destination}</span>
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Comment */}
+                        {rule.comment && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 break-words">
+                            <Eye className="w-3 h-3 flex-shrink-0" />
+                            <span>Comentário: {rule.comment}</span>
+                          </p>
+                        )}
+
+                        {/* Technical details */}
+                        <details className="group">
+                          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1">
+                            <Settings className="w-3 h-3" />
+                            Ver comando técnico
+                          </summary>
+                          <div className="mt-2 overflow-hidden">
+                            <p className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 p-2 rounded overflow-x-auto break-all">
+                              {rule.rule_text}
+                            </p>
+                          </div>
+                        </details>
                       </div>
 
+                      {/* Action buttons */}
                       {rule.is_custom && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditRule(rule)}
                             disabled={editRuleMutation.isPending}
+                            className="flex items-center gap-1"
                           >
                             <Edit className="w-4 h-4" />
+                            <span className="hidden sm:inline">Editar</span>
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteRule(rule)}
                             disabled={deleteRuleMutation.isPending}
+                            className="flex items-center gap-1"
                           >
                             <Trash2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Remover</span>
                           </Button>
                         </div>
                       )}

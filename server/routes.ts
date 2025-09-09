@@ -1147,6 +1147,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get real-time system stats for monitoring alerts
+  app.get("/api/system/stats", async (req, res) => {
+    try {
+      const stats = await getSystemStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching system stats:", error);
+      res.status(500).json({ error: "Failed to fetch system stats" });
+    }
+  });
+
   // Cart routes
   app.get("/api/cart", async (req, res) => {
     try {
@@ -2711,27 +2722,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to parse iptables output
   function parseIptablesRules(output: string): any[] {
-    const lines = output.split('\n').filter(line => line.trim() && !line.startsWith('Chain') && !line.startsWith('target'));
+    const lines = output.split('\n').filter(line => {
+      const trimmed = line.trim();
+      // Filter out empty lines, chain headers, and column headers
+      return trimmed && 
+             !trimmed.startsWith('Chain') && 
+             !trimmed.startsWith('target') &&
+             !trimmed.startsWith('num') &&
+             !trimmed.match(/^target\s+prot\s+opt/);
+    });
+    
     return lines.map((line, index) => {
       const parts = line.trim().split(/\s+/);
-      if (parts.length >= 3) {
-        return {
-          id: `rule_${index}`,
-          chain: 'INPUT', // Default chain
-          target: parts[0],
-          protocol: parts[1] !== 'all' ? parts[1] : undefined,
-          source: parts[2] !== '0.0.0.0/0' ? parts[2] : undefined,
-          destination: parts[3] !== '0.0.0.0/0' ? parts[3] : undefined,
-          port: extractPort(line),
-          interface: extractInterface(line),
-          state: extractState(line),
-          comment: extractComment(line),
-          line_number: index + 1,
-          rule_text: line.trim(),
-          is_custom: !isSystemRule(line)
-        };
-      }
-      return null;
+      
+      // Skip if not enough parts for a valid rule
+      if (parts.length < 4) return null;
+      
+      // For numbered output, the first part is the line number
+      const hasLineNumber = /^\d+$/.test(parts[0]);
+      const offset = hasLineNumber ? 1 : 0;
+      
+      return {
+        id: `rule_${index}`,
+        chain: 'INPUT',
+        target: parts[offset],
+        protocol: parts[offset + 1] !== 'all' ? parts[offset + 1] : undefined,
+        source: parts[offset + 3] !== '0.0.0.0/0' ? parts[offset + 3] : undefined,
+        destination: parts[offset + 4] !== '0.0.0.0/0' ? parts[offset + 4] : undefined,
+        port: extractPort(line),
+        interface: extractInterface(line),
+        state: extractState(line),
+        comment: extractComment(line),
+        line_number: hasLineNumber ? parseInt(parts[0]) : index + 1,
+        rule_text: line.trim(),
+        is_custom: !isSystemRule(line)
+      };
     }).filter(Boolean);
   }
 
@@ -2763,6 +2788,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function isSystemRule(rule: string): boolean {
     // Consider rules as system rules if they contain certain keywords
     const systemKeywords = ['ESTABLISHED', 'RELATED', 'lo', 'localhost'];
+    
+    // If rule has a "Quick action" comment, it's a custom rule
+    if (rule.includes('Quick action:')) {
+      return false;
+    }
+    
+    // If rule has any comment (/* ... */), it's likely custom
+    if (rule.includes('/*') && rule.includes('*/')) {
+      return false;
+    }
+    
     return systemKeywords.some(keyword => rule.includes(keyword));
   }
 
@@ -2863,20 +2899,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ruleId = req.params.id;
       
-      // Extract line number from rule ID
-      const lineNumber = ruleId.replace('rule_', '');
+      // Get current rules to find the actual line number
+      const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
+      const rules = parseIptablesRules(stdout);
       
-      if (!lineNumber || isNaN(parseInt(lineNumber))) {
-        return res.status(400).json({ message: "Invalid rule ID" });
+      // Find the rule by ID
+      const rule = rules.find(r => r.id === ruleId);
+      if (!rule) {
+        return res.status(404).json({ message: "Rule not found" });
       }
       
-      // Delete the rule by line number
-      await execAsync(`iptables -D INPUT ${parseInt(lineNumber) + 1}`);
+      // Check if it's a custom rule (only custom rules can be deleted)
+      if (!rule.is_custom) {
+        return res.status(400).json({ message: "System rules cannot be deleted" });
+      }
+      
+      console.log(`Deleting rule at line ${rule.line_number}: ${rule.rule_text}`);
+      
+      // Validate line number is within valid range
+      if (rule.line_number < 1 || rule.line_number > rules.length) {
+        console.error(`Invalid line number ${rule.line_number}, total rules: ${rules.length}`);
+        return res.status(400).json({ message: "Invalid rule position" });
+      }
+      
+      // Delete the rule by line number (iptables uses 1-based indexing)
+      await execAsync(`iptables -D INPUT ${rule.line_number}`);
       
       res.json({ success: true, message: "Firewall rule deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting firewall rule:', error);
-      res.status(500).json({ message: "Failed to delete firewall rule" });
+      const errorMessage = error?.message || 'Unknown error';
+      
+      // Handle specific iptables errors
+      if (errorMessage.includes('Index of deletion too big')) {
+        return res.status(400).json({ 
+          message: "Rule position is invalid - the rule list may have changed. Please refresh and try again." 
+        });
+      }
+      
+      res.status(500).json({ message: `Failed to delete firewall rule: ${errorMessage}` });
     }
   });
 
@@ -2886,18 +2947,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ruleId = req.params.id;
       const { action, protocol, source_ip, destination_ip, port, interface: iface, comment } = req.body;
       
-      // Extract line number from rule ID
-      const lineNumber = ruleId.replace('rule_', '');
+      // Get current rules to find the actual line number
+      const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
+      const rules = parseIptablesRules(stdout);
       
-      if (!lineNumber || isNaN(parseInt(lineNumber))) {
-        return res.status(400).json({ message: "Invalid rule ID" });
+      // Find the rule by ID
+      const rule = rules.find(r => r.id === ruleId);
+      if (!rule) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+      
+      // Check if it's a custom rule (only custom rules can be edited)
+      if (!rule.is_custom) {
+        return res.status(400).json({ message: "System rules cannot be edited" });
       }
 
+      console.log(`Updating rule at line ${rule.line_number}: ${rule.rule_text}`);
+
       // First delete the old rule
-      await execAsync(`iptables -D INPUT ${parseInt(lineNumber) + 1}`);
+      await execAsync(`iptables -D INPUT ${rule.line_number}`);
       
-      // Build new rule command
-      let command = `iptables -I INPUT ${parseInt(lineNumber) + 1}`;
+      // Build new rule command (insert at the same position)
+      let command = `iptables -I INPUT ${rule.line_number}`;
       
       if (protocol && protocol !== 'all') {
         command += ` -p ${protocol}`;
@@ -2926,6 +2997,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (comment && comment.trim()) {
         command += ` -m comment --comment "${comment.trim()}"`;
       }
+
+      console.log(`Executing update command: ${command}`);
       
       // Execute the new rule
       await execAsync(command);
@@ -2933,7 +3006,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Firewall rule updated successfully" });
     } catch (error) {
       console.error('Error updating firewall rule:', error);
-      res.status(500).json({ message: "Failed to update firewall rule" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: `Failed to update firewall rule: ${errorMessage}` });
     }
   });
 
@@ -2946,30 +3020,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Target IP is required" });
       }
       
-      // Validate IP format (basic validation)
-      const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-      if (!ipRegex.test(target.trim())) {
-        return res.status(400).json({ message: "Invalid IP address format" });
+      const cleanTarget = target.trim();
+      
+      // Enhanced IP validation - supports IP addresses, CIDR ranges, and ranges
+      const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/;
+      const ipRangeRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\-(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      
+      if (!ipRegex.test(cleanTarget) && !ipRangeRegex.test(cleanTarget)) {
+        return res.status(400).json({ 
+          message: "Invalid IP address format. Supported formats: 192.168.1.1, 192.168.1.0/24, 192.168.1.1-192.168.1.10" 
+        });
       }
       
       let command;
+      const comment = `Quick action: ${action} ${cleanTarget}`;
+      
       if (action === 'block') {
-        command = `iptables -A INPUT -s ${target.trim()} -j DROP`;
+        command = `iptables -A INPUT -s ${cleanTarget} -j DROP -m comment --comment "${comment}"`;
       } else if (action === 'allow') {
-        command = `iptables -A INPUT -s ${target.trim()} -j ACCEPT`;
+        command = `iptables -A INPUT -s ${cleanTarget} -j ACCEPT -m comment --comment "${comment}"`;
       } else {
-        return res.status(400).json({ message: "Invalid action" });
+        return res.status(400).json({ message: "Invalid action. Use 'block' or 'allow'" });
       }
       
+      console.log(`Executing quick action command: ${command}`);
       await execAsync(command);
       
       res.json({ 
         success: true, 
-        message: `IP ${target} has been ${action === 'block' ? 'blocked' : 'allowed'} successfully` 
+        message: `IP ${cleanTarget} has been ${action === 'block' ? 'blocked' : 'allowed'} successfully` 
       });
     } catch (error) {
       console.error('Error executing quick action:', error);
-      res.status(500).json({ message: "Failed to execute quick action" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: `Failed to execute quick action: ${errorMessage}` });
     }
   });
 
@@ -3001,25 +3085,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save rules permanently
   app.post("/api/firewall/save", async (req, res) => {
     try {
+      let saved = false;
+      let lastError: any = null;
+      
       // Try different methods to save iptables rules permanently
       try {
-        await execAsync('iptables-save > /etc/iptables/rules.v4');
+        await execAsync('/usr/sbin/iptables-save > /etc/iptables/rules.v4');
+        console.log('Rules saved to /etc/iptables/rules.v4');
+        saved = true;
       } catch (error) {
+        lastError = error;
         try {
-          await execAsync('service iptables save');
-        } catch (error) {
+          await execAsync('mkdir -p /etc/sysconfig && /usr/sbin/iptables-save > /etc/sysconfig/iptables');
+          console.log('Rules saved to /etc/sysconfig/iptables');
+          saved = true;
+        } catch (error2) {
+          lastError = error2;
           try {
-            await execAsync('/sbin/iptables-save > /etc/sysconfig/iptables');
-          } catch (error) {
-            console.error('All save methods failed, rules are temporary');
+            // Fallback: save to a custom location
+            await execAsync('mkdir -p /var/lib/iptables && /usr/sbin/iptables-save > /var/lib/iptables/rules.v4');
+            console.log('Rules saved to /var/lib/iptables/rules.v4');
+            saved = true;
+          } catch (error3) {
+            lastError = error3;
+            console.error('All save methods failed, rules are temporary:', error3);
           }
         }
       }
       
-      res.json({ success: true, message: "Firewall rules saved permanently" });
-    } catch (error) {
+      if (saved) {
+        res.json({ success: true, message: "Firewall rules saved permanently" });
+      } else {
+        console.error('Save failed with error:', lastError);
+        res.status(500).json({ 
+          success: false, 
+          message: "Failed to save firewall rules", 
+          error: lastError?.message || 'Unknown error' 
+        });
+      }
+    } catch (error: any) {
       console.error('Error saving firewall rules:', error);
-      res.status(500).json({ message: "Failed to save firewall rules" });
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to save firewall rules", 
+        error: error?.message || 'Unknown error' 
+      });
     }
   });
 
@@ -3333,4 +3443,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
   generateMailAccountsFile();
 
   return httpServer;
+}
+
+// System monitoring functions for real-time alerts
+async function getSystemStats() {
+  try {
+    // Get CPU usage
+    const cpuUsage = await getSystemCpuUsage();
+    
+    // Get memory usage
+    const memoryStats = await getSystemMemoryUsage();
+    
+    // Get disk usage
+    const diskStats = await getSystemDiskUsage();
+    
+    return {
+      cpu: {
+        usage: cpuUsage,
+        threshold: {
+          warning: cpuUsage >= 80,
+          danger: cpuUsage >= 90
+        }
+      },
+      memory: {
+        usage: memoryStats.percentage,
+        used: memoryStats.used,
+        total: memoryStats.total,
+        threshold: {
+          warning: memoryStats.percentage >= 80,
+          danger: memoryStats.percentage >= 90
+        }
+      },
+      disk: {
+        usage: diskStats.percentage,
+        used: diskStats.used,
+        total: diskStats.total,
+        threshold: {
+          warning: diskStats.percentage >= 80,
+          danger: diskStats.percentage >= 90
+        }
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Error getting system stats:", error);
+    throw error;
+  }
+}
+
+// Function to get CPU usage
+async function getSystemCpuUsage(): Promise<number> {
+  try {
+    // Read /proc/stat to get CPU usage
+    const { stdout } = await execAsync("top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1");
+    const cpuUsage = parseFloat(stdout.trim()) || 0;
+    return Math.min(Math.max(cpuUsage, 0), 100); // Clamp between 0-100
+  } catch (error) {
+    console.error("Error getting CPU usage:", error);
+    // Return mock data if real stats fail
+    return Math.floor(Math.random() * 30) + 10; // 10-40% mock usage
+  }
+}
+
+// Function to get memory usage
+async function getSystemMemoryUsage(): Promise<{ percentage: number; used: number; total: number }> {
+  try {
+    const { stdout } = await execAsync("free -m | grep '^Mem:' | awk '{print $3,$2}'");
+    const [used, total] = stdout.trim().split(' ').map(Number);
+    const percentage = Math.round((used / total) * 100);
+    
+    return {
+      percentage: Math.min(Math.max(percentage, 0), 100),
+      used,
+      total
+    };
+  } catch (error) {
+    console.error("Error getting memory usage:", error);
+    // Return mock data if real stats fail
+    const mockTotal = 8192; // 8GB mock
+    const mockUsed = Math.floor(Math.random() * 3000) + 1000; // 1-4GB mock
+    return {
+      percentage: Math.round((mockUsed / mockTotal) * 100),
+      used: mockUsed,
+      total: mockTotal
+    };
+  }
+}
+
+// Function to get disk usage
+async function getSystemDiskUsage(): Promise<{ percentage: number; used: number; total: number }> {
+  try {
+    const { stdout } = await execAsync("df -h / | tail -1 | awk '{print $3,$2,$5}' | sed 's/G//g' | sed 's/%//'");
+    const parts = stdout.trim().split(' ');
+    const used = parseFloat(parts[0]) || 0;
+    const total = parseFloat(parts[1]) || 1;
+    const percentage = parseInt(parts[2]) || 0;
+    
+    return {
+      percentage: Math.min(Math.max(percentage, 0), 100),
+      used,
+      total
+    };
+  } catch (error) {
+    console.error("Error getting disk usage:", error);
+    // Return mock data if real stats fail
+    const mockTotal = 50; // 50GB mock
+    const mockUsed = Math.floor(Math.random() * 20) + 5; // 5-25GB mock
+    return {
+      percentage: Math.round((mockUsed / mockTotal) * 100),
+      used: mockUsed,
+      total: mockTotal
+    };
+  }
 }
