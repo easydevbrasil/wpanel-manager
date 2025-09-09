@@ -10,6 +10,7 @@ import multer from "multer";
 import { spawn, exec } from "child_process";
 import { promisify } from "util";
 import os from "os";
+import Docker from "dockerode";
 
 // Helper function to measure CPU usage
 function getCpuUsageMeasure() {
@@ -41,6 +42,357 @@ function getCpuUsage(): Promise<number> {
   });
 }
 
+// Function to get real disk usage
+function getDiskUsage(): Promise<{ total: number; used: number; free: number; usagePercent: number }> {
+  return new Promise((resolve, reject) => {
+    // First get total disk size using lsblk
+    exec("lsblk | grep 'disk' | awk '{print $4}'", (lsblkError, lsblkStdout, lsblkStderr) => {
+      if (lsblkError) {
+        console.error('Error getting disk size with lsblk:', lsblkError);
+        // Fallback to df command
+        exec('df -B1 /', (error, stdout, stderr) => {
+          if (error) {
+            console.error('Error getting disk usage:', error);
+            // Fallback to mock data if command fails
+            resolve({
+              total: 100 * 1024 * 1024 * 1024, // 100GB
+              used: 50 * 1024 * 1024 * 1024,   // 50GB
+              free: 50 * 1024 * 1024 * 1024,   // 50GB
+              usagePercent: 50
+            });
+            return;
+          }
+
+          try {
+            const lines = stdout.trim().split('\n');
+            if (lines.length < 2) {
+              throw new Error('Invalid df output');
+            }
+            
+            // Parse the output (second line contains the data)
+            const data = lines[1].split(/\s+/);
+            const total = parseInt(data[1]);
+            const used = parseInt(data[2]);
+            const free = parseInt(data[3]);
+            const usagePercent = Math.round((used / total) * 100);
+
+            resolve({
+              total,
+              used,
+              free,
+              usagePercent
+            });
+          } catch (parseError) {
+            console.error('Error parsing disk usage:', parseError);
+            // Fallback to mock data if parsing fails
+            resolve({
+              total: 100 * 1024 * 1024 * 1024, // 100GB
+              used: 50 * 1024 * 1024 * 1024,   // 50GB
+              free: 50 * 1024 * 1024 * 1024,   // 50GB
+              usagePercent: 50
+            });
+          }
+        });
+        return;
+      }
+
+      try {
+        // Parse lsblk output to get total disk size
+        const diskSizes = lsblkStdout.trim().split('\n').filter(line => line.trim());
+        let totalDiskSize = 0;
+
+        for (const sizeStr of diskSizes) {
+          if (sizeStr.trim()) {
+            // Convert size string to bytes (e.g., "500G" -> bytes)
+            const size = parseDiskSize(sizeStr.trim());
+            totalDiskSize += size;
+          }
+        }
+
+        // Now get usage information from df
+        exec('df -B1 /', (dfError, dfStdout, dfStderr) => {
+          if (dfError) {
+            console.error('Error getting disk usage with df:', dfError);
+            resolve({
+              total: totalDiskSize,
+              used: Math.round(totalDiskSize * 0.5), // Assume 50% used as fallback
+              free: Math.round(totalDiskSize * 0.5),
+              usagePercent: 50
+            });
+            return;
+          }
+
+          try {
+            const lines = dfStdout.trim().split('\n');
+            if (lines.length < 2) {
+              throw new Error('Invalid df output');
+            }
+            
+            // Parse the df output for usage info
+            const data = lines[1].split(/\s+/);
+            const used = parseInt(data[2]);
+            const free = parseInt(data[3]);
+            const usagePercent = Math.round((used / totalDiskSize) * 100);
+
+            resolve({
+              total: totalDiskSize,
+              used,
+              free,
+              usagePercent
+            });
+          } catch (parseError) {
+            console.error('Error parsing df output:', parseError);
+            resolve({
+              total: totalDiskSize,
+              used: Math.round(totalDiskSize * 0.5),
+              free: Math.round(totalDiskSize * 0.5),
+              usagePercent: 50
+            });
+          }
+        });
+      } catch (parseError) {
+        console.error('Error parsing lsblk output:', parseError);
+        // Fallback to original df method
+        exec('df -B1 /', (error, stdout, stderr) => {
+          if (error) {
+            console.error('Error getting disk usage:', error);
+            resolve({
+              total: 100 * 1024 * 1024 * 1024, // 100GB
+              used: 50 * 1024 * 1024 * 1024,   // 50GB
+              free: 50 * 1024 * 1024 * 1024,   // 50GB
+              usagePercent: 50
+            });
+            return;
+          }
+
+          try {
+            const lines = stdout.trim().split('\n');
+            if (lines.length < 2) {
+              throw new Error('Invalid df output');
+            }
+            
+            const data = lines[1].split(/\s+/);
+            const total = parseInt(data[1]);
+            const used = parseInt(data[2]);
+            const free = parseInt(data[3]);
+            const usagePercent = Math.round((used / total) * 100);
+
+            resolve({
+              total,
+              used,
+              free,
+              usagePercent
+            });
+          } catch (parseError) {
+            console.error('Error parsing disk usage:', parseError);
+            resolve({
+              total: 100 * 1024 * 1024 * 1024, // 100GB
+              used: 50 * 1024 * 1024 * 1024,   // 50GB
+              free: 50 * 1024 * 1024 * 1024,   // 50GB
+              usagePercent: 50
+            });
+          }
+        });
+      }
+    });
+  });
+}
+
+// Helper function to round memory to nearest GB
+function roundMemoryToGB(bytes: number): number {
+  const gb = bytes / (1024 * 1024 * 1024);
+  return Math.round(gb) * (1024 * 1024 * 1024);
+}
+
+// Helper function to parse disk size strings like "500G", "2T", etc.
+function parseDiskSize(sizeStr: string): number {
+  const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*([KMGT]?)$/i);
+  if (!match) {
+    return 0;
+  }
+
+  const value = parseFloat(match[1]);
+  const unit = match[2].toUpperCase();
+
+  const multipliers: { [key: string]: number } = {
+    '': 1,
+    'K': 1024,
+    'M': 1024 * 1024,
+    'G': 1024 * 1024 * 1024,
+    'T': 1024 * 1024 * 1024 * 1024
+  };
+
+  return Math.round(value * (multipliers[unit] || 1));
+}
+
+// Function to get swap usage
+function getSwapUsage(): Promise<{ total: number; used: number; free: number; usagePercent: number }> {
+  return new Promise((resolve) => {
+    exec('free -b', (error, stdout, stderr) => {
+      if (error) {
+        console.error('Error getting swap usage:', error);
+        resolve({
+          total: 0,
+          used: 0,
+          free: 0,
+          usagePercent: 0
+        });
+        return;
+      }
+
+      try {
+        const lines = stdout.trim().split('\n');
+        const swapLine = lines.find(line => line.startsWith('Swap:'));
+        
+        if (!swapLine) {
+          resolve({
+            total: 0,
+            used: 0,
+            free: 0,
+            usagePercent: 0
+          });
+          return;
+        }
+
+        const data = swapLine.split(/\s+/);
+        const total = parseInt(data[1]);
+        const used = parseInt(data[2]);
+        const free = parseInt(data[3]);
+        const usagePercent = total > 0 ? Math.round((used / total) * 100) : 0;
+
+        resolve({
+          total,
+          used,
+          free,
+          usagePercent
+        });
+      } catch (parseError) {
+        console.error('Error parsing swap usage:', parseError);
+        resolve({
+          total: 0,
+          used: 0,
+          free: 0,
+          usagePercent: 0
+        });
+      }
+    });
+  });
+}
+
+// Cache for Proton Drive data (updated every 30 seconds)
+let protonDriveCache: { total: number; used: number; free: number; usagePercent: number } | null = null;
+let protonDriveCacheTime = 0;
+const PROTON_CACHE_DURATION = 30000; // 30 seconds
+
+// Function to get Proton Drive usage
+function getProtonDriveUsage(): Promise<{ total: number; used: number; free: number; usagePercent: number }> {
+  return new Promise((resolve) => {
+    const now = Date.now();
+    
+    // Return cached data if it's still valid
+    if (protonDriveCache && (now - protonDriveCacheTime) < PROTON_CACHE_DURATION) {
+      resolve(protonDriveCache);
+      return;
+    }
+
+    const configFile = process.env.PROTON_CONFIG_FILE || '/docker/nginx/config/protondrive.conf';
+    
+    // Get total storage
+    exec(`rclone --config=${configFile} about proton: | grep 'Total:' | awk '{print $2$3}'`, (totalError, totalStdout, totalStderr) => {
+      if (totalError) {
+        console.error('Error getting Proton Drive total:', totalError);
+        const fallbackData = {
+          total: 0,
+          used: 0,
+          free: 0,
+          usagePercent: 0
+        };
+        protonDriveCache = fallbackData;
+        protonDriveCacheTime = now;
+        resolve(fallbackData);
+        return;
+      }
+
+      // Get used storage
+      exec(`rclone --config=${configFile} about proton: | grep 'Used:' | awk '{print $2$3}'`, (usedError, usedStdout, usedStderr) => {
+        if (usedError) {
+          console.error('Error getting Proton Drive used:', usedError);
+          const fallbackData = {
+            total: 0,
+            used: 0,
+            free: 0,
+            usagePercent: 0
+          };
+          protonDriveCache = fallbackData;
+          protonDriveCacheTime = now;
+          resolve(fallbackData);
+          return;
+        }
+
+        try {
+          const totalStr = totalStdout.trim();
+          const usedStr = usedStdout.trim();
+
+          // Parse sizes (e.g., "200GiB" -> bytes)
+          const total = parseProtonDriveSize(totalStr);
+          const used = parseProtonDriveSize(usedStr);
+          const free = total - used;
+          const usagePercent = total > 0 ? Math.round((used / total) * 100) : 0;
+
+          const data = {
+            total,
+            used,
+            free,
+            usagePercent
+          };
+
+          // Update cache
+          protonDriveCache = data;
+          protonDriveCacheTime = now;
+          
+          resolve(data);
+        } catch (parseError) {
+          console.error('Error parsing Proton Drive usage:', parseError);
+          const fallbackData = {
+            total: 0,
+            used: 0,
+            free: 0,
+            usagePercent: 0
+          };
+          protonDriveCache = fallbackData;
+          protonDriveCacheTime = now;
+          resolve(fallbackData);
+        }
+      });
+    });
+  });
+}
+
+// Helper function to parse Proton Drive size strings like "200GiB", "6.638GiB", etc.
+function parseProtonDriveSize(sizeStr: string): number {
+  if (!sizeStr || sizeStr.trim() === '') {
+    return 0;
+  }
+
+  const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*(GiB|MiB|TiB|KiB|B)?$/i);
+  if (!match) {
+    return 0;
+  }
+
+  const value = parseFloat(match[1]);
+  const unit = (match[2] || 'B').toUpperCase();
+
+  const multipliers: { [key: string]: number } = {
+    'B': 1,
+    'KIB': 1024,
+    'MIB': 1024 * 1024,
+    'GIB': 1024 * 1024 * 1024,
+    'TIB': 1024 * 1024 * 1024 * 1024
+  };
+
+  return Math.round(value * (multipliers[unit] || 1));
+}
+
 // Function to generate mail_accounts.cf file
 async function generateMailAccountsFile() {
   try {
@@ -51,7 +403,7 @@ async function generateMailAccountsFile() {
       return `${account.email}|${account.password}`;
     });
 
-    const filePath = path.join(process.cwd(), "mail_accounts.cf");
+    const filePath = process.env.POSTFIX_MAIL_ACCOUNTS_FILE || "./mail_accounts.cf";
     const content = lines.join("\n") + "\n";
 
     await fs.promises.writeFile(filePath, content, "utf8");
@@ -234,75 +586,12 @@ async function runDockerCommand(command: string): Promise<{ stdout: string; stde
 // Função para listar containers Docker
 async function listDockerContainers(): Promise<any[]> {
   try {
-    const { stdout } = await runDockerCommand(`ps -a --format "table {{.ID}}\\t{{.Names}}\\t{{.Image}}\\t{{.Command}}\\t{{.CreatedAt}}\\t{{.Status}}\\t{{.Ports}}" --no-trunc`);
-    
-    const lines = stdout.trim().split('\n');
-    if (lines.length <= 1) return []; // No containers or only header
-    
-    // Skip header line
-    const containerLines = lines.slice(1);
-    
-    const containers = containerLines.map(line => {
-      const parts = line.split('\t');
-      if (parts.length < 6) return null;
-      
-      const [id, names, image, command, createdAt, status, ports] = parts;
-      
-      // Parse status to determine state
-      let state = 'unknown';
-      const statusLower = status.toLowerCase();
-      if (statusLower.includes('up')) {
-        if (statusLower.includes('paused')) {
-          state = 'paused';
-        } else {
-          state = 'running';
-        }
-      } else if (statusLower.includes('exited')) {
-        state = 'exited';
-      } else if (statusLower.includes('restarting')) {
-        state = 'restarting';
-      } else if (statusLower.includes('created')) {
-        state = 'created';
-      } else if (statusLower.includes('dead')) {
-        state = 'dead';
-      }
-      
-      // Parse ports
-      const portMappings = ports ? ports.split(', ').map(portStr => {
-        const match = portStr.match(/(\d+\.\d+\.\d+\.\d+):(\d+)->(\d+)\/(\w+)/);
-        if (match) {
-          const [, ip, publicPort, privatePort, type] = match;
-          return {
-            IP: ip,
-            PrivatePort: parseInt(privatePort),
-            PublicPort: parseInt(publicPort),
-            Type: type
-          };
-        }
-        return null;
-      }).filter(Boolean) : [];
-      
-      return {
-        Id: id,
-        Names: names.split(',').map(name => name.startsWith('/') ? name : `/${name}`),
-        Image: image,
-        ImageID: `sha256:${id.substring(0, 12)}`,
-        Command: command,
-        Created: Math.floor(new Date(createdAt).getTime() / 1000),
-        Ports: portMappings,
-        Labels: {},
-        State: state,
-        Status: status,
-        HostConfig: { NetworkMode: "bridge" },
-        NetworkSettings: { Networks: { bridge: {} } },
-        Mounts: []
-      };
-    }).filter(Boolean);
-    
+    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+    const containers = await docker.listContainers({ all: true });
     return containers;
   } catch (error) {
-    console.error('Failed to list Docker containers:', error);
-    // Return mock data if Docker is not available
+    console.error("Failed to list Docker containers with Dockerode:", error);
+    // Fallback to mock containers if Dockerode fails
     return getMockContainers();
   }
 }
@@ -1315,15 +1604,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // System Status routes
-  app.get("/api/system/status", async (req, res) => {
+  app.get("/api/system/status", authenticateToken, async (req, res) => {
     try {
       const cpus = os.cpus();
       const totalMem = os.totalmem();
       const freeMem = os.freemem();
       const usedMem = totalMem - freeMem;
 
-      // Get accurate CPU usage
-      const cpuUsage = await getCpuUsage();
+      // Get accurate CPU usage, disk usage, and Proton Drive usage
+      const [cpuUsage, diskUsage, protonDriveUsage] = await Promise.all([
+        getCpuUsage(),
+        getDiskUsage(),
+        getProtonDriveUsage()
+      ]);
 
       const systemStatus = {
         cpu: {
@@ -1332,22 +1625,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           model: cpus[0]?.model || "Unknown",
         },
         memory: {
-          total: totalMem,
+          total: roundMemoryToGB(totalMem),
           used: usedMem,
           free: freeMem,
           usagePercent: Math.round((usedMem / totalMem) * 100),
         },
         disk: {
-          total: 100 * 1024 * 1024 * 1024, // Mock 100GB
-          used: 50 * 1024 * 1024 * 1024, // Mock 50GB used
-          free: 50 * 1024 * 1024 * 1024, // Mock 50GB free
-          usagePercent: 50,
+          total: diskUsage.total,
+          used: diskUsage.used,
+          free: diskUsage.free,
+          usagePercent: diskUsage.usagePercent,
         },
         swap: {
-          total: 0,
-          used: 0,
-          free: 0,
-          usagePercent: 0,
+          total: protonDriveUsage.total,
+          used: protonDriveUsage.used,
+          free: protonDriveUsage.free,
+          usagePercent: protonDriveUsage.usagePercent,
         },
         uptime: os.uptime(),
         platform: os.platform(),
@@ -1360,6 +1653,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting system status:", error);
       res.status(500).json({ error: "Failed to get system status" });
+    }
+  });
+
+  // Proton Drive status route (separate endpoint for different refresh interval)
+  app.get("/api/proton/status", authenticateToken, async (req, res) => {
+    try {
+      const protonDriveUsage = await getProtonDriveUsage();
+      
+      res.json({
+        total: protonDriveUsage.total,
+        used: protonDriveUsage.used,
+        free: protonDriveUsage.free,
+        usagePercent: protonDriveUsage.usagePercent,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error getting Proton Drive status:", error);
+      res.status(500).json({ error: "Failed to get Proton Drive status" });
     }
   });
 
