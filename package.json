@@ -7,6 +7,7 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
+    "restart": "pm2 restart 0",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },
@@ -57,6 +58,7 @@
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "date-fns": "^3.6.0",
+    "dockerode": "^4.0.7",
     "drizzle-orm": "^0.39.1",
     "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.6.0",
