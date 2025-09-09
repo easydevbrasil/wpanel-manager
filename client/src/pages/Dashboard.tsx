@@ -437,78 +437,132 @@ export default function Dashboard() {
       <div className="mb-6 md:mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* CPU Chart */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          {cpuChartData && (
+            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                  CPU em Tempo Real
+                  <Badge variant="outline" className="ml-auto">
+                    {cpuChartData.current.toFixed(1)}%
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={cpuChartData.data.map((value, index) => ({
+                      time: `${(cpuChartData.data.length - index - 1) * 2}s`,
+                      value: value,
+                      index: index
+                    })).reverse()}>
+                      <defs>
+                        <linearGradient id="gradient-cpu" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                      <XAxis 
+                        dataKey="time" 
+                        fontSize={10}
+                        stroke="#6B7280"
+                        tick={{ fill: '#6B7280' }}
+                      />
+                      <YAxis 
+                        fontSize={10}
+                        stroke="#6B7280"
+                        tick={{ fill: '#6B7280' }}
+                        domain={[0, 100]}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: '#1F2937',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#F9FAFB'
+                        }}
+                        formatter={(value: any) => [`${value}%`, 'CPU']}
+                        labelFormatter={(label) => `${label} atrás`}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#gradient-cpu)"
+                        fillOpacity={1}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                CPU em Tempo Real
-                <Badge variant="outline" className="ml-auto">
-                  {cpuChartData?.current || 0}%
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="h-32 flex items-end justify-between gap-1">
-                {cpuChartData?.data.map((value, index) => (
-                  <div
-                    key={index}
-                    className="bg-blue-500 rounded-t-sm min-w-[8px] transition-all duration-300"
-                    style={{
-                      height: `${Math.max(value, 2)}%`,
-                      opacity: index === cpuChartData.data.length - 1 ? 1 : 0.7 - (cpuChartData.data.length - index) * 0.03
-                    }}
-                    title={`${value}% - ${cpuChartData.labels[index]}`}
-                  />
-                )) || (
-                  <div className="text-center text-gray-500 dark:text-gray-400 w-full">
-                    Carregando dados...
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                Últimos {cpuChartData?.data.length || 0} pontos (atualizações a cada 2s)
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* RAM Chart */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <BarChart3 className="w-4 h-4 text-green-600 dark:text-green-400" />
+          {ramChartData && (
+            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-green-600" />
+                  RAM em Tempo Real
+                  <Badge variant="outline" className="ml-auto">
+                    {ramChartData.current.toFixed(1)}%
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={ramChartData.data.map((value, index) => ({
+                      time: `${(ramChartData.data.length - index - 1) * 2}s`,
+                      value: value,
+                      index: index
+                    })).reverse()}>
+                      <defs>
+                        <linearGradient id="gradient-ram" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                      <XAxis 
+                        dataKey="time" 
+                        fontSize={10}
+                        stroke="#6B7280"
+                        tick={{ fill: '#6B7280' }}
+                      />
+                      <YAxis 
+                        fontSize={10}
+                        stroke="#6B7280"
+                        tick={{ fill: '#6B7280' }}
+                        domain={[0, 100]}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: '#1F2937',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#F9FAFB'
+                        }}
+                        formatter={(value: any) => [`${value}%`, 'RAM']}
+                        labelFormatter={(label) => `${label} atrás`}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        fill="url(#gradient-ram)"
+                        fillOpacity={1}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                RAM em Tempo Real
-                <Badge variant="outline" className="ml-auto">
-                  {ramChartData?.current || 0}%
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="h-32 flex items-end justify-between gap-1">
-                {ramChartData?.data.map((value, index) => (
-                  <div
-                    key={index}
-                    className="bg-green-500 rounded-t-sm min-w-[8px] transition-all duration-300"
-                    style={{
-                      height: `${Math.max(value, 2)}%`,
-                      opacity: index === ramChartData.data.length - 1 ? 1 : 0.7 - (ramChartData.data.length - index) * 0.03
-                    }}
-                    title={`${value}% - ${ramChartData.labels[index]}`}
-                  />
-                )) || (
-                  <div className="text-center text-gray-500 dark:text-gray-400 w-full">
-                    Carregando dados...
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                Últimos {ramChartData?.data.length || 0} pontos (atualizações a cada 2s)
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
