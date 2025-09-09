@@ -155,17 +155,6 @@ export default function Login() {
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
-
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Credenciais de Demonstração:
-              </h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <p><strong>Usuário:</strong> admin</p>
-                <p><strong>Senha:</strong> admin123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
