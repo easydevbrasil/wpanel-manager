@@ -105,6 +105,7 @@ export interface IStorage {
   // Navigation
   getNavigationItems(): Promise<NavigationItem[]>;
   createNavigationItem(item: InsertNavigationItem): Promise<NavigationItem>;
+  deleteNavigationItem(id: number): Promise<void>;
 
   // Dashboard Stats
   getDashboardStats(userId: number): Promise<DashboardStats | undefined>;
@@ -255,6 +256,7 @@ export class DatabaseStorage implements IStorage {
     await this.initializeData();
     await this.createAdminUser();
     await this.createDefaultNavigationItems();
+    await this.updateNavigationForFirewall();
   }
 
   // Create default admin user if none exists
@@ -350,10 +352,17 @@ export class DatabaseStorage implements IStorage {
           parentId: null
         },
         {
+          label: 'Firewall',
+          href: '/firewall',
+          icon: 'Shield',
+          position: 8,
+          parentId: null
+        },
+        {
           label: 'Administração',
           href: null,
           icon: 'Settings',
-          position: 8,
+          position: 9,
           parentId: null
         }
       ];
@@ -372,17 +381,10 @@ export class DatabaseStorage implements IStorage {
             parentId: adminParent.id
           },
           {
-            label: 'Permissões',
-            href: '/user-permissions',
-            icon: 'Shield',
-            position: 2,
-            parentId: adminParent.id
-          },
-          {
             label: 'Sistema',
             href: '/system-status',
             icon: 'Monitor',
-            position: 3,
+            position: 2,
             parentId: adminParent.id
           }
         ];
@@ -393,6 +395,35 @@ export class DatabaseStorage implements IStorage {
       console.log('Default navigation items created successfully');
     } catch (error) {
       console.error('Error creating default navigation items:', error);
+    }
+  }
+
+  // Update navigation to add firewall and remove user permissions
+  async updateNavigationForFirewall() {
+    try {
+      const items = await this.getNavigationItems();
+      
+      // Remove user permissions item if it exists
+      const permissionsItem = items.find(item => item.href === '/user-permissions');
+      if (permissionsItem) {
+        await this.deleteNavigationItem(permissionsItem.id);
+        console.log('Removed user permissions navigation item');
+      }
+      
+      // Add firewall item if it doesn't exist
+      const firewallExists = items.some(item => item.href === '/firewall');
+      if (!firewallExists) {
+        await this.createNavigationItem({
+          label: 'Firewall',
+          href: '/firewall',
+          icon: 'Shield',
+          order: 8,
+          parentId: null
+        });
+        console.log('Added firewall navigation item');
+      }
+    } catch (error) {
+      console.error('Error updating navigation for firewall:', error);
     }
   }
 
@@ -852,7 +883,7 @@ export class DatabaseStorage implements IStorage {
       { label: "Suporte", icon: "MessageSquare", href: "/support", order: 6, parentId: null },
       { label: "Contas de Email", icon: "Mail", href: "/email-accounts", order: 7, parentId: null },
       { label: "Admin DB", icon: "Database", href: "/database-admin", order: 8, parentId: null },
-      { label: "Permissões", icon: "Shield", href: "/user-permissions", order: 9, parentId: null },
+      { label: "Firewall", icon: "Shield", href: "/firewall", order: 9, parentId: null },
       { label: "Perfil", icon: "User", href: "/user-profile", order: 10, parentId: null },
       { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 11, parentId: null },
       { label: "Containers Docker", icon: "Container", href: "/containers", order: 12, parentId: null }
@@ -1861,6 +1892,10 @@ export class DatabaseStorage implements IStorage {
   async createNavigationItem(item: InsertNavigationItem): Promise<NavigationItem> {
     const [navItem] = await db.insert(navigationItems).values(item).returning();
     return navItem;
+  }
+
+  async deleteNavigationItem(id: number): Promise<void> {
+    await db.delete(navigationItems).where(eq(navigationItems.id, id));
   }
 
   async getDashboardStats(userId: number): Promise<DashboardStats | undefined> {
