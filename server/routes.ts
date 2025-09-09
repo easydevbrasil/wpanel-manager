@@ -301,6 +301,7 @@ const MAX_HISTORY_LENGTH = 20; // Keep last 20 data points
 
 // Network stats tracking
 let lastNetworkStats = { rx: 0, tx: 0, timestamp: 0 };
+let totalNetworkStats = { rxTotal: 0, txTotal: 0 };
 
 // Function to get network usage
 function getNetworkUsage(): Promise<{ rx: number; tx: number }> {
@@ -347,6 +348,11 @@ function getNetworkUsage(): Promise<{ rx: number; tx: number }> {
         }
 
         lastNetworkStats = { rx: totalRx, tx: totalTx, timestamp: now };
+        
+        // Update total accumulated stats
+        if (rxRate > 0) totalNetworkStats.rxTotal += rxRate * 2; // 2 seconds interval
+        if (txRate > 0) totalNetworkStats.txTotal += txRate * 2;
+        
         resolve({ rx: rxRate, tx: txRate });
       } catch (parseError) {
         console.error('Error parsing network stats:', parseError);
@@ -1790,7 +1796,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         data: networkHistory,
         labels: networkHistory.map((_, index) => `${index * 2}s ago`).reverse(),
-        current: networkHistory[networkHistory.length - 1] || { rx: 0, tx: 0 }
+        current: networkHistory[networkHistory.length - 1] || { rx: 0, tx: 0 },
+        totals: {
+          rxTotal: totalNetworkStats.rxTotal,
+          txTotal: totalNetworkStats.txTotal
+        }
       });
     } catch (error) {
       console.error("Error getting network chart data:", error);

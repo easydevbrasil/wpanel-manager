@@ -33,7 +33,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 import type { DashboardStats } from "@shared/schema";
 
@@ -85,6 +86,7 @@ interface NetworkChartData {
   data: { rx: number; tx: number }[];
   labels: string[];
   current: { rx: number; tx: number };
+  totals: { rxTotal: number; txTotal: number };
 }
 
 function formatBytes(bytes: number): string {
@@ -93,6 +95,20 @@ function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatNetworkBytes(kb: number): string {
+  if (kb === 0) return '0 KB';
+  const sizes = ['KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  let value = kb;
+  
+  while (value >= 1024 && i < sizes.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  
+  return parseFloat(value.toFixed(1)) + ' ' + sizes[i];
 }
 
 function formatUptime(seconds: number): string {
@@ -586,20 +602,30 @@ export default function Dashboard() {
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Wifi className="w-4 h-4 text-purple-600" />
                   Rede
-                  <div className="ml-auto flex gap-1">
-                    <Badge variant="outline" className="text-xs">
-                      <Download className="w-3 h-3 mr-1" />
-                      {networkChartData.current.rx} KB/s
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      <Upload className="w-3 h-3 mr-1" />
-                      {networkChartData.current.tx} KB/s
-                    </Badge>
+                  <div className="ml-auto flex flex-col gap-1">
+                    <div className="flex gap-1">
+                      <Badge variant="outline" className="text-xs">
+                        <Download className="w-3 h-3 mr-1" />
+                        {networkChartData.current.rx} KB/s
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Upload className="w-3 h-3 mr-1" />
+                        {networkChartData.current.tx} KB/s
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1 text-xs">
+                      <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                        ↓ Total: {formatNetworkBytes(networkChartData.totals.rxTotal)}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700">
+                        ↑ Total: {formatNetworkBytes(networkChartData.totals.txTotal)}
+                      </Badge>
+                    </div>
                   </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="h-32">
+                <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={networkChartData.data.map((item, index) => ({
                       time: `${(networkChartData.data.length - index - 1) * 2}s`,
@@ -643,9 +669,20 @@ export default function Dashboard() {
                         ]}
                         labelFormatter={(label) => `${label} atrás`}
                       />
+                      <Legend 
+                        verticalAlign="top" 
+                        height={16}
+                        iconType="line"
+                        wrapperStyle={{
+                          fontSize: '10px',
+                          color: '#6B7280'
+                        }}
+                        formatter={(value: string) => value === 'rx' ? 'Download' : 'Upload'}
+                      />
                       <Area
                         type="monotone"
                         dataKey="rx"
+                        name="rx"
                         stackId="1"
                         stroke="#8b5cf6"
                         strokeWidth={2}
@@ -655,6 +692,7 @@ export default function Dashboard() {
                       <Area
                         type="monotone"
                         dataKey="tx"
+                        name="tx"
                         stackId="2"
                         stroke="#f59e0b"
                         strokeWidth={2}
