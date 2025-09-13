@@ -62,11 +62,14 @@ const formatCurrencyInput = (value: string): string => {
   // Remove tudo que não é dígito
   const numbers = value.replace(/\D/g, '');
   
+  if (!numbers) return '';
+  
   // Converte para centavos
   const amount = parseFloat(numbers) / 100;
   
   if (isNaN(amount)) return '';
   
+  // Formatar no padrão brasileiro (1.234,56)
   return amount.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
@@ -75,10 +78,18 @@ const formatCurrencyInput = (value: string): string => {
 
 // Função para converter valor formatado para decimal
 const parseCurrencyInput = (value: string): string => {
-  if (!value) return '';
+  if (!value) return '0';
+  
+  // Remove tudo que não é dígito
   const numbers = value.replace(/\D/g, '');
+  
+  if (!numbers) return '0';
+  
+  // Converte de centavos para reais
   const amount = parseFloat(numbers) / 100;
-  return isNaN(amount) ? '' : amount.toString();
+  
+  // Retorna no formato decimal para o banco (12.34)
+  return isNaN(amount) ? '0' : amount.toFixed(2);
 };
 
 // Esquema de validação
@@ -345,7 +356,7 @@ export default function Expenses() {
 
       const formData = {
         description: expense.description || "",
-        amount: expense.amount?.toString() || "0",
+        amount: expense.amount ? parseFloat(expense.amount.toString()).toFixed(2) : "0.00",
         category: expense.category || "",
         subcategory: expense.subcategory || "",
         date: parseDate(expense.date) || new Date(),
@@ -484,15 +495,20 @@ export default function Expenses() {
                         <FormItem>
                           <FormLabel>Valor (R$)</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="0,00" 
-                              value={field.value ? formatCurrencyInput(field.value) : ''}
-                              onChange={(e) => {
-                                const formatted = formatCurrencyInput(e.target.value);
-                                const parsed = parseCurrencyInput(formatted);
-                                field.onChange(parsed);
-                              }}
-                            />
+                            <div className="relative">
+                              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                placeholder="0,00" 
+                                className="text-right pl-10"
+                                value={field.value && field.value !== '0' ? formatCurrencyInput(field.value) : ''}
+                                onChange={(e) => {
+                                  const rawValue = e.target.value;
+                                  const formatted = formatCurrencyInput(rawValue);
+                                  const parsed = parseCurrencyInput(rawValue);
+                                  field.onChange(parsed);
+                                }}
+                              />
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
