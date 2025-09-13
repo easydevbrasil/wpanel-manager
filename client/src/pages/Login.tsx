@@ -80,7 +80,7 @@ export default function Login() {
         <div className="absolute top-40 right-32 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
         <div className="absolute bottom-20 left-32 w-80 h-80 bg-gradient-to-r from-indigo-400/20 to-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
-      
+
       <div className="w-full max-w-md relative z-10">
         {/* Login Card */}
         <Card className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden">
@@ -118,7 +118,7 @@ export default function Login() {
                     placeholder="Digite seu usuário"
                     value={formData.username}
                     onChange={(e) => handleInputChange("username", e.target.value)}
-                    className="pl-12 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl backdrop-blur-sm focus:bg-white/20 focus:border-white/40 transition-all duration-200"
+                    className="pl-12 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/20 focus:border-white/40 transition-all duration-200"
                     required
                     disabled={isLoading}
                   />
@@ -137,7 +137,7 @@ export default function Login() {
                     placeholder="Digite sua senha"
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
-                    className="pl-12 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl backdrop-blur-sm focus:bg-white/20 focus:border-white/40 transition-all duration-200"
+                    className="pl-12 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/20 focus:border-white/40 transition-all duration-200"
                     required
                     disabled={isLoading}
                   />

@@ -122,31 +122,8 @@
       stroke 0.3s ease,
       opacity 0.3s ease,
       box-shadow 0.3s ease,
-      transform 0.3s ease,
-      filter 0.3s ease,
-      backdrop-filter 0.3s ease;
-  }
-
-  /* Fix scrollbar styling for dark theme */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--muted);
-    opacity: 0.5;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--muted-foreground);
-    opacity: 0.3;
-    border-radius: 9999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted-foreground);
-    opacity: 0.5;
+      transform 0.3s ease;
+    /* Removed filter and backdrop-filter transitions to prevent blur effects */
   }
 
   /* Better contrast for form elements in dark mode */
@@ -363,4 +340,194 @@
 
 .animate-tunnel-dot {
   animation: tunnel-dot 2s infinite linear;
+}
+
+/* Remove blur from inputs - Enhanced */
+input,
+textarea,
+select,
+.input,
+[role="textbox"],
+[contenteditable="true"] {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  -webkit-filter: none !important;
+  -moz-filter: none !important;
+  -ms-filter: none !important;
+  -o-filter: none !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.input:focus,
+[role="textbox"]:focus,
+[contenteditable="true"]:focus,
+input:hover,
+textarea:hover,
+select:hover,
+.input:hover,
+[role="textbox"]:hover,
+[contenteditable="true"]:hover {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  -webkit-filter: none !important;
+  -moz-filter: none !important;
+  -ms-filter: none !important;
+  -o-filter: none !important;
+}
+
+/* Remove blur from all form elements and their containers */
+form,
+.form,
+.form-group,
+.input-group,
+.field,
+fieldset {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Specific targeting for shadcn/ui components */
+[data-radix-popper-content-wrapper],
+[data-state],
+.bg-popover,
+.bg-background,
+.bg-card {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Force remove Tailwind backdrop-blur classes from inputs */
+.backdrop-blur-sm input,
+.backdrop-blur input,
+.backdrop-blur-md input,
+.backdrop-blur-lg input,
+.backdrop-blur-xl input,
+.backdrop-blur-2xl input,
+.backdrop-blur-3xl input {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Override any Tailwind backdrop-blur classes on inputs directly */
+input.backdrop-blur-sm,
+input.backdrop-blur,
+input.backdrop-blur-md,
+input.backdrop-blur-lg,
+input.backdrop-blur-xl,
+input.backdrop-blur-2xl,
+input.backdrop-blur-3xl,
+textarea.backdrop-blur-sm,
+textarea.backdrop-blur,
+textarea.backdrop-blur-md,
+textarea.backdrop-blur-lg,
+textarea.backdrop-blur-xl,
+textarea.backdrop-blur-2xl,
+textarea.backdrop-blur-3xl,
+select.backdrop-blur-sm,
+select.backdrop-blur,
+select.backdrop-blur-md,
+select.backdrop-blur-lg,
+select.backdrop-blur-xl,
+select.backdrop-blur-2xl,
+select.backdrop-blur-3xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Custom scrollbar with theme colors */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  border-radius: 8px;
+  border: 2px solid hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--primary)));
+  border: 1px solid hsl(var(--primary) / 0.5);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--primary));
+}
+
+::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* Enhanced scrollbar for dark theme */
+.dark ::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--primary) / 0.6));
+  border: 2px solid hsl(var(--muted) / 0.3);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+/* Smooth scrollbar transitions */
+::-webkit-scrollbar-thumb {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom scrollbar for specific containers */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.7) hsl(var(--muted) / 0.5);
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.3);
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.7);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+  transform: scale(1.1);
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }

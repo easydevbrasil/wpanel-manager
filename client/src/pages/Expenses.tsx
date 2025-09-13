@@ -61,14 +61,14 @@ const formatCurrency = (value: number | string): string => {
 const formatCurrencyInput = (value: string): string => {
   // Remove tudo que não é dígito
   const numbers = value.replace(/\D/g, '');
-  
+
   if (!numbers) return '';
-  
+
   // Converte para centavos
   const amount = parseFloat(numbers) / 100;
-  
+
   if (isNaN(amount)) return '';
-  
+
   // Formatar no padrão brasileiro (1.234,56)
   return amount.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -79,15 +79,15 @@ const formatCurrencyInput = (value: string): string => {
 // Função para converter valor formatado para decimal
 const parseCurrencyInput = (value: string): string => {
   if (!value) return '0';
-  
+
   // Remove tudo que não é dígito
   const numbers = value.replace(/\D/g, '');
-  
+
   if (!numbers) return '0';
-  
+
   // Converte de centavos para reais
   const amount = parseFloat(numbers) / 100;
-  
+
   // Retorna no formato decimal para o banco (12.34)
   return isNaN(amount) ? '0' : amount.toFixed(2);
 };
@@ -219,7 +219,7 @@ export default function Expenses() {
       if (isNaN(amount) || amount < 0) {
         throw new Error("Valor inválido");
       }
-      
+
       const response = await apiRequest("POST", "/api/expenses", {
         ...data,
         amount,
@@ -252,7 +252,7 @@ export default function Expenses() {
       if (isNaN(amount) || amount < 0) {
         throw new Error("Valor inválido");
       }
-      
+
       const response = await apiRequest("PUT", `/api/expenses/${id}`, {
         ...data,
         amount,
@@ -346,7 +346,7 @@ export default function Expenses() {
       console.log("Editing expense:", expense);
       setEditingExpense(expense);
       setSelectedCategory(expense.category);
-      
+
       // Validar e formatar datas com fallback
       const parseDate = (dateStr: string | null | undefined) => {
         if (!dateStr) return undefined;
@@ -419,10 +419,10 @@ export default function Expenses() {
     if (filterCategory !== "all" && expense.category !== filterCategory) {
       return false;
     }
-    
+
     const expenseDate = new Date(expense.date);
     const [month, year] = filterMonth.split("-").map(Number);
-    
+
     return expenseDate.getMonth() === month && expenseDate.getFullYear() === year;
   });
 
@@ -469,221 +469,195 @@ export default function Expenses() {
                   {editingExpense ? "Editar Despesa" : "Nova Despesa"}
                 </DialogTitle>
               </DialogHeader>
-              
+
               <div className="overflow-y-auto flex-1 pr-2">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Descrição</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: Hospedagem VPS Digital Ocean" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valor (R$)</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                placeholder="0,00" 
-                                className="text-right pl-10"
-                                value={field.value && field.value !== '0' ? formatCurrencyInput(field.value) : ''}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value;
-                                  const formatted = formatCurrencyInput(rawValue);
-                                  const parsed = parseCurrencyInput(rawValue);
-                                  field.onChange(parsed);
-                                }}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                  ) : (
-                                    <span>Selecione a data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="dueDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Vencimento</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                  ) : (
-                                    <span>Selecione uma data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="scheduledDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data Agendada</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                  ) : (
-                                    <span>Selecione uma data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Categoria</FormLabel>
-                          <Select onValueChange={(value) => {
-                            field.onChange(value);
-                            setSelectedCategory(value);
-                            form.setValue("subcategory", "");
-                          }} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma categoria" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {Object.keys(expenseCategories).map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  <div className="flex items-center gap-2">
-                                    {getCategoryIcon(category)}
-                                    {category}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {selectedCategory && (
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="subcategory"
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem className="col-span-2">
+                            <FormLabel>Descrição</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: Hospedagem VPS Digital Ocean" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="amount"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Subcategoria</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <FormLabel>Valor (R$)</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="0,00"
+                                  className="text-right pl-10"
+                                  value={field.value && field.value !== '0' ? formatCurrencyInput(field.value) : ''}
+                                  onChange={(e) => {
+                                    const rawValue = e.target.value;
+                                    const formatted = formatCurrencyInput(rawValue);
+                                    const parsed = parseCurrencyInput(rawValue);
+                                    field.onChange(parsed);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                                    ) : (
+                                      <span>Selecione a data</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  disabled={(date) =>
+                                    date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="dueDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data de Vencimento</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                                    ) : (
+                                      <span>Selecione uma data</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="scheduledDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data Agendada</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                                    ) : (
+                                      <span>Selecione uma data</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Categoria</FormLabel>
+                            <Select onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedCategory(value);
+                              form.setValue("subcategory", "");
+                            }} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Selecione uma subcategoria" />
+                                  <SelectValue placeholder="Selecione uma categoria" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {expenseCategories[selectedCategory as keyof typeof expenseCategories]?.map((subcategory) => (
-                                  <SelectItem key={subcategory} value={subcategory}>
-                                    {subcategory}
+                                {Object.keys(expenseCategories).map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    <div className="flex items-center gap-2">
+                                      {getCategoryIcon(category)}
+                                      {category}
+                                    </div>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -692,222 +666,248 @@ export default function Expenses() {
                           </FormItem>
                         )}
                       />
-                    )}
 
-                    <FormField
-                      control={form.control}
-                      name="paymentMethod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Método de Pagamento</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o método" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {paymentMethods.map((method) => (
-                                <SelectItem key={method} value={method}>
-                                  {method}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
+                      {selectedCategory && (
+                        <FormField
+                          control={form.control}
+                          name="subcategory"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subcategoria</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione uma subcategoria" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {expenseCategories[selectedCategory as keyof typeof expenseCategories]?.map((subcategory) => (
+                                    <SelectItem key={subcategory} value={subcategory}>
+                                      {subcategory}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="providerId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Prestador</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione um prestador" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhum prestador</SelectItem>
-                              {providers.map((provider: any) => (
-                                <SelectItem key={provider.id} value={provider.id.toString()}>
-                                  {provider.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="pending">Pendente</SelectItem>
-                              <SelectItem value="paid">Pago</SelectItem>
-                              <SelectItem value="overdue">Atrasado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="recurring"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Despesa Recorrente</FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              Marque se esta despesa se repete regularmente
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    {form.watch("recurring") && (
                       <FormField
                         control={form.control}
-                        name="recurringPeriod"
+                        name="paymentMethod"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Período de Recorrência</FormLabel>
+                            <FormLabel>Método de Pagamento</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o período" />
+                                  <SelectValue placeholder="Selecione o método" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="monthly">Mensal</SelectItem>
-                                <SelectItem value="yearly">Anual</SelectItem>
+                                {paymentMethods.map((method) => (
+                                  <SelectItem key={method} value={method}>
+                                    {method}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    )}
 
-                    <FormField
-                      control={form.control}
-                      name="reminderEnabled"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Habilitar Lembretes</FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              Receba notificações antes do vencimento
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    {form.watch("reminderEnabled") && (
                       <FormField
                         control={form.control}
-                        name="reminderDaysBefore"
+                        name="providerId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Lembrar quantos dias antes?</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                            <FormLabel>Prestador</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Selecione os dias" />
+                                  <SelectValue placeholder="Selecione um prestador" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="1">1 dia antes</SelectItem>
-                                <SelectItem value="3">3 dias antes</SelectItem>
-                                <SelectItem value="7">7 dias antes</SelectItem>
-                                <SelectItem value="15">15 dias antes</SelectItem>
-                                <SelectItem value="30">30 dias antes</SelectItem>
+                                <SelectItem value="none">Nenhum prestador</SelectItem>
+                                {providers.map((provider: any) => (
+                                  <SelectItem key={provider.id} value={provider.id.toString()}>
+                                    {provider.name}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    )}
 
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Observações</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Informações adicionais sobre a despesa..."
-                              className="resize-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="pending">Pendente</SelectItem>
+                                <SelectItem value="paid">Pago</SelectItem>
+                                <SelectItem value="overdue">Atrasado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                  <div className="flex gap-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                      className="flex-1"
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      className="flex-1"
-                    >
-                      {createMutation.isPending || updateMutation.isPending ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          {editingExpense ? "Atualizando..." : "Criando..."}
-                        </>
-                      ) : editingExpense ? (
-                        "Atualizar"
-                      ) : (
-                        "Criar Despesa"
+                      <FormField
+                        control={form.control}
+                        name="recurring"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Despesa Recorrente</FormLabel>
+                              <div className="text-sm text-muted-foreground">
+                                Marque se esta despesa se repete regularmente
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch("recurring") && (
+                        <FormField
+                          control={form.control}
+                          name="recurringPeriod"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Período de Recorrência</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o período" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="monthly">Mensal</SelectItem>
+                                  <SelectItem value="yearly">Anual</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
+
+                      <FormField
+                        control={form.control}
+                        name="reminderEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Habilitar Lembretes</FormLabel>
+                              <div className="text-sm text-muted-foreground">
+                                Receba notificações antes do vencimento
+                              </div>
+                            </div>
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch("reminderEnabled") && (
+                        <FormField
+                          control={form.control}
+                          name="reminderDaysBefore"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Lembrar quantos dias antes?</FormLabel>
+                              <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione os dias" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="1">1 dia antes</SelectItem>
+                                  <SelectItem value="3">3 dias antes</SelectItem>
+                                  <SelectItem value="7">7 dias antes</SelectItem>
+                                  <SelectItem value="15">15 dias antes</SelectItem>
+                                  <SelectItem value="30">30 dias antes</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem className="col-span-2">
+                            <FormLabel>Observações</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Informações adicionais sobre a despesa..."
+                                className="resize-none"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(false)}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        className="flex-1"
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            {editingExpense ? "Atualizando..." : "Criando..."}
+                          </>
+                        ) : editingExpense ? (
+                          "Atualizar"
+                        ) : (
+                          "Criar Despesa"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </div>
             </DialogContent>
           </Dialog>
@@ -934,7 +934,7 @@ export default function Expenses() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Gastos do Ano</CardTitle>
@@ -949,7 +949,7 @@ export default function Expenses() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Categorias Ativas</CardTitle>
@@ -995,7 +995,7 @@ export default function Expenses() {
                       ))}
                     </SelectContent>
                   </Select>
-                  
+
                   <Select value={filterMonth} onValueChange={setFilterMonth}>
                     <SelectTrigger className="w-48">
                       <SelectValue />
@@ -1045,16 +1045,16 @@ export default function Expenses() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-3">
                             <div className="text-lg font-bold">
                               {formatCurrency(expense.amount)}
                             </div>
-                            
+
                             <Badge className={getPaymentMethodColor(expense.paymentMethod)}>
                               {expense.paymentMethod}
                             </Badge>
-                            
+
                             <Badge variant="outline">
                               {expense.category}
                             </Badge>
@@ -1066,7 +1066,7 @@ export default function Expenses() {
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"

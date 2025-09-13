@@ -1172,11 +1172,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const provider = await dbStorage.getProvider(id);
-      
+
       if (!provider) {
         return res.status(404).json({ message: "Prestador não encontrado" });
       }
-      
+
       res.json(provider);
     } catch (error) {
       console.error("Error fetching provider:", error);
@@ -1187,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/providers", async (req, res) => {
     try {
       const providerData = req.body;
-      
+
       // Validate required fields
       if (!providerData.name) {
         return res.status(400).json({ message: "Nome é obrigatório" });
@@ -1205,7 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const providerData = req.body;
-      
+
       const updatedProvider = await dbStorage.updateProvider(id, providerData);
       res.json(updatedProvider);
     } catch (error) {
@@ -1222,6 +1222,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting provider:", error);
       res.status(500).json({ message: "Erro ao excluir prestador" });
+    }
+  });
+
+  // Expense CRUD routes
+  app.get("/api/expenses", async (req, res) => {
+    try {
+      const expenses = await dbStorage.getExpenses();
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error getting expenses:", error);
+      res.status(500).json({ message: "Erro ao buscar despesas" });
+    }
+  });
+
+  app.get("/api/expenses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const expense = await dbStorage.getExpense(id);
+      if (!expense) {
+        res.status(404).json({ message: "Despesa não encontrada" });
+        return;
+      }
+      res.json(expense);
+    } catch (error) {
+      console.error("Error getting expense:", error);
+      res.status(500).json({ message: "Erro ao buscar despesa" });
+    }
+  });
+
+  app.post("/api/expenses", async (req, res) => {
+    try {
+      console.log("Creating expense with data:", JSON.stringify(req.body, null, 2));
+
+      // Prepare the expense data with proper types
+      const expenseData = {
+        ...req.body,
+      };
+
+      // Convert amount from string to number if needed
+      if (expenseData.amount && typeof expenseData.amount === 'string') {
+        expenseData.amount = parseFloat(expenseData.amount);
+      }
+
+      // Convert dates to Date objects if they are strings
+      if (expenseData.date && typeof expenseData.date === 'string') {
+        expenseData.date = new Date(expenseData.date);
+      }
+      if (expenseData.dueDate && typeof expenseData.dueDate === 'string') {
+        expenseData.dueDate = new Date(expenseData.dueDate);
+      }
+      if (expenseData.scheduledDate && typeof expenseData.scheduledDate === 'string') {
+        expenseData.scheduledDate = new Date(expenseData.scheduledDate);
+      }
+
+      console.log("Processed expense data:", JSON.stringify(expenseData, null, 2));
+
+      const expense = await dbStorage.createExpense(expenseData);
+      res.status(201).json(expense);
+    } catch (error) {
+      console.error("Error creating expense:", error);
+      res.status(500).json({ message: "Erro ao criar despesa", error: error.message });
+    }
+  });
+
+  app.put("/api/expenses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log("Updating expense", id, "with data:", JSON.stringify(req.body, null, 2));
+
+      // Prepare the expense data with proper types
+      const expenseData = {
+        ...req.body,
+      };
+
+      // Convert amount from string to number if needed
+      if (expenseData.amount && typeof expenseData.amount === 'string') {
+        expenseData.amount = parseFloat(expenseData.amount);
+      }
+
+      // Convert dates to Date objects if they are strings
+      if (expenseData.date && typeof expenseData.date === 'string') {
+        expenseData.date = new Date(expenseData.date);
+      }
+      if (expenseData.dueDate && typeof expenseData.dueDate === 'string') {
+        expenseData.dueDate = new Date(expenseData.dueDate);
+      }
+      if (expenseData.scheduledDate && typeof expenseData.scheduledDate === 'string') {
+        expenseData.scheduledDate = new Date(expenseData.scheduledDate);
+      }
+
+      console.log("Processed expense update data:", JSON.stringify(expenseData, null, 2));
+
+      const expense = await dbStorage.updateExpense(id, expenseData);
+      res.json(expense);
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      res.status(500).json({ message: "Erro ao atualizar despesa", error: error.message });
+    }
+  });
+
+  app.delete("/api/expenses/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteExpense(id);
+      res.status(200).json({ message: "Despesa excluída com sucesso" });
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      res.status(500).json({ message: "Erro ao excluir despesa" });
     }
   });
 
