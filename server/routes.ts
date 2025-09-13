@@ -1105,9 +1105,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/cnpj/:cnpj", async (req, res) => {
     try {
       const cnpj = req.params.cnpj.replace(/\D/g, ''); // Remove non-digits
-      
+
       if (cnpj.length !== 14) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "CNPJ deve ter 14 dígitos",
           message: "CNPJ inválido"
         });
@@ -1115,9 +1115,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Call ReceitaWS API
       const response = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cnpj}`);
-      
+
       if (!response.ok) {
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: "Erro ao consultar API externa",
           message: "Serviço temporariamente indisponível"
         });
@@ -1126,7 +1126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = await response.json();
 
       if (data.status === 'ERROR') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: data.message || "CNPJ não encontrado",
           message: "CNPJ não encontrado na Receita Federal"
         });
@@ -1150,10 +1150,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(formattedData);
     } catch (error) {
       console.error("Error fetching CNPJ data:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Erro interno do servidor",
         message: "Erro ao consultar dados do CNPJ"
       });
+    }
+  });
+
+  // Providers routes
+  app.get("/api/providers", async (req, res) => {
+    try {
+      const providers = await dbStorage.getProviders();
+      res.json(providers);
+    } catch (error) {
+      console.error("Error fetching providers:", error);
+      res.status(500).json({ message: "Erro ao buscar prestadores" });
+    }
+  });
+
+  app.get("/api/providers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const provider = await dbStorage.getProvider(id);
+      
+      if (!provider) {
+        return res.status(404).json({ message: "Prestador não encontrado" });
+      }
+      
+      res.json(provider);
+    } catch (error) {
+      console.error("Error fetching provider:", error);
+      res.status(500).json({ message: "Erro ao buscar prestador" });
+    }
+  });
+
+  app.post("/api/providers", async (req, res) => {
+    try {
+      const providerData = req.body;
+      
+      // Validate required fields
+      if (!providerData.name) {
+        return res.status(400).json({ message: "Nome é obrigatório" });
+      }
+
+      const newProvider = await dbStorage.createProvider(providerData);
+      res.status(201).json(newProvider);
+    } catch (error) {
+      console.error("Error creating provider:", error);
+      res.status(500).json({ message: "Erro ao criar prestador" });
+    }
+  });
+
+  app.put("/api/providers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const providerData = req.body;
+      
+      const updatedProvider = await dbStorage.updateProvider(id, providerData);
+      res.json(updatedProvider);
+    } catch (error) {
+      console.error("Error updating provider:", error);
+      res.status(500).json({ message: "Erro ao atualizar prestador" });
+    }
+  });
+
+  app.delete("/api/providers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteProvider(id);
+      res.status(200).json({ message: "Prestador excluído com sucesso" });
+    } catch (error) {
+      console.error("Error deleting provider:", error);
+      res.status(500).json({ message: "Erro ao excluir prestador" });
     }
   });
 
