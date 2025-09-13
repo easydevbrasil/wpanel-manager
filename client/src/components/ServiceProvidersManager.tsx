@@ -467,6 +467,16 @@ export default function ServiceProvidersManager() {
                           <p className="text-xs text-muted-foreground">
                             Digite o CNPJ e clique na lupa para preencher automaticamente os dados
                           </p>
+                          {field.value && cleanCNPJ(field.value).length > 0 && cleanCNPJ(field.value).length < 14 && (
+                            <p className="text-xs text-orange-600">
+                              CNPJ incompleto ({cleanCNPJ(field.value).length}/14 dígitos)
+                            </p>
+                          )}
+                          {field.value && cleanCNPJ(field.value).length === 14 && (
+                            <p className="text-xs text-green-600">
+                              ✓ CNPJ válido - clique na lupa para buscar dados
+                            </p>
+                          )}
                         </FormItem>
                       )}
                     />
