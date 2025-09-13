@@ -1101,6 +1101,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CNPJ lookup endpoint
+  app.get("/api/cnpj/:cnpj", async (req, res) => {
+    try {
+      const cnpj = req.params.cnpj.replace(/\D/g, ''); // Remove non-digits
+      
+      if (cnpj.length !== 14) {
+        return res.status(400).json({ 
+          error: "CNPJ deve ter 14 dígitos",
+          message: "CNPJ inválido"
+        });
+      }
+
+      // Call ReceitaWS API
+      const response = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cnpj}`);
+      
+      if (!response.ok) {
+        return res.status(500).json({ 
+          error: "Erro ao consultar API externa",
+          message: "Serviço temporariamente indisponível"
+        });
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'ERROR') {
+        return res.status(404).json({ 
+          error: data.message || "CNPJ não encontrado",
+          message: "CNPJ não encontrado na Receita Federal"
+        });
+      }
+
+      // Format and return the data
+      const formattedData = {
+        companyName: data.nome || '',
+        email: data.email || '',
+        phone: data.telefone || '',
+        address: `${data.logradouro || ''} ${data.numero || ''}`.trim(),
+        city: data.municipio || '',
+        state: data.uf || '',
+        zipCode: data.cep || '',
+        cnpj: data.cnpj || '',
+        fantasia: data.fantasia || '',
+        situacao: data.situacao || '',
+        abertura: data.abertura || ''
+      };
+
+      res.json(formattedData);
+    } catch (error) {
+      console.error("Error fetching CNPJ data:", error);
+      res.status(500).json({ 
+        error: "Erro interno do servidor",
+        message: "Erro ao consultar dados do CNPJ"
+      });
+    }
+  });
+
   // Get navigation items
   app.get("/api/navigation", async (req, res) => {
     try {

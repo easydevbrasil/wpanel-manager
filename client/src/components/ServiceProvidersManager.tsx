@@ -3,13 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Building, 
-  Phone, 
-  Mail, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Building,
+  Phone,
+  Mail,
   Globe,
   User,
   Search,
@@ -101,11 +101,11 @@ const serviceTypes = [
 // Função para formatar CNPJ
 const formatCNPJ = (value: string): string => {
   const numbers = value.replace(/\D/g, '');
-  
+
   if (numbers.length <= 11) {
     return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
-  
+
   return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
 };
 
@@ -114,34 +114,31 @@ const cleanCNPJ = (value: string): string => {
   return value.replace(/\D/g, '');
 };
 
-// Função para consultar CNPJ na API da ReceitaWS
+// Função para consultar CNPJ na API do backend
 const fetchCNPJData = async (cnpj: string) => {
   const cleanedCNPJ = cleanCNPJ(cnpj);
-  
+
   if (cleanedCNPJ.length !== 14) {
     throw new Error('CNPJ deve ter 14 dígitos');
   }
 
-  const response = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cleanedCNPJ}`);
-  
+  const response = await fetch(`/api/cnpj/${cleanedCNPJ}`);
+
   if (!response.ok) {
-    throw new Error('Erro ao consultar CNPJ');
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao consultar CNPJ');
   }
 
   const data = await response.json();
-  
-  if (data.status === 'ERROR') {
-    throw new Error(data.message || 'CNPJ não encontrado');
-  }
 
   return {
-    companyName: data.nome || '',
+    companyName: data.companyName || '',
     email: data.email || '',
-    phone: data.telefone || '',
-    address: `${data.logradouro || ''} ${data.numero || ''}`.trim(),
-    city: data.municipio || '',
-    state: data.uf || '',
-    zipCode: data.cep || '',
+    phone: data.phone || '',
+    address: data.address || '',
+    city: data.city || '',
+    state: data.state || '',
+    zipCode: data.zipCode || '',
     cnpj: formatCNPJ(cleanedCNPJ)
   };
 };
@@ -233,7 +230,7 @@ export default function ServiceProvidersManager() {
   const handleCNPJSearch = async () => {
     const cnpjValue = form.getValues('cnpj');
     const cleanedCNPJ = cleanCNPJ(cnpjValue);
-    
+
     if (cleanedCNPJ.length !== 14) {
       toast({
         title: "⚠️ CNPJ Inválido",
@@ -244,10 +241,10 @@ export default function ServiceProvidersManager() {
     }
 
     setIsLoadingCNPJ(true);
-    
+
     try {
       const data = await fetchCNPJData(cleanedCNPJ);
-      
+
       // Preencher os campos com os dados obtidos
       form.setValue('companyName', data.companyName);
       form.setValue('email', data.email);
@@ -257,7 +254,7 @@ export default function ServiceProvidersManager() {
       form.setValue('state', data.state);
       form.setValue('zipCode', data.zipCode);
       form.setValue('cnpj', data.cnpj);
-      
+
       toast({
         title: "✅ Dados Encontrados",
         description: "Dados da empresa preenchidos automaticamente",
@@ -299,7 +296,7 @@ export default function ServiceProvidersManager() {
       rating: 0,
       image: "",
     });
-    
+
     toast({
       title: "📝 Formulário Limpo",
       description: "Todos os campos foram limpos",
@@ -428,7 +425,7 @@ export default function ServiceProvidersManager() {
                 {editingProvider ? "Editar Prestador" : "Novo Prestador"}
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="overflow-y-auto flex-1 pr-2">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -442,8 +439,8 @@ export default function ServiceProvidersManager() {
                           <FormLabel>CNPJ</FormLabel>
                           <FormControl>
                             <div className="flex gap-2">
-                              <Input 
-                                placeholder="00.000.000/0000-00" 
+                              <Input
+                                placeholder="00.000.000/0000-00"
                                 {...field}
                                 onChange={(e) => {
                                   const formatted = formatCNPJ(e.target.value);
@@ -670,7 +667,7 @@ export default function ServiceProvidersManager() {
                         <FormItem className="col-span-2">
                           <FormLabel>Observações</FormLabel>
                           <FormControl>
-                            <Textarea 
+                            <Textarea
                               placeholder="Informações adicionais sobre o prestador..."
                               className="resize-none"
                               {...field}
@@ -691,7 +688,7 @@ export default function ServiceProvidersManager() {
                     >
                       Limpar Tudo
                     </Button>
-                    
+
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -756,7 +753,7 @@ export default function ServiceProvidersManager() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       {provider.email && (
                         <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -764,22 +761,22 @@ export default function ServiceProvidersManager() {
                           {provider.email}
                         </div>
                       )}
-                      
+
                       {provider.phone && (
                         <div className="flex items-center gap-1 text-sm text-gray-500">
                           <Phone className="h-3 w-3" />
                           {provider.phone}
                         </div>
                       )}
-                      
-                      <Badge 
+
+                      <Badge
                         variant={provider.status === 'active' ? 'default' : 'secondary'}
                         className={provider.status === 'active' ? 'bg-green-100 text-green-800' : ''}
                       >
                         {provider.status === 'active' ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
