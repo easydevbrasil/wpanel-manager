@@ -87,6 +87,8 @@ export const clients = pgTable("clients", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   phone: text("phone"),
+  cpf: text("cpf"),
+  cnpj: text("cnpj"),
   company: text("company"),
   position: text("position"),
   image: text("image"),
@@ -183,6 +185,35 @@ export const suppliers = pgTable("suppliers", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// Service Providers table (for expenses)
+export const providers = pgTable("providers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  companyName: text("company_name"),
+  email: text("email"),
+  phone: text("phone"),
+  whatsapp: text("whatsapp"),
+  website: text("website"),
+  cnpj: text("cnpj"),
+  cpf: text("cpf"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  country: text("country").default("Brasil"),
+  contactPerson: text("contact_person"),
+  contactRole: text("contact_role"),
+  paymentTerms: text("payment_terms"),
+  serviceType: text("service_type"), // "hosting", "domain", "software", "marketing", etc.
+  categories: text("categories").array(), // Array of service categories
+  notes: text("notes"),
+  status: text("status").notNull().default("active"),
+  rating: integer("rating").default(0),
+  image: text("image"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const sales = pgTable("sales", {
   id: serial("id").primaryKey(),
   saleNumber: text("sale_number").notNull().unique(),
@@ -200,6 +231,9 @@ export const sales = pgTable("sales", {
   notes: text("notes"),
   deliveryAddress: text("delivery_address"),
   deliveryDate: text("delivery_date"),
+  paymentDate: text("payment_date"),
+  asaasPaymentId: text("asaas_payment_id"),
+  asaasCustomerId: text("asaas_customer_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -361,6 +395,12 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
   updatedAt: true,
 });
 
+export const insertProviderSchema = createInsertSchema(providers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSaleSchema = createInsertSchema(sales).omit({
   id: true,
   createdAt: true,
@@ -481,6 +521,8 @@ export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type Provider = typeof providers.$inferSelect;
+export type InsertProvider = z.infer<typeof insertProviderSchema>;
 export type Sale = typeof sales.$inferSelect;
 export type InsertSale = z.infer<typeof insertSaleSchema>;
 export type SaleItem = typeof saleItems.$inferSelect;
@@ -560,5 +602,163 @@ export const insertWebhookConfigSchema = createInsertSchema(webhookConfigs).omit
 
 export type WebhookConfig = typeof webhookConfigs.$inferSelect;
 export type InsertWebhookConfig = z.infer<typeof insertWebhookConfigSchema>;
+
+// Task Scheduler Tables
+export const scheduledTasks = pgTable("scheduled_tasks", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  schedule: text("schedule").notNull(), // Cron expression
+  command: text("command").notNull(),
+  type: text("type").notNull().default("user"), // user, system
+  category: text("category").notNull(),
+  status: text("status").notNull().default("active"), // active, inactive, running, error
+  lastRun: timestamp("last_run"),
+  nextRun: timestamp("next_run"),
+  lastOutput: text("last_output"),
+  lastError: text("last_error"),
+  runCount: integer("run_count").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
+  maxRetries: integer("max_retries").notNull().default(3),
+  timeout: integer("timeout").notNull().default(300), // seconds
+  createdBy: integer("created_by"), // user id
+  isActive: boolean("is_active").notNull().default(true),
+  environment: jsonb("environment"), // Environment variables for the task
+  workingDirectory: text("working_directory"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const taskExecutionLogs = pgTable("task_execution_logs", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  status: text("status").notNull(), // success, error, timeout, cancelled
+  output: text("output"),
+  errorMessage: text("error_message"),
+  exitCode: integer("exit_code"),
+  duration: integer("duration"), // milliseconds
+  triggeredBy: text("triggered_by").notNull().default("schedule"), // schedule, manual, api
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const taskTemplates = pgTable("task_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  command: text("command").notNull(),
+  schedule: text("schedule").notNull(),
+  category: text("category").notNull(),
+  environment: jsonb("environment"),
+  isSystemTemplate: boolean("is_system_template").notNull().default(false),
+  createdBy: integer("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Task Scheduler Schemas
+export const insertScheduledTaskSchema = createInsertSchema(scheduledTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastRun: true,
+  nextRun: true,
+  runCount: true,
+  errorCount: true,
+});
+
+export const insertTaskExecutionLogSchema = createInsertSchema(taskExecutionLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTaskTemplateSchema = createInsertSchema(taskTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ScheduledTask = typeof scheduledTasks.$inferSelect;
+export type InsertScheduledTask = z.infer<typeof insertScheduledTaskSchema>;
+export type TaskExecutionLog = typeof taskExecutionLogs.$inferSelect;
+export type InsertTaskExecutionLog = z.infer<typeof insertTaskExecutionLogSchema>;
+export type TaskTemplate = typeof taskTemplates.$inferSelect;
+export type InsertTaskTemplate = z.infer<typeof insertTaskTemplateSchema>;
+
+// Expense Categories table
+export const expenseCategories = pgTable("expense_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  icon: text("icon").notNull(),
+  color: text("color").notNull(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Expense Reminders table
+export const expenseReminders = pgTable("expense_reminders", {
+  id: serial("id").primaryKey(),
+  expenseId: integer("expense_id").notNull(),
+  reminderType: text("reminder_type").notNull(), // "before_due", "recurring", "payment_due"
+  reminderDate: timestamp("reminder_date").notNull(),
+  message: text("message").notNull(),
+  sent: boolean("sent").notNull().default(false),
+  email: text("email"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Expenses table
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  category: text("category").notNull(),
+  subcategory: text("subcategory"),
+  date: timestamp("date").defaultNow().notNull(),
+  dueDate: timestamp("due_date"), // Data de vencimento para agendamento
+  scheduledDate: timestamp("scheduled_date"), // Data agendada para pagamento
+  notes: text("notes"),
+  paymentMethod: text("payment_method").notNull(),
+  providerId: integer("provider_id"), // Vinculação com prestador de serviços
+  recurring: boolean("recurring").notNull().default(false),
+  recurringPeriod: text("recurring_period"), // "monthly", "yearly"
+  reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+  reminderDaysBefore: integer("reminder_days_before").default(3),
+  status: text("status").notNull().default("pending"), // "pending", "paid", "overdue"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExpenseReminderSchema = createInsertSchema(expenseReminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExpenseSchema = createInsertSchema(expenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
+
+export type ExpenseReminder = typeof expenseReminders.$inferSelect;
+export type InsertExpenseReminder = z.infer<typeof insertExpenseReminderSchema>;
+
+export type Expense = typeof expenses.$inferSelect;
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 
 // Auth types will be added later when tables are properly defined
