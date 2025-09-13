@@ -3,14 +3,23 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { WebSocketIndicator } from "../WebSocketIndicator";
 import { SystemAlerts } from "../SystemAlerts";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const isMobile = useIsMobile();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Set initial sidebar state based on device type
+  useEffect(() => {
+    if (isMobile !== undefined) {
+      setSidebarCollapsed(isMobile); // Collapsed on mobile, expanded on desktop by default
+    }
+  }, [isMobile]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -36,13 +45,13 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, [sidebarCollapsed]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       <Header onToggleSidebar={toggleSidebar} />
       <div className="pt-20 flex h-screen">
         <div ref={sidebarRef}>
           <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         </div>
-        <main className="flex-1 p-2 md:p-4 overflow-auto bg-gray-50 dark:bg-gray-900 w-full">
+        <main className="flex-1 p-2 md:p-4 overflow-auto bg-background w-full">
           <div className="w-full max-w-none mx-auto" style={{ width: '90%' }}>
             {children}
           </div>

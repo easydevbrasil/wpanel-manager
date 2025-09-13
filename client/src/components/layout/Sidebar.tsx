@@ -38,14 +38,41 @@ import {
   MessageSquare,
   HelpCircle,
   Mail,
+  CreditCard,
   Headphones,
   Database,
   Container,
+  Server,
+  Globe,
+  Lock,
+  Activity,
+  GitBranch,
+  Zap,
+  Cloud,
+  Wifi,
+  UserCheck,
+  Archive,
+  Bookmark,
+  Calendar,
+  Clock,
+  Download,
+  Upload,
+  RefreshCw,
+  Search,
+  Star,
+  Tag,
+  Target,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  XCircle,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { NavigationItem } from "@shared/schema";
 
 const iconMap = {
@@ -71,6 +98,34 @@ const iconMap = {
   Headphones,
   Database,
   Container,
+  CreditCard,
+  Server,
+  Globe,
+  Lock,
+  Activity,
+  GitBranch,
+  Zap,
+  Cloud,
+  Wifi,
+  UserCheck,
+  Archive,
+  Bookmark,
+  Calendar,
+  Clock,
+  Download,
+  Upload,
+  RefreshCw,
+  Search,
+  Star,
+  Tag,
+  Target,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  XCircle,
+  Monitor,
+  Palette,
 };
 
 interface UserPreferences {
@@ -101,6 +156,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(defaultPreferences);
+  const isMobile = useIsMobile();
 
   const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
     queryKey: ["/api/navigation"],
@@ -140,6 +196,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     }
   }, [preferencesData]);
 
+  // Auto-collapse on mobile devices
+  useEffect(() => {
+    if (isMobile !== undefined) {
+      // On mobile, force collapse regardless of user preference
+      if (isMobile && !collapsed) {
+        onToggle();
+      }
+      // On desktop, respect user preference
+      else if (!isMobile && userPreferences.sidebarCollapsed && !collapsed) {
+        onToggle();
+      }
+    }
+  }, [isMobile, userPreferences.sidebarCollapsed]);
+
   // Functions to update preferences
   const updatePreference = async (key: keyof UserPreferences, value: any) => {
     const newPreferences = { ...userPreferences, [key]: value };
@@ -150,7 +220,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const toggleSidebarMode = async () => {
     const newCollapsed = !collapsed;
     onToggle();
-    await updatePreference('sidebarCollapsed', newCollapsed);
+    // Only save preference if not on mobile (mobile is always collapsed)
+    if (!isMobile) {
+      await updatePreference('sidebarCollapsed', newCollapsed);
+    }
   };
 
   const updateSidebarColor = async (color: string) => {
@@ -212,7 +285,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   };
 
   // Group items by parent
-  const parentItems = navigationItems.filter(item => !item.parentId && item.href !== "/docker-containers" && item.href !== "/containers");
+  const parentItems = navigationItems.filter(item => !item.parentId);
   const childItems = navigationItems.filter(item => item.parentId);
   const childrenByParent = childItems.reduce((acc, item) => {
     if (!item.parentId) return acc;
@@ -234,7 +307,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const renderIcon = (iconName: string) => {
     const Icon = iconMap[iconName as keyof typeof iconMap];
-    return Icon ? <Icon className={collapsed ? "w-5 h-5" : "w-4 h-4"} /> : <LayoutDashboard className={collapsed ? "w-5 h-5" : "w-4 h-4"} />;
+    return Icon ? <Icon className={collapsed ? "w-6 h-6" : "w-5 h-5"} /> : <LayoutDashboard className={collapsed ? "w-6 h-6" : "w-5 h-5"} />;
   };
 
   const isActive = (href: string | null) => {
@@ -246,34 +319,47 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <>
       <aside
         className={cn(
-          "border-r transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col backdrop-blur-sm",
-          getSidebarColorClasses(userPreferences.sidebarColor),
-          collapsed ? "w-16" : "w-60"
+          "relative border-r transition-all duration-300 ease-in-out flex-shrink-0 h-full flex flex-col overflow-hidden",
+          "bg-gradient-to-b from-slate-50/80 via-white/80 to-slate-100/80 dark:from-gray-900/80 dark:via-gray-800/80 dark:to-gray-900/80",
+          "border-gradient-to-b border-gray-200/50 dark:border-gray-700/50 backdrop-blur-xl",
+          "shadow-2xl shadow-gray-200/20 dark:shadow-gray-900/40",
+          collapsed ? "w-20" : "w-80"
         )}
       >
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/30 via-transparent to-purple-50/30 dark:from-indigo-900/20 dark:via-transparent dark:to-purple-900/20 pointer-events-none"></div>
+        
         {/* Main Navigation */}
-        <div className="flex-1 p-2 overflow-y-auto">
+        <div className="relative flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
           {/* Toggle Button */}
-          <div className="mb-3">
+          <div className="mb-6">
             <Button
               variant="ghost"
               size="sm"
               onClick={onToggle}
               className={cn(
-                "p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/80 rounded-md transition-all duration-200",
+                "group relative p-3 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-2xl transition-all duration-300",
+                "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
+                "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30 hover:scale-105",
+                "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
                 collapsed ? "w-full justify-center" : "ml-auto"
               )}
               data-sidebar-toggle
             >
-              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {collapsed ? (
+                <ChevronRight className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
+              ) : (
+                <ChevronLeft className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
+              )}
             </Button>
           </div>
           
-          <nav className="space-y-1">
+          <nav className="space-y-2">
             {parentItems.map((item) => {
               const children = childrenByParent[item.id] || [];
               const hasChildren = children.length > 0;
               const isOpen = openItems.has(item.id);
+              const itemIsActive = isActive(item.href);
 
               if (hasChildren) {
                 return (
@@ -286,34 +372,46 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full justify-between rounded-md transition-all duration-200 group",
-                          getSidebarItemClasses(userPreferences.sidebarColor, false),
-                          collapsed ? "justify-center px-2 py-2 h-10" : "px-3 py-2 h-9"
+                          "w-full group relative rounded-2xl transition-all duration-300 hover:scale-[1.02]",
+                          "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
+                          "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
+                          "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
+                          collapsed ? "justify-center px-4 py-3 h-14" : "justify-between px-5 py-3 h-12"
                         )}
                       >
-                        <div className="flex items-center gap-3">
-                          {renderIcon(item.icon)}
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            {renderIcon(item.icon)}
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                          </div>
                           {!collapsed && (
-                            <span className="text-sm font-medium">{item.label}</span>
+                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
+                              {item.label}
+                            </span>
                           )}
                         </div>
                         {!collapsed && hasChildren && (
                           <ChevronDown
                             className={cn(
-                              "w-3 h-3 transition-transform duration-200 opacity-60 group-hover:opacity-100",
+                              "w-4 h-4 transition-all duration-300 text-gray-500 group-hover:text-indigo-600",
                               isOpen && "rotate-180"
                             )}
                           />
                         )}
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1 mt-1">
+                    <CollapsibleContent className="space-y-1.5 mt-2">
                       {children.map((child) => (
                         <Link key={child.id} href={child.href || "#"}>
                           <div
                             className={cn(
-                              "block ml-6 px-3 py-1.5 text-sm rounded-md transition-all duration-200 cursor-pointer border-l-2 border-transparent hover:border-current",
-                              getSidebarItemClasses(userPreferences.sidebarColor, isActive(child.href))
+                              "block ml-8 px-4 py-2.5 text-sm rounded-xl transition-all duration-300 cursor-pointer group",
+                              "border-l-4 border-transparent hover:border-indigo-400 dark:hover:border-indigo-500",
+                              "hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 dark:hover:from-indigo-900/10 dark:hover:to-purple-900/10",
+                              "hover:shadow-md hover:shadow-indigo-200/20 dark:hover:shadow-indigo-900/20",
+                              isActive(child.href) 
+                                ? "bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-500 shadow-md font-medium"
+                                : "text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                             )}
                           >
                             {child.label}
@@ -328,215 +426,110 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Link key={item.id} href={item.href || "#"}>
                     <div
                       className={cn(
-                        "flex items-center gap-3 rounded-md transition-all duration-200 cursor-pointer group",
-                        getSidebarItemClasses(userPreferences.sidebarColor, isActive(item.href)),
-                        collapsed ? "justify-center px-2 py-2 h-10" : "px-3 py-2 h-9"
+                        "flex items-center gap-4 rounded-2xl transition-all duration-300 cursor-pointer group relative hover:scale-[1.02]",
+                        "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
+                        "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
+                        collapsed ? "justify-center px-4 py-3 h-14" : "px-5 py-3 h-12",
+                        itemIsActive
+                          ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 border-indigo-400/50"
+                          : "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-300"
                       )}
                     >
-                      {renderIcon(item.icon)}
+                      <div className="relative">
+                        {renderIcon(item.icon)}
+                        {!itemIsActive && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                        )}
+                      </div>
                       {!collapsed && (
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <span className="text-base font-semibold transition-colors duration-300">
+                          {item.label}
+                        </span>
+                      )}
+                      {itemIsActive && !collapsed && (
+                        <div className="absolute right-2 w-2 h-2 bg-white rounded-full shadow-lg"></div>
                       )}
                     </div>
                   </Link>
                 );
               }
             })}
-            
-            {/* Separador */}
-            <div className="my-3 border-t border-gray-200/60 dark:border-gray-700/60"></div>
-            
-            {/* Link fixo para Docker Containers */}
-            <Link href="/docker-containers">
-              <div
-                className={cn(
-                  "flex items-center gap-3 rounded-md transition-all duration-200 cursor-pointer group",
-                  getSidebarItemClasses(userPreferences.sidebarColor, isActive("/docker-containers")),
-                  collapsed ? "justify-center px-2 py-2 h-10" : "px-3 py-2 h-9"
-                )}
-              >
-                <Container className={collapsed ? "w-5 h-5" : "w-4 h-4"} />
-                {!collapsed && (
-                  <span className="text-sm font-medium">Docker Containers</span>
-                )}
-              </div>
-            </Link>
           </nav>
         </div>
 
         {/* Configuration Section */}
-        <div className="border-t border-gray-200/60 dark:border-gray-700/60 p-2">
+        <div className="relative border-t border-gradient-to-r border-gray-200/50 dark:border-gray-700/50 p-4 bg-gradient-to-r from-slate-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-800/80 rounded-md transition-all duration-200",
-                  collapsed ? "justify-center px-2 py-2 h-10" : "justify-start px-3 py-2 h-9"
+                  "w-full group relative rounded-2xl transition-all duration-300 hover:scale-[1.02]",
+                  "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
+                  "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
+                  "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
+                  "text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400",
+                  collapsed ? "justify-center px-4 py-3 h-14" : "justify-start px-5 py-3 h-12"
                 )}
               >
-                <Settings className={collapsed ? "w-5 h-5" : "w-4 h-4"} />
-                {!collapsed && <span className="ml-3 text-sm font-medium">Configurações</span>}
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Settings className={collapsed ? "w-5 h-5" : "w-4 h-4"} />
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                  </div>
+                  {!collapsed && <span className="text-sm font-semibold">Configurações</span>}
+                </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent 
               side={collapsed ? "right" : "top"} 
-              className="w-56 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              className="w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-2xl rounded-2xl p-2"
             >
-              <div className="px-3 py-2">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Tema do Sistema</p>
+              <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl mb-2">
+                <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">Tema do Sistema</p>
               </div>
               <DropdownMenuItem 
                 onClick={() => setTheme("light")}
-                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="rounded-xl hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 dark:hover:from-yellow-900/20 dark:hover:to-orange-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
-                <Sun className="w-4 h-4 mr-3" />
-                Claro
-                {theme === "light" && <span className="ml-auto text-xs">✓</span>}
+                <Sun className="w-4 h-4 mr-3 text-yellow-500" />
+                <span className="font-medium">Claro</span>
+                {theme === "light" && <span className="ml-auto text-yellow-500 font-bold">✓</span>}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setTheme("dark")}
-                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
-                <Moon className="w-4 h-4 mr-3" />
-                Escuro
-                {theme === "dark" && <span className="ml-auto text-xs">✓</span>}
+                <Moon className="w-4 h-4 mr-3 text-blue-500" />
+                <span className="font-medium">Escuro</span>
+                {theme === "dark" && <span className="ml-auto text-blue-500 font-bold">✓</span>}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setTheme("system")}
-                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="rounded-xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-slate-50 dark:hover:from-gray-900/20 dark:hover:to-slate-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
-                <Monitor className="w-4 h-4 mr-3" />
-                Sistema
-                {theme === "system" && <span className="ml-auto text-xs">✓</span>}
+                <Monitor className="w-4 h-4 mr-3 text-gray-500" />
+                <span className="font-medium">Sistema</span>
+                {theme === "system" && <span className="ml-auto text-gray-500 font-bold">✓</span>}
               </DropdownMenuItem>
               
-              <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-600" />
+              <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600 my-2" />
               
-              <div className="px-3 py-2">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Aparência</p>
+              <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl mb-2">
+                <p className="text-sm font-bold text-purple-700 dark:text-purple-300">Aparência</p>
               </div>
               
-              {/* Sidebar Colors */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <Palette className="w-4 h-4 mr-3" />
-                    Cores do Sidebar
-                    <ChevronRight className="w-3 h-3 ml-auto" />
-                  </DropdownMenuItem>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" className="w-48">
-                  <DropdownMenuItem onClick={() => updateSidebarColor('default')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
-                    Padrão
-                    {userPreferences.sidebarColor === 'default' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateSidebarColor('blue')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
-                    Azul
-                    {userPreferences.sidebarColor === 'blue' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateSidebarColor('green')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-                    Verde
-                    {userPreferences.sidebarColor === 'green' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateSidebarColor('purple')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 mr-3"></div>
-                    Roxo
-                    {userPreferences.sidebarColor === 'purple' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateSidebarColor('red')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-red-500 mr-3"></div>
-                    Vermelho
-                    {userPreferences.sidebarColor === 'red' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
               {/* Sidebar Mode Toggle */}
               <DropdownMenuItem 
                 onClick={toggleSidebarMode}
-                className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
-                <SidebarIcon className="w-4 h-4 mr-3" />
-                Alternar Sidebar
-                <span className="ml-auto text-xs text-gray-500">
+                <SidebarIcon className="w-4 h-4 mr-3 text-indigo-500" />
+                <span className="font-medium">Alternar Sidebar</span>
+                <span className="ml-auto text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
                   {collapsed ? "Expandir" : "Recolher"}
                 </span>
               </DropdownMenuItem>
-
-              {/* Header Colors */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <Eye className="w-4 h-4 mr-3" />
-                    Cores do Header
-                    <ChevronRight className="w-3 h-3 ml-auto" />
-                  </DropdownMenuItem>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" className="w-48">
-                  <DropdownMenuItem onClick={() => updateHeaderColor('default')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
-                    Padrão
-                    {userPreferences.headerColor === 'default' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateHeaderColor('blue')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
-                    Azul
-                    {userPreferences.headerColor === 'blue' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateHeaderColor('green')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-                    Verde
-                    {userPreferences.headerColor === 'green' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateHeaderColor('dark')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-gray-800 mr-3"></div>
-                    Escuro
-                    {userPreferences.headerColor === 'dark' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Primary Colors */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <DropdownMenuItem className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <LayoutDashboard className="w-4 h-4 mr-3" />
-                    Cores Principais
-                    <ChevronRight className="w-3 h-3 ml-auto" />
-                  </DropdownMenuItem>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" className="w-48">
-                  <DropdownMenuItem onClick={() => updatePrimaryColor('blue')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-600 mr-3"></div>
-                    Azul
-                    {userPreferences.primaryColor === 'blue' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updatePrimaryColor('green')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-green-600 mr-3"></div>
-                    Verde
-                    {userPreferences.primaryColor === 'green' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updatePrimaryColor('purple')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-600 mr-3"></div>
-                    Roxo
-                    {userPreferences.primaryColor === 'purple' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updatePrimaryColor('orange')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-orange-600 mr-3"></div>
-                    Laranja
-                    {userPreferences.primaryColor === 'orange' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updatePrimaryColor('red')} className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-red-600 mr-3"></div>
-                    Vermelho
-                    {userPreferences.primaryColor === 'red' && <span className="ml-auto text-xs">✓</span>}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
