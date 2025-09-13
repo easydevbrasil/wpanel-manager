@@ -36,16 +36,16 @@ function getCpuUsage(): Promise<number> {
       const endMeasure = getCpuUsageMeasure();
       const idleDifference = endMeasure.idle - startMeasure.idle;
       const totalDifference = endMeasure.total - startMeasure.total;
-      
+
       if (totalDifference === 0) {
         resolve(0);
         return;
       }
-      
-      const cpuPercentage = Math.max(0, Math.min(100, 
+
+      const cpuPercentage = Math.max(0, Math.min(100,
         Math.round(100 - (100 * idleDifference) / totalDifference)
       ));
-      
+
       resolve(cpuPercentage);
     }, 500); // Reduced timeout for more responsive updates
   });
@@ -77,7 +77,7 @@ function getDiskUsage(): Promise<{ total: number; used: number; free: number; us
             if (lines.length < 2) {
               throw new Error('Invalid df output');
             }
-            
+
             // Parse the output (second line contains the data)
             const data = lines[1].split(/\s+/);
             const total = parseInt(data[1]);
@@ -136,7 +136,7 @@ function getDiskUsage(): Promise<{ total: number; used: number; free: number; us
             if (lines.length < 2) {
               throw new Error('Invalid df output');
             }
-            
+
             // Parse the df output for usage info
             const data = lines[1].split(/\s+/);
             const used = parseInt(data[2]);
@@ -179,7 +179,7 @@ function getDiskUsage(): Promise<{ total: number; used: number; free: number; us
             if (lines.length < 2) {
               throw new Error('Invalid df output');
             }
-            
+
             const data = lines[1].split(/\s+/);
             const total = parseInt(data[1]);
             const used = parseInt(data[2]);
@@ -252,7 +252,7 @@ function getSwapUsage(): Promise<{ total: number; used: number; free: number; us
       try {
         const lines = stdout.trim().split('\n');
         const swapLine = lines.find(line => line.startsWith('Swap:'));
-        
+
         if (!swapLine) {
           resolve({
             total: 0,
@@ -348,11 +348,11 @@ function getNetworkUsage(): Promise<{ rx: number; tx: number }> {
         }
 
         lastNetworkStats = { rx: totalRx, tx: totalTx, timestamp: now };
-        
+
         // Update total accumulated stats
         if (rxRate > 0) totalNetworkStats.rxTotal += rxRate * 2; // 2 seconds interval
         if (txRate > 0) totalNetworkStats.txTotal += txRate * 2;
-        
+
         resolve({ rx: rxRate, tx: txRate });
       } catch (parseError) {
         console.error('Error parsing network stats:', parseError);
@@ -375,7 +375,7 @@ function updateSystemHistory() {
   const freeMemory = os.freemem();
   const usedMemory = totalMemory - freeMemory;
   const ramUsage = Math.round((usedMemory / totalMemory) * 100);
-  
+
   ramHistory.push(ramUsage);
   if (ramHistory.length > MAX_HISTORY_LENGTH) {
     ramHistory.shift();
@@ -396,7 +396,7 @@ setInterval(updateSystemHistory, 2000);
 function getProtonDriveUsage(): Promise<{ total: number; used: number; free: number; usagePercent: number }> {
   return new Promise((resolve) => {
     const now = Date.now();
-    
+
     // Return cached data if it's still valid
     if (protonDriveCache && (now - protonDriveCacheTime) < PROTON_CACHE_DURATION) {
       resolve(protonDriveCache);
@@ -404,7 +404,7 @@ function getProtonDriveUsage(): Promise<{ total: number; used: number; free: num
     }
 
     const configFile = process.env.PROTON_CONFIG_FILE || '/docker/nginx/config/protondrive.conf';
-    
+
     // Get total storage
     exec(`rclone --config=${configFile} about proton: | grep 'Total:' | awk '{print $2$3}'`, (totalError, totalStdout, totalStderr) => {
       if (totalError) {
@@ -457,7 +457,7 @@ function getProtonDriveUsage(): Promise<{ total: number; used: number; free: num
           // Update cache
           protonDriveCache = data;
           protonDriveCacheTime = now;
-          
+
           resolve(data);
         } catch (parseError) {
           console.error('Error parsing Proton Drive usage:', parseError);
@@ -1050,6 +1050,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ user: req.user, valid: true });
   });
 
+  // Auth status check (similar to verify but with different response format)
+  app.get("/api/auth/status", authenticateToken, (req: any, res) => {
+    res.json({
+      isAuthenticated: true,
+      user: req.user
+    });
+  });
+
   // Protected routes (require authentication)
   app.get("/api/user", authenticateToken, async (req: any, res) => {
     try {
@@ -1110,12 +1118,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await dbStorage.getNavigationItems();
       const firewallExists = items.some(item => item.href === '/firewall');
       const permissionsItem = items.find(item => item.href === '/user-permissions');
-      
+
       // Remove user permissions item if it exists
       if (permissionsItem) {
         await dbStorage.deleteNavigationItem(permissionsItem.id);
       }
-      
+
       // Add firewall item if it doesn't exist
       if (!firewallExists) {
         await dbStorage.createNavigationItem({
@@ -1126,7 +1134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parentId: null
         });
       }
-      
+
       res.json({ success: true, message: "Navigation updated successfully" });
     } catch (error) {
       console.error('Error updating navigation:', error);
@@ -1879,14 +1887,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const cpuInfo = os.cpus();
       const currentCpu = cpuHistory[cpuHistory.length - 1] || 0;
-      
+
       // Calculate average frequency
       const avgFrequency = cpuInfo.reduce((sum, cpu) => sum + cpu.speed, 0) / cpuInfo.length;
-      
+
       // Get min and max values for the chart period
       const minUsage = cpuHistory.length > 0 ? Math.min(...cpuHistory) : 0;
       const maxUsage = cpuHistory.length > 0 ? Math.max(...cpuHistory) : 0;
-      const avgUsage = cpuHistory.length > 0 ? 
+      const avgUsage = cpuHistory.length > 0 ?
         cpuHistory.reduce((sum, val) => sum + val, 0) / cpuHistory.length : 0;
 
       res.json({
@@ -1916,11 +1924,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const freeMemInfo = os.freemem();
       const usedMem = memInfo - freeMemInfo;
       const currentRam = ramHistory[ramHistory.length - 1] || 0;
-      
+
       // Get min and max values for the chart period
       const minUsage = ramHistory.length > 0 ? Math.min(...ramHistory) : 0;
       const maxUsage = ramHistory.length > 0 ? Math.max(...ramHistory) : 0;
-      const avgUsage = ramHistory.length > 0 ? 
+      const avgUsage = ramHistory.length > 0 ?
         ramHistory.reduce((sum, val) => sum + val, 0) / ramHistory.length : 0;
 
       // Format bytes helper
@@ -1977,7 +1985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/proton/status", authenticateToken, async (req, res) => {
     try {
       const protonDriveUsage = await getProtonDriveUsage();
-      
+
       res.json({
         total: protonDriveUsage.total,
         used: protonDriveUsage.used,
@@ -2161,7 +2169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { stdout } = await runDockerCommand("version --format '{{.Server.Version}}'");
       const version = stdout.trim();
-      
+
       res.json({
         available: true,
         version: version || 'unknown',
@@ -2184,7 +2192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(containers);
     } catch (error) {
       console.error("Failed to list Docker containers:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Falha ao listar containers Docker",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -2198,11 +2206,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        
+
         await runDockerCommand(`start ${containerId}`);
-        
+
         console.log(`Successfully started container ${containerId}`);
-        res.json({ 
+        res.json({
           message: `Container iniciado com sucesso`,
           containerId: containerId,
           status: 'started',
@@ -2210,11 +2218,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error("Docker start error:", error);
-        
+
         // Fallback para modo demo se Docker não estiver disponível
         if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Started container ${req.params.id}`);
-          res.json({ 
+          res.json({
             message: `Container iniciado com sucesso (modo demo)`,
             containerId: req.params.id,
             status: 'started',
@@ -2222,7 +2230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             method: 'child_process'
           });
         } else {
-          res.status(500).json({ 
+          res.status(500).json({
             message: "Falha ao iniciar container",
             error: error instanceof Error ? error.message : 'Unknown error'
           });
@@ -2237,11 +2245,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        
+
         await runDockerCommand(`stop ${containerId}`);
-        
+
         console.log(`Successfully stopped container ${containerId}`);
-        res.json({ 
+        res.json({
           message: `Container parado com sucesso`,
           containerId: containerId,
           status: 'stopped',
@@ -2249,11 +2257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error("Docker stop error:", error);
-        
+
         // Fallback para modo demo se Docker não estiver disponível
         if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Stopped container ${req.params.id}`);
-          res.json({ 
+          res.json({
             message: `Container parado com sucesso (modo demo)`,
             containerId: req.params.id,
             status: 'stopped',
@@ -2261,7 +2269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             method: 'child_process'
           });
         } else {
-          res.status(500).json({ 
+          res.status(500).json({
             message: "Falha ao parar container",
             error: error instanceof Error ? error.message : 'Unknown error'
           });
@@ -2276,11 +2284,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        
+
         await runDockerCommand(`restart ${containerId}`);
-        
+
         console.log(`Successfully restarted container ${containerId}`);
-        res.json({ 
+        res.json({
           message: `Container reiniciado com sucesso`,
           containerId: containerId,
           status: 'restarted',
@@ -2288,11 +2296,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error("Docker restart error:", error);
-        
+
         // Fallback para modo demo se Docker não estiver disponível
         if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Restarted container ${req.params.id}`);
-          res.json({ 
+          res.json({
             message: `Container reiniciado com sucesso (modo demo)`,
             containerId: req.params.id,
             status: 'restarted',
@@ -2300,7 +2308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             method: 'child_process'
           });
         } else {
-          res.status(500).json({ 
+          res.status(500).json({
             message: "Falha ao reiniciar container",
             error: error instanceof Error ? error.message : 'Unknown error'
           });
@@ -2315,11 +2323,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req, res) => {
       try {
         const containerId = req.params.id;
-        
+
         await runDockerCommand(`pause ${containerId}`);
-        
+
         console.log(`Successfully paused container ${containerId}`);
-        res.json({ 
+        res.json({
           message: `Container pausado com sucesso`,
           containerId: containerId,
           status: 'paused',
@@ -2327,11 +2335,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error("Docker pause error:", error);
-        
+
         // Fallback para modo demo se Docker não estiver disponível
         if (error instanceof Error && (error.message.includes('command not found') || error.message.includes('Cannot connect'))) {
           console.log(`Mock: Paused container ${req.params.id}`);
-          res.json({ 
+          res.json({
             message: `Container pausado com sucesso (modo demo)`,
             containerId: req.params.id,
             status: 'paused',
@@ -2339,7 +2347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             method: 'child_process'
           });
         } else {
-          res.status(500).json({ 
+          res.status(500).json({
             message: "Falha ao pausar container",
             error: error instanceof Error ? error.message : 'Unknown error'
           });
@@ -2725,23 +2733,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const lines = output.split('\n').filter(line => {
       const trimmed = line.trim();
       // Filter out empty lines, chain headers, and column headers
-      return trimmed && 
-             !trimmed.startsWith('Chain') && 
-             !trimmed.startsWith('target') &&
-             !trimmed.startsWith('num') &&
-             !trimmed.match(/^target\s+prot\s+opt/);
+      return trimmed &&
+        !trimmed.startsWith('Chain') &&
+        !trimmed.startsWith('target') &&
+        !trimmed.startsWith('num') &&
+        !trimmed.match(/^target\s+prot\s+opt/);
     });
-    
+
     return lines.map((line, index) => {
       const parts = line.trim().split(/\s+/);
-      
+
       // Skip if not enough parts for a valid rule
       if (parts.length < 4) return null;
-      
+
       // For numbered output, the first part is the line number
       const hasLineNumber = /^\d+$/.test(parts[0]);
       const offset = hasLineNumber ? 1 : 0;
-      
+
       return {
         id: `rule_${index}`,
         chain: 'INPUT',
@@ -2763,10 +2771,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function extractPort(rule: string): string | undefined {
     const portMatch = rule.match(/dpt:(\d+)/);
     if (portMatch) return portMatch[1];
-    
+
     const portRangeMatch = rule.match(/dpts:(\d+:\d+)/);
     if (portRangeMatch) return portRangeMatch[1];
-    
+
     return undefined;
   }
 
@@ -2788,17 +2796,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function isSystemRule(rule: string): boolean {
     // Consider rules as system rules if they contain certain keywords
     const systemKeywords = ['ESTABLISHED', 'RELATED', 'lo', 'localhost'];
-    
+
     // If rule has a "Quick action" comment, it's a custom rule
     if (rule.includes('Quick action:')) {
       return false;
     }
-    
+
     // If rule has any comment (/* ... */), it's likely custom
     if (rule.includes('/*') && rule.includes('*/')) {
       return false;
     }
-    
+
     return systemKeywords.some(keyword => rule.includes(keyword));
   }
 
@@ -2819,7 +2827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { stdout } = await execAsync('iptables -L INPUT -n');
       const rules = parseIptablesRules(stdout);
-      
+
       const stats = {
         total_rules: rules.length,
         allow_rules: rules.filter(r => r.target === 'ACCEPT').length,
@@ -2828,7 +2836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         protected_ports: ['22', '80', '443', '25', '587', '993', '995'],
         status: 'active' as const
       };
-      
+
       res.json(stats);
     } catch (error) {
       console.error('Error fetching firewall stats:', error);
@@ -2840,53 +2848,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/firewall/rules", async (req, res) => {
     try {
       const { action, protocol, source_ip, destination_ip, port, interface: iface, comment } = req.body;
-      
+
       // Validate protected ports
       const protectedPorts = ['22', '80', '443', '25', '587', '993', '995'];
       if ((action === 'DROP' || action === 'REJECT') && port && protectedPorts.includes(port)) {
-        return res.status(400).json({ 
-          message: `Port ${port} is protected and cannot be blocked` 
+        return res.status(400).json({
+          message: `Port ${port} is protected and cannot be blocked`
         });
       }
 
       // Build iptables command
       let command = 'iptables -A INPUT';
-      
+
       if (protocol && protocol !== 'all') {
         command += ` -p ${protocol}`;
       }
-      
+
       if (source_ip && source_ip.trim()) {
         command += ` -s ${source_ip.trim()}`;
       }
-      
+
       if (destination_ip && destination_ip.trim()) {
         command += ` -d ${destination_ip.trim()}`;
       }
-      
+
       if (port && port.trim() && (protocol === 'tcp' || protocol === 'udp')) {
         command += ` --dport ${port.trim()}`;
       }
-      
+
       if (iface && iface.trim()) {
         command += ` -i ${iface.trim()}`;
       }
-      
+
       if (comment && comment.trim()) {
         command += ` -m comment --comment "${comment.trim()}"`;
       }
-      
+
       command += ` -j ${action}`;
-      
+
       // Validate the command for safety
       const validation = validateFirewallOperation(command);
       if (!validation.valid) {
         return res.status(400).json({ message: validation.reason });
       }
-      
+
       // Execute the command
       await execAsync(command);
-      
+
       res.json({ success: true, message: "Firewall rule added successfully" });
     } catch (error) {
       console.error('Error adding firewall rule:', error);
@@ -2898,45 +2906,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/firewall/rules/:id", async (req, res) => {
     try {
       const ruleId = req.params.id;
-      
+
       // Get current rules to find the actual line number
       const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
       const rules = parseIptablesRules(stdout);
-      
+
       // Find the rule by ID
       const rule = rules.find(r => r.id === ruleId);
       if (!rule) {
         return res.status(404).json({ message: "Rule not found" });
       }
-      
+
       // Check if it's a custom rule (only custom rules can be deleted)
       if (!rule.is_custom) {
         return res.status(400).json({ message: "System rules cannot be deleted" });
       }
-      
+
       console.log(`Deleting rule at line ${rule.line_number}: ${rule.rule_text}`);
-      
+
       // Validate line number is within valid range
       if (rule.line_number < 1 || rule.line_number > rules.length) {
         console.error(`Invalid line number ${rule.line_number}, total rules: ${rules.length}`);
         return res.status(400).json({ message: "Invalid rule position" });
       }
-      
+
       // Delete the rule by line number (iptables uses 1-based indexing)
       await execAsync(`iptables -D INPUT ${rule.line_number}`);
-      
+
       res.json({ success: true, message: "Firewall rule deleted successfully" });
     } catch (error: any) {
       console.error('Error deleting firewall rule:', error);
       const errorMessage = error?.message || 'Unknown error';
-      
+
       // Handle specific iptables errors
       if (errorMessage.includes('Index of deletion too big')) {
-        return res.status(400).json({ 
-          message: "Rule position is invalid - the rule list may have changed. Please refresh and try again." 
+        return res.status(400).json({
+          message: "Rule position is invalid - the rule list may have changed. Please refresh and try again."
         });
       }
-      
+
       res.status(500).json({ message: `Failed to delete firewall rule: ${errorMessage}` });
     }
   });
@@ -2946,17 +2954,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ruleId = req.params.id;
       const { action, protocol, source_ip, destination_ip, port, interface: iface, comment } = req.body;
-      
+
       // Get current rules to find the actual line number
       const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
       const rules = parseIptablesRules(stdout);
-      
+
       // Find the rule by ID
       const rule = rules.find(r => r.id === ruleId);
       if (!rule) {
         return res.status(404).json({ message: "Rule not found" });
       }
-      
+
       // Check if it's a custom rule (only custom rules can be edited)
       if (!rule.is_custom) {
         return res.status(400).json({ message: "System rules cannot be edited" });
@@ -2966,43 +2974,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // First delete the old rule
       await execAsync(`iptables -D INPUT ${rule.line_number}`);
-      
+
       // Build new rule command (insert at the same position)
       let command = `iptables -I INPUT ${rule.line_number}`;
-      
+
       if (protocol && protocol !== 'all') {
         command += ` -p ${protocol}`;
       }
-      
+
       if (source_ip && source_ip.trim()) {
         command += ` -s ${source_ip.trim()}`;
       }
-      
+
       if (destination_ip && destination_ip.trim()) {
         command += ` -d ${destination_ip.trim()}`;
       }
-      
+
       if (port && port.trim()) {
         if (protocol === 'tcp' || protocol === 'udp') {
           command += ` --dport ${port.trim()}`;
         }
       }
-      
+
       if (iface && iface.trim()) {
         command += ` -i ${iface.trim()}`;
       }
-      
+
       command += ` -j ${action}`;
-      
+
       if (comment && comment.trim()) {
         command += ` -m comment --comment "${comment.trim()}"`;
       }
 
       console.log(`Executing update command: ${command}`);
-      
+
       // Execute the new rule
       await execAsync(command);
-      
+
       res.json({ success: true, message: "Firewall rule updated successfully" });
     } catch (error) {
       console.error('Error updating firewall rule:', error);
@@ -3015,26 +3023,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/firewall/quick-action", async (req, res) => {
     try {
       const { action, target } = req.body;
-      
+
       if (!target || !target.trim()) {
         return res.status(400).json({ message: "Target IP is required" });
       }
-      
+
       const cleanTarget = target.trim();
-      
+
       // Enhanced IP validation - supports IP addresses, CIDR ranges, and ranges
       const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2]))?$/;
       const ipRangeRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\-(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-      
+
       if (!ipRegex.test(cleanTarget) && !ipRangeRegex.test(cleanTarget)) {
-        return res.status(400).json({ 
-          message: "Invalid IP address format. Supported formats: 192.168.1.1, 192.168.1.0/24, 192.168.1.1-192.168.1.10" 
+        return res.status(400).json({
+          message: "Invalid IP address format. Supported formats: 192.168.1.1, 192.168.1.0/24, 192.168.1.1-192.168.1.10"
         });
       }
-      
+
       let command;
       const comment = `Quick action: ${action} ${cleanTarget}`;
-      
+
       if (action === 'block') {
         command = `iptables -A INPUT -s ${cleanTarget} -j DROP -m comment --comment "${comment}"`;
       } else if (action === 'allow') {
@@ -3042,13 +3050,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(400).json({ message: "Invalid action. Use 'block' or 'allow'" });
       }
-      
+
       console.log(`Executing quick action command: ${command}`);
       await execAsync(command);
-      
-      res.json({ 
-        success: true, 
-        message: `IP ${cleanTarget} has been ${action === 'block' ? 'blocked' : 'allowed'} successfully` 
+
+      res.json({
+        success: true,
+        message: `IP ${cleanTarget} has been ${action === 'block' ? 'blocked' : 'allowed'} successfully`
       });
     } catch (error) {
       console.error('Error executing quick action:', error);
@@ -3063,10 +3071,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get current rules
       const { stdout } = await execAsync('iptables -L INPUT -n --line-numbers');
       const rules = parseIptablesRules(stdout);
-      
+
       // Find custom rules and delete them (in reverse order to maintain line numbers)
       const customRules = rules.filter(r => r.is_custom).reverse();
-      
+
       for (const rule of customRules) {
         try {
           await execAsync(`iptables -D INPUT ${rule.line_number}`);
@@ -3074,7 +3082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Error deleting rule ${rule.line_number}:`, error);
         }
       }
-      
+
       res.json({ success: true, message: "Custom firewall rules flushed successfully" });
     } catch (error) {
       console.error('Error flushing firewall rules:', error);
@@ -3087,7 +3095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let saved = false;
       let lastError: any = null;
-      
+
       // Try different methods to save iptables rules permanently
       try {
         await execAsync('/usr/sbin/iptables-save > /etc/iptables/rules.v4');
@@ -3112,23 +3120,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       if (saved) {
         res.json({ success: true, message: "Firewall rules saved permanently" });
       } else {
         console.error('Save failed with error:', lastError);
-        res.status(500).json({ 
-          success: false, 
-          message: "Failed to save firewall rules", 
-          error: lastError?.message || 'Unknown error' 
+        res.status(500).json({
+          success: false,
+          message: "Failed to save firewall rules",
+          error: lastError?.message || 'Unknown error'
         });
       }
     } catch (error: any) {
       console.error('Error saving firewall rules:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to save firewall rules", 
-        error: error?.message || 'Unknown error' 
+      res.status(500).json({
+        success: false,
+        message: "Failed to save firewall rules",
+        error: error?.message || 'Unknown error'
       });
     }
   });
@@ -3147,11 +3155,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await execAsync('iptables -L > /dev/null');
         }
       }
-      
+
       // Set basic security policies (allow loopback, established connections)
       await execAsync('iptables -A INPUT -i lo -j ACCEPT');
       await execAsync('iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT');
-      
+
       res.json({ success: true, message: "Firewall enabled successfully" });
     } catch (error) {
       console.error('Error enabling firewall:', error);
@@ -3172,7 +3180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await execAsync('iptables -t nat -X');
       await execAsync('iptables -t mangle -F');
       await execAsync('iptables -t mangle -X');
-      
+
       // Try to stop iptables service
       try {
         await execAsync('systemctl stop iptables');
@@ -3184,7 +3192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('iptables service not found, rules cleared manually');
         }
       }
-      
+
       res.json({ success: true, message: "Firewall disabled successfully" });
     } catch (error) {
       console.error('Error disabling firewall:', error);
@@ -3202,7 +3210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await execAsync('iptables -t nat -X');
       await execAsync('iptables -t mangle -F');
       await execAsync('iptables -t mangle -X');
-      
+
       // Restart iptables service
       try {
         await execAsync('systemctl restart iptables');
@@ -3216,11 +3224,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await execAsync('iptables -P OUTPUT ACCEPT');
         }
       }
-      
+
       // Restore basic security rules
       await execAsync('iptables -A INPUT -i lo -j ACCEPT');
       await execAsync('iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT');
-      
+
       // Try to restore saved rules
       try {
         await execAsync('iptables-restore < /etc/iptables/rules.v4');
@@ -3231,7 +3239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('No saved rules found, using basic configuration');
         }
       }
-      
+
       res.json({ success: true, message: "Firewall restarted successfully" });
     } catch (error) {
       console.error('Error restarting firewall:', error);
@@ -3244,7 +3252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let serviceStatus = 'unknown';
       let serviceActive = false;
-      
+
       // Check if iptables service is running
       try {
         const { stdout } = await execAsync('systemctl is-active iptables');
@@ -3267,7 +3275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Count current rules
       let ruleCount = 0;
       try {
@@ -3276,7 +3284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         ruleCount = 0;
       }
-      
+
       res.json({
         service_status: serviceStatus,
         is_active: serviceActive,
@@ -3293,10 +3301,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/firewall/interfaces", async (req, res) => {
     try {
       const { stdout } = await execAsync('ip link show');
-      
+
       const interfaces = [];
       const lines = stdout.split('\n');
-      
+
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (line.match(/^\d+:/)) {
@@ -3304,7 +3312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (match) {
             const name = match[1];
             const flags = match[2].split(',');
-            
+
             // Get interface details
             let ip = '';
             let state = 'DOWN';
@@ -3313,18 +3321,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let txBytes = 0;
             let rxPackets = 0;
             let txPackets = 0;
-            
+
             try {
               const { stdout: ipInfo } = await execAsync(`ip addr show ${name}`);
               const ipMatch = ipInfo.match(/inet\s+([^\s]+)/);
               if (ipMatch) {
                 ip = ipMatch[1];
               }
-              
+
               if (flags.includes('UP')) {
                 state = 'UP';
               }
-              
+
               if (name.startsWith('eth') || name.startsWith('enp')) {
                 type = 'ethernet';
               } else if (name.startsWith('wlan') || name.startsWith('wlp')) {
@@ -3336,7 +3344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } else if (name.startsWith('veth')) {
                 type = 'virtual';
               }
-              
+
               // Get network statistics from /proc/net/dev
               const { stdout: netDev } = await execAsync('cat /proc/net/dev');
               const netDevLines = netDev.split('\n');
@@ -3356,7 +3364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (error) {
               // Continue with basic info if detailed info fails
             }
-            
+
             interfaces.push({
               name,
               ip,
@@ -3373,7 +3381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       res.json(interfaces);
     } catch (error) {
       console.error('Error getting network interfaces:', error);
@@ -3450,13 +3458,13 @@ async function getSystemStats() {
   try {
     // Get CPU usage
     const cpuUsage = await getSystemCpuUsage();
-    
+
     // Get memory usage
     const memoryStats = await getSystemMemoryUsage();
-    
+
     // Get disk usage
     const diskStats = await getSystemDiskUsage();
-    
+
     return {
       cpu: {
         usage: cpuUsage,
@@ -3511,7 +3519,7 @@ async function getSystemMemoryUsage(): Promise<{ percentage: number; used: numbe
     const { stdout } = await execAsync("free -m | grep '^Mem:' | awk '{print $3,$2}'");
     const [used, total] = stdout.trim().split(' ').map(Number);
     const percentage = Math.round((used / total) * 100);
-    
+
     return {
       percentage: Math.min(Math.max(percentage, 0), 100),
       used,
@@ -3538,7 +3546,7 @@ async function getSystemDiskUsage(): Promise<{ percentage: number; used: number;
     const used = parseFloat(parts[0]) || 0;
     const total = parseFloat(parts[1]) || 1;
     const percentage = parseInt(parts[2]) || 0;
-    
+
     return {
       percentage: Math.min(Math.max(percentage, 0), 100),
       used,

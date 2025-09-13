@@ -21,6 +21,7 @@ import {
   productGroups,
   products,
   suppliers,
+  providers,
   sales,
   saleItems,
   supportTickets,
@@ -32,6 +33,12 @@ import {
   webhookConfigs,
   sessions,
   userAddresses,
+  scheduledTasks,
+  taskExecutionLogs,
+  taskTemplates,
+  expenses,
+  expenseCategories,
+  expenseReminders,
   type User,
   type UserPreferences,
   type InsertUserPreferences,
@@ -58,6 +65,8 @@ import {
   type InsertProduct,
   type Supplier,
   type InsertSupplier,
+  type Provider,
+  type InsertProvider,
   type Sale,
   type InsertSale,
   type SaleItem,
@@ -79,7 +88,19 @@ import {
   type Session,
   type InsertSession,
   type UserAddress,
-  type InsertUserAddress
+  type InsertUserAddress,
+  type ScheduledTask,
+  type InsertScheduledTask,
+  type TaskExecutionLog,
+  type InsertTaskExecutionLog,
+  type TaskTemplate,
+  type InsertTaskTemplate,
+  type Expense,
+  type InsertExpense,
+  type ExpenseCategory,
+  type InsertExpenseCategory,
+  type ExpenseReminder,
+  type InsertExpenseReminder
 } from "@shared/schema";
 
 export interface IStorage {
@@ -171,6 +192,13 @@ export interface IStorage {
   updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier>;
   deleteSupplier(id: number): Promise<void>;
 
+  // Providers
+  getProviders(): Promise<Provider[]>;
+  getProvider(id: number): Promise<Provider | undefined>;
+  createProvider(provider: InsertProvider): Promise<Provider>;
+  updateProvider(id: number, provider: Partial<InsertProvider>): Promise<Provider>;
+  deleteProvider(id: number): Promise<void>;
+
   // Sales
   getSales(): Promise<Sale[]>;
   getSale(id: number): Promise<Sale | undefined>;
@@ -243,6 +271,51 @@ export interface IStorage {
   updateWebhookConfig(id: number, config: Partial<InsertWebhookConfig>): Promise<WebhookConfig>;
   deleteWebhookConfig(id: number): Promise<void>;
   updateWebhookTestResult(id: number, status: string): Promise<WebhookConfig>;
+
+  // Task Scheduler
+  getScheduledTasks(): Promise<any[]>;
+  getScheduledTask(id: number): Promise<any | undefined>;
+  createScheduledTask(task: any): Promise<any>;
+  updateScheduledTask(id: number, task: any): Promise<any>;
+  deleteScheduledTask(id: number): Promise<void>;
+
+  // Task Execution Logs
+  getTaskExecutionLogs(taskId: number, limit?: number): Promise<any[]>;
+  getAllTaskExecutionLogs(limit?: number): Promise<any[]>;
+  createTaskExecutionLog(log: any): Promise<any>;
+  updateTaskExecutionLog(id: number, log: any): Promise<any>;
+  deleteTaskExecutionLog(id: number): Promise<void>;
+  clearTaskExecutionLogs(taskId: number): Promise<void>;
+
+  // Task Templates
+  getTaskTemplates(): Promise<any[]>;
+  getTaskTemplate(id: number): Promise<any | undefined>;
+  createTaskTemplate(template: any): Promise<any>;
+  updateTaskTemplate(id: number, template: any): Promise<any>;
+  deleteTaskTemplate(id: number): Promise<void>;
+
+  // Expenses methods
+  getExpenses(): Promise<Expense[]>;
+  getExpense(id: number): Promise<Expense | undefined>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: number, expense: Partial<InsertExpense>): Promise<Expense>;
+  deleteExpense(id: number): Promise<void>;
+  getExpenseStats(): Promise<any>;
+
+  // Expense Categories methods
+  getExpenseCategories(): Promise<ExpenseCategory[]>;
+  getExpenseCategory(id: number): Promise<ExpenseCategory | undefined>;
+  createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory>;
+  updateExpenseCategory(id: number, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory>;
+  deleteExpenseCategory(id: number): Promise<void>;
+
+  // Expense Reminders methods
+  getExpenseReminders(): Promise<ExpenseReminder[]>;
+  getExpenseReminder(id: number): Promise<ExpenseReminder | undefined>;
+  createExpenseReminder(reminder: InsertExpenseReminder): Promise<ExpenseReminder>;
+  updateExpenseReminder(id: number, reminder: Partial<InsertExpenseReminder>): Promise<ExpenseReminder>;
+  deleteExpenseReminder(id: number): Promise<void>;
+  getActiveReminders(): Promise<ExpenseReminder[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -257,17 +330,31 @@ export class DatabaseStorage implements IStorage {
     await this.createAdminUser();
     await this.createDefaultNavigationItems();
     await this.updateNavigationForFirewall();
+    await this.updateNavigationForDNS();
+    await this.updateNavigationForNginxHosts();
+    await this.updateNavigationForExpenses();
   }
 
   // Create default admin user if none exists
   async createAdminUser() {
     try {
-      const existingUsers = await db.select().from(users).limit(1);
-      if (existingUsers.length > 0) {
-        console.log('Users already exist, skipping admin user creation');
+      // Check if admin user exists
+      const [existingAdmin] = await db.select()
+        .from(users)
+        .where(eq(users.username, 'admin'))
+        .limit(1);
+
+      if (existingAdmin) {
+        console.log('Admin user exists, updating password to admin123');
+        const hashedPassword = await argon2.hash('admin123');
+        await db.update(users)
+          .set({ password: hashedPassword })
+          .where(eq(users.username, 'admin'));
+        console.log('Admin password updated successfully');
         return;
       }
 
+      console.log('Creating new admin user...');
       const hashedPassword = await argon2.hash('admin123');
       console.log('Creating admin user with credentials: admin / admin123');
 
@@ -386,6 +473,20 @@ export class DatabaseStorage implements IStorage {
             icon: 'Monitor',
             position: 2,
             parentId: adminParent.id
+          },
+          {
+            label: 'Docker Containers',
+            href: '/docker-containers',
+            icon: 'Container',
+            position: 3,
+            parentId: adminParent.id
+          },
+          {
+            label: 'Hosts Nginx',
+            href: '/nginx-hosts',
+            icon: 'Server',
+            position: 4,
+            parentId: adminParent.id
           }
         ];
 
@@ -402,14 +503,14 @@ export class DatabaseStorage implements IStorage {
   async updateNavigationForFirewall() {
     try {
       const items = await this.getNavigationItems();
-      
+
       // Remove user permissions item if it exists
       const permissionsItem = items.find(item => item.href === '/user-permissions');
       if (permissionsItem) {
         await this.deleteNavigationItem(permissionsItem.id);
         console.log('Removed user permissions navigation item');
       }
-      
+
       // Add firewall item if it doesn't exist
       const firewallExists = items.some(item => item.href === '/firewall');
       if (!firewallExists) {
@@ -427,13 +528,57 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Update navigation to add DNS management
+  async updateNavigationForDNS() {
+    try {
+      const items = await this.getNavigationItems();
+
+      // Add DNS item if it doesn't exist
+      const dnsExists = items.some(item => item.href === '/dns');
+      if (!dnsExists) {
+        await this.createNavigationItem({
+          label: 'DNS',
+          href: '/dns',
+          icon: 'Globe',
+          order: 10,
+          parentId: null
+        });
+        console.log('Added DNS navigation item');
+      }
+    } catch (error) {
+      console.error('Error updating navigation for DNS:', error);
+    }
+  }
+
+  // Update navigation to add Nginx Hosts management
+  async updateNavigationForNginxHosts() {
+    try {
+      const items = await this.getNavigationItems();
+
+      // Add Nginx Hosts item if it doesn't exist
+      const nginxExists = items.some(item => item.href === '/nginx-hosts');
+      if (!nginxExists) {
+        await this.createNavigationItem({
+          label: 'Nginx Hosts',
+          href: '/nginx-hosts',
+          icon: 'Server',
+          order: 11,
+          parentId: null
+        });
+        console.log('Added Nginx Hosts navigation item');
+      }
+    } catch (error) {
+      console.error('Error updating navigation for Nginx Hosts:', error);
+    }
+  }
+
   private async initializeData() {
     // Database initialization - all data is now stored in PostgreSQL
     try {
       const existingUsers = await db.select().from(users).limit(1);
       const existingSuppliers = await db.select().from(suppliers).limit(1);
       const existingSales = await db.select().from(sales).limit(1);
-      
+
       if (existingUsers.length === 0 || existingSuppliers.length === 0 || existingSales.length === 0) {
         console.log("Creating missing sample data...");
         await this.createSampleData();
@@ -884,61 +1029,62 @@ export class DatabaseStorage implements IStorage {
       { label: "Contas de Email", icon: "Mail", href: "/email-accounts", order: 7, parentId: null },
       { label: "Admin DB", icon: "Database", href: "/database-admin", order: 8, parentId: null },
       { label: "Firewall", icon: "Shield", href: "/firewall", order: 9, parentId: null },
-      { label: "Perfil", icon: "User", href: "/user-profile", order: 10, parentId: null },
-      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 11, parentId: null },
-      { label: "Containers Docker", icon: "Container", href: "/containers", order: 12, parentId: null }
+      { label: "DNS", icon: "Globe", href: "/dns", order: 10, parentId: null },
+      { label: "Perfil", icon: "User", href: "/user-profile", order: 11, parentId: null },
+      { label: "Ajuda", icon: "HelpCircle", href: "/help", order: 12, parentId: null },
+      { label: "Containers Docker", icon: "Container", href: "/containers", order: 13, parentId: null }
     ];
 
     await db.insert(navigationItems).values(navItems);
 
     // Sample docker containers
-      const sampleContainers = [
-        {
-          name: "NGINX Web Server",
-          image: "nginx",
-          tag: "alpine",
-          description: "Servidor web NGINX para hospedar aplicações estáticas",
-          status: "stopped",
-          networkMode: "bridge",
-          restartPolicy: "unless-stopped",
-          cpuLimit: "0.5",
-          memoryLimit: "256m",
-          imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Nginx_logo.svg/2560px-Nginx_logo.svg.png",
-          environment: JSON.stringify({
-            "NGINX_HOST": "localhost",
-            "NGINX_PORT": "80"
-          }),
-          volumes: JSON.stringify([
-            { host: "/var/www/html", container: "/usr/share/nginx/html" }
-          ]),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          name: "PostgreSQL Database",
-          image: "postgres",
-          tag: "15-alpine",
-          description: "Banco de dados PostgreSQL para aplicações web",
-          status: "stopped",
-          networkMode: "bridge",
-          restartPolicy: "unless-stopped",
-          cpuLimit: "1.0",
-          memoryLimit: "512m",
-          imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Postgresql_elephant.svg/1985px-Postgresql_elephant.svg.png",
-          environment: JSON.stringify({
-            "POSTGRES_DB": "myapp",
-            "POSTGRES_USER": "admin",
-            "POSTGRES_PASSWORD": "secret123"
-          }),
-          volumes: JSON.stringify([
-            { host: "/var/lib/postgresql/data", container: "/var/lib/postgresql/data" }
-          ]),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
+    const sampleContainers = [
+      {
+        name: "NGINX Web Server",
+        image: "nginx",
+        tag: "alpine",
+        description: "Servidor web NGINX para hospedar aplicações estáticas",
+        status: "stopped",
+        networkMode: "bridge",
+        restartPolicy: "unless-stopped",
+        cpuLimit: "0.5",
+        memoryLimit: "256m",
+        imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Nginx_logo.svg/2560px-Nginx_logo.svg.png",
+        environment: JSON.stringify({
+          "NGINX_HOST": "localhost",
+          "NGINX_PORT": "80"
+        }),
+        volumes: JSON.stringify([
+          { host: "/var/www/html", container: "/usr/share/nginx/html" }
+        ]),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        name: "PostgreSQL Database",
+        image: "postgres",
+        tag: "15-alpine",
+        description: "Banco de dados PostgreSQL para aplicações web",
+        status: "stopped",
+        networkMode: "bridge",
+        restartPolicy: "unless-stopped",
+        cpuLimit: "1.0",
+        memoryLimit: "512m",
+        imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Postgresql_elephant.svg/1985px-Postgresql_elephant.svg.png",
+        environment: JSON.stringify({
+          "POSTGRES_DB": "myapp",
+          "POSTGRES_USER": "admin",
+          "POSTGRES_PASSWORD": "secret123"
+        }),
+        volumes: JSON.stringify([
+          { host: "/var/lib/postgresql/data", container: "/var/lib/postgresql/data" }
+        ]),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
 
-      await db.insert(dockerContainers).values(sampleContainers);
+    await db.insert(dockerContainers).values(sampleContainers);
 
     // Create sample suppliers
     const suppliersData = [
@@ -1018,7 +1164,7 @@ export class DatabaseStorage implements IStorage {
         minimumOrder: "R$ 3.000,00",
         categories: ["2"], // Móveis
         manufacturers: ["2"], // MobileFlex
-        productGroups: [], 
+        productGroups: [],
         notes: "Móveis corporativos e residenciais de alta qualidade",
         status: "active",
         rating: 5,
@@ -1256,7 +1402,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: now
       },
       {
-        saleNumber: "VDA-002", 
+        saleNumber: "VDA-002",
         clientId: client2.id,
         userId: user.id,
         saleDate: "2024-01-18",
@@ -1555,8 +1701,8 @@ export class DatabaseStorage implements IStorage {
       const sessionToken = crypto.randomBytes(32).toString('hex');
       const refreshToken = crypto.randomBytes(32).toString('hex');
 
-      // Hash tokens for storage
-      const sessionHash = await argon2.hash(sessionToken);
+      // Don't hash session token - store it directly for cookie comparison
+      // const sessionHash = await argon2.hash(sessionToken);
 
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 4); // 4 hours
@@ -1567,7 +1713,7 @@ export class DatabaseStorage implements IStorage {
       try {
         await db.insert(sessions).values({
           userId: user.id,
-          token: sessionHash,
+          token: sessionToken, // Store original token, not hash
           expiresAt: expiresAt,
           refreshExpiresAt: refreshExpiresAt,
           ipAddress: ipAddress || 'unknown',
@@ -1619,25 +1765,13 @@ export class DatabaseStorage implements IStorage {
           ipAddress: sessions.ipAddress,
           userAgent: sessions.userAgent
         })
-        .from(sessions)
-        .where(sql`${sessions.expiresAt} > NOW()`);
+          .from(sessions)
+          .where(sql`${sessions.expiresAt} > NOW()`);
 
         console.log(`Found ${activeSessions.length} active sessions in database`);
 
-        // Find matching session by comparing hashed tokens
-        let matchingSession = null;
-        for (const session of activeSessions) {
-          try {
-            const isValid = await argon2.verify(session.token, sessionToken);
-            if (isValid) {
-              matchingSession = session;
-              break;
-            }
-          } catch (error) {
-            console.log('Error verifying session token:', error);
-            continue;
-          }
-        }
+        // Find matching session by direct token comparison (tokens are stored in plain text now)
+        const matchingSession = activeSessions.find(session => session.token === sessionToken);
 
         if (matchingSession) {
           console.log('Session validated successfully for user:', matchingSession.userId);
@@ -1727,21 +1861,16 @@ export class DatabaseStorage implements IStorage {
 
       // Try database sessions first
       try {
-        const allSessions = await db.select()
-          .from(sessions);
+        // Find session by direct token comparison (tokens are stored in plain text now)
+        const matchingSession = await db.select()
+          .from(sessions)
+          .where(eq(sessions.token, sessionToken))
+          .limit(1);
 
-        // Find and delete matching session
-        for (const session of allSessions) {
-          try {
-            const isValid = await argon2.verify(session.token, sessionToken);
-            if (isValid) {
-              await db.delete(sessions).where(eq(sessions.id, session.id));
-              console.log('Session invalidated successfully from database');
-              return;
-            }
-          } catch (error) {
-            continue;
-          }
+        if (matchingSession.length > 0) {
+          await db.delete(sessions).where(eq(sessions.id, matchingSession[0].id));
+          console.log('Session invalidated successfully from database');
+          return;
         }
       } catch (error) {
         console.log('Database session invalidation failed, trying in-memory fallback:', error);
@@ -2418,6 +2547,33 @@ export class DatabaseStorage implements IStorage {
     await db.delete(suppliers).where(eq(suppliers.id, id));
   }
 
+  // Providers CRUD operations
+  async getProviders(): Promise<Provider[]> {
+    return await db.select().from(providers).orderBy(providers.name);
+  }
+
+  async getProvider(id: number): Promise<Provider | undefined> {
+    const [provider] = await db.select().from(providers).where(eq(providers.id, id));
+    return provider || undefined;
+  }
+
+  async createProvider(provider: InsertProvider): Promise<Provider> {
+    const [newProvider] = await db.insert(providers).values(provider).returning();
+    return newProvider;
+  }
+
+  async updateProvider(id: number, providerData: Partial<InsertProvider>): Promise<Provider> {
+    const [updatedProvider] = await db.update(providers)
+      .set(providerData)
+      .where(eq(providers.id, id))
+      .returning();
+    return updatedProvider;
+  }
+
+  async deleteProvider(id: number): Promise<void> {
+    await db.delete(providers).where(eq(providers.id, id));
+  }
+
   // Sales CRUD operations
   async getSales(): Promise<Sale[]> {
     return await db.select().from(sales).orderBy(sales.saleDate);
@@ -2426,6 +2582,16 @@ export class DatabaseStorage implements IStorage {
   async getSale(id: number): Promise<Sale | undefined> {
     const [sale] = await db.select().from(sales).where(eq(sales.id, id));
     return sale || undefined;
+  }
+
+  async getSaleById(id: number): Promise<Sale | undefined> {
+    const [sale] = await db.select().from(sales).where(eq(sales.id, id));
+    return sale || undefined;
+  }
+
+  async getClientById(id: number): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client || undefined;
   }
 
   async createSale(sale: InsertSale): Promise<Sale> {
@@ -2964,6 +3130,602 @@ export class DatabaseStorage implements IStorage {
       return config;
     } catch (error) {
       console.error('Error updating webhook test result:', error);
+      throw error;
+    }
+  }
+
+  // ==================== TASK SCHEDULER METHODS ====================
+
+  async getScheduledTasks(): Promise<any[]> {
+    try {
+      const tasks = await db.select().from(scheduledTasks).orderBy(desc(scheduledTasks.createdAt));
+      return tasks;
+    } catch (error) {
+      console.error('Error getting scheduled tasks:', error);
+      throw error;
+    }
+  }
+
+  async getScheduledTask(id: number): Promise<any | undefined> {
+    try {
+      const [task] = await db.select().from(scheduledTasks).where(eq(scheduledTasks.id, id));
+      return task;
+    } catch (error) {
+      console.error('Error getting scheduled task:', error);
+      throw error;
+    }
+  }
+
+  async createScheduledTask(taskData: any): Promise<any> {
+    try {
+      const [task] = await db.insert(scheduledTasks).values({
+        ...taskData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+      return task;
+    } catch (error) {
+      console.error('Error creating scheduled task:', error);
+      throw error;
+    }
+  }
+
+  async updateScheduledTask(id: number, taskData: any): Promise<any> {
+    try {
+      const [task] = await db
+        .update(scheduledTasks)
+        .set({
+          ...taskData,
+          updatedAt: new Date()
+        })
+        .where(eq(scheduledTasks.id, id))
+        .returning();
+      return task;
+    } catch (error) {
+      console.error('Error updating scheduled task:', error);
+      throw error;
+    }
+  }
+
+  async deleteScheduledTask(id: number): Promise<void> {
+    try {
+      // First delete related execution logs
+      await db.delete(taskExecutionLogs).where(eq(taskExecutionLogs.taskId, id));
+      // Then delete the task
+      await db.delete(scheduledTasks).where(eq(scheduledTasks.id, id));
+    } catch (error) {
+      console.error('Error deleting scheduled task:', error);
+      throw error;
+    }
+  }
+
+  // ==================== TASK EXECUTION LOGS METHODS ====================
+
+  async getTaskExecutionLogs(taskId: number, limit: number = 50): Promise<any[]> {
+    try {
+      const logs = await db
+        .select()
+        .from(taskExecutionLogs)
+        .where(eq(taskExecutionLogs.taskId, taskId))
+        .orderBy(desc(taskExecutionLogs.startTime))
+        .limit(limit);
+      return logs;
+    } catch (error) {
+      console.error('Error getting task execution logs:', error);
+      throw error;
+    }
+  }
+
+  async getAllTaskExecutionLogs(limit: number = 100): Promise<any[]> {
+    try {
+      const logs = await db
+        .select({
+          id: taskExecutionLogs.id,
+          taskId: taskExecutionLogs.taskId,
+          status: taskExecutionLogs.status,
+          startTime: taskExecutionLogs.startTime,
+          endTime: taskExecutionLogs.endTime,
+          output: taskExecutionLogs.output,
+          exitCode: taskExecutionLogs.exitCode,
+          taskName: scheduledTasks.name
+        })
+        .from(taskExecutionLogs)
+        .leftJoin(scheduledTasks, eq(taskExecutionLogs.taskId, scheduledTasks.id))
+        .orderBy(desc(taskExecutionLogs.startTime))
+        .limit(limit);
+      return logs;
+    } catch (error) {
+      console.error('Error getting all task execution logs:', error);
+      throw error;
+    }
+  }
+
+  async createTaskExecutionLog(logData: any): Promise<any> {
+    try {
+      const [log] = await db.insert(taskExecutionLogs).values({
+        ...logData,
+        createdAt: new Date()
+      }).returning();
+      return log;
+    } catch (error) {
+      console.error('Error creating task execution log:', error);
+      throw error;
+    }
+  }
+
+  async updateTaskExecutionLog(id: number, logData: any): Promise<any> {
+    try {
+      const [log] = await db
+        .update(taskExecutionLogs)
+        .set({
+          ...logData,
+          updatedAt: new Date()
+        })
+        .where(eq(taskExecutionLogs.id, id))
+        .returning();
+      return log;
+    } catch (error) {
+      console.error('Error updating task execution log:', error);
+      throw error;
+    }
+  }
+
+  async deleteTaskExecutionLog(id: number): Promise<void> {
+    try {
+      await db.delete(taskExecutionLogs).where(eq(taskExecutionLogs.id, id));
+    } catch (error) {
+      console.error('Error deleting task execution log:', error);
+      throw error;
+    }
+  }
+
+  async clearTaskExecutionLogs(taskId: number): Promise<void> {
+    try {
+      await db.delete(taskExecutionLogs).where(eq(taskExecutionLogs.taskId, taskId));
+    } catch (error) {
+      console.error('Error clearing task execution logs:', error);
+      throw error;
+    }
+  }
+
+  // ==================== TASK TEMPLATES METHODS ====================
+
+  async getTaskTemplates(): Promise<any[]> {
+    try {
+      const templates = await db.select().from(taskTemplates).orderBy(asc(taskTemplates.category), asc(taskTemplates.name));
+      return templates;
+    } catch (error) {
+      console.error('Error getting task templates:', error);
+      throw error;
+    }
+  }
+
+  async getTaskTemplate(id: number): Promise<any | undefined> {
+    try {
+      const [template] = await db.select().from(taskTemplates).where(eq(taskTemplates.id, id));
+      return template;
+    } catch (error) {
+      console.error('Error getting task template:', error);
+      throw error;
+    }
+  }
+
+  async createTaskTemplate(templateData: any): Promise<any> {
+    try {
+      const [template] = await db.insert(taskTemplates).values({
+        ...templateData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+      return template;
+    } catch (error) {
+      console.error('Error creating task template:', error);
+      throw error;
+    }
+  }
+
+  async updateTaskTemplate(id: number, templateData: any): Promise<any> {
+    try {
+      const [template] = await db
+        .update(taskTemplates)
+        .set({
+          ...templateData,
+          updatedAt: new Date()
+        })
+        .where(eq(taskTemplates.id, id))
+        .returning();
+      return template;
+    } catch (error) {
+      console.error('Error updating task template:', error);
+      throw error;
+    }
+  }
+
+  async deleteTaskTemplate(id: number): Promise<void> {
+    try {
+      await db.delete(taskTemplates).where(eq(taskTemplates.id, id));
+    } catch (error) {
+      console.error('Error deleting task template:', error);
+      throw error;
+    }
+  }
+
+  // Update navigation to add expenses management
+  async updateNavigationForExpenses() {
+    try {
+      const existingExpenses = await db
+        .select()
+        .from(navigationItems)
+        .where(eq(navigationItems.href, '/expenses'))
+        .limit(1);
+
+      if (existingExpenses.length > 0) {
+        console.log('Expenses navigation item already exists');
+        return;
+      }
+
+      console.log('Adding expenses navigation item...');
+
+      await db.insert(navigationItems).values({
+        label: 'Controle de Gastos',
+        href: '/expenses',
+        icon: 'CreditCard',
+        order: 6,
+        parentId: null
+      });
+
+      console.log('Expenses navigation item added successfully');
+    } catch (error) {
+      console.error('Error updating navigation for expenses:', error);
+    }
+
+    // Initialize default expense categories
+    try {
+      const existingCategories = await db
+        .select()
+        .from(expenseCategories)
+        .limit(1);
+
+      if (existingCategories.length > 0) {
+        console.log('Expense categories already exist');
+        return;
+      }
+
+      console.log('Creating default expense categories...');
+
+      const defaultCategories = [
+        {
+          name: 'Infraestrutura',
+          icon: 'Server',
+          color: '#3B82F6',
+          description: 'Serviços de hospedagem, domínios e infraestrutura'
+        },
+        {
+          name: 'Software',
+          icon: 'Code',
+          color: '#8B5CF6',
+          description: 'Licenças de software e aplicativos'
+        },
+        {
+          name: 'Marketing',
+          icon: 'Megaphone',
+          color: '#EF4444',
+          description: 'Publicidade, marketing digital e promoções'
+        },
+        {
+          name: 'Recursos Humanos',
+          icon: 'Users',
+          color: '#10B981',
+          description: 'Salários, benefícios e treinamentos'
+        },
+        {
+          name: 'Operacional',
+          icon: 'Settings',
+          color: '#F59E0B',
+          description: 'Custos operacionais gerais'
+        },
+        {
+          name: 'Escritório',
+          icon: 'Building',
+          color: '#6366F1',
+          description: 'Material de escritório, aluguel e utilidades'
+        }
+      ];
+
+      for (const category of defaultCategories) {
+        await db.insert(expenseCategories).values(category);
+      }
+
+      console.log('Default expense categories created successfully');
+    } catch (error) {
+      console.error('Error creating default expense categories:', error);
+    }
+  }
+
+  // ==================== EXPENSES METHODS ====================
+
+  async getExpenses(): Promise<Expense[]> {
+    try {
+      const expensesList = await db.select().from(expenses).orderBy(desc(expenses.date));
+      return expensesList;
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      throw error;
+    }
+  }
+
+  async getExpense(id: number): Promise<Expense | undefined> {
+    try {
+      const [expense] = await db.select().from(expenses).where(eq(expenses.id, id));
+      return expense;
+    } catch (error) {
+      console.error("Error fetching expense:", error);
+      throw error;
+    }
+  }
+
+  async createExpense(expenseData: InsertExpense): Promise<Expense> {
+    try {
+      const [expense] = await db.insert(expenses).values({
+        ...expenseData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).returning();
+      return expense;
+    } catch (error) {
+      console.error("Error creating expense:", error);
+      throw error;
+    }
+  }
+
+  async updateExpense(id: number, expenseData: Partial<InsertExpense>): Promise<Expense> {
+    try {
+      const [expense] = await db
+        .update(expenses)
+        .set({
+          ...expenseData,
+          updatedAt: new Date(),
+        })
+        .where(eq(expenses.id, id))
+        .returning();
+
+      if (!expense) {
+        throw new Error("Expense not found");
+      }
+
+      return expense;
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      throw error;
+    }
+  }
+
+  async deleteExpense(id: number): Promise<void> {
+    try {
+      await db.delete(expenses).where(eq(expenses.id, id));
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      throw error;
+    }
+  }
+
+  async getExpenseStats(): Promise<any> {
+    try {
+      // Get current month and year
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      // Get all expenses for calculations
+      const allExpenses = await this.getExpenses();
+
+      // Calculate totals
+      const totalMonth = allExpenses
+        .filter(exp => {
+          const expDate = new Date(exp.date);
+          return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+      const totalYear = allExpenses
+        .filter(exp => {
+          const expDate = new Date(exp.date);
+          return expDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+      // Group by category
+      const categoryMap = new Map();
+      allExpenses
+        .filter(exp => {
+          const expDate = new Date(exp.date);
+          return expDate.getFullYear() === currentYear;
+        })
+        .forEach(exp => {
+          const category = exp.category;
+          if (categoryMap.has(category)) {
+            categoryMap.get(category).total += parseFloat(exp.amount);
+            categoryMap.get(category).count += 1;
+          } else {
+            categoryMap.set(category, {
+              category,
+              total: parseFloat(exp.amount),
+              count: 1
+            });
+          }
+        });
+
+      const byCategory = Array.from(categoryMap.values())
+        .sort((a, b) => b.total - a.total);
+
+      // Monthly trend (last 12 months)
+      const monthlyTrend = [];
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(currentYear, currentMonth - i, 1);
+        const monthExpenses = allExpenses
+          .filter(exp => {
+            const expDate = new Date(exp.date);
+            return expDate.getMonth() === date.getMonth() &&
+              expDate.getFullYear() === date.getFullYear();
+          })
+          .reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+        monthlyTrend.push({
+          month: date.toLocaleString('pt-BR', { month: 'short' }),
+          total: monthExpenses
+        });
+      }
+
+      return {
+        totalMonth,
+        totalYear,
+        byCategory,
+        monthlyTrend
+      };
+    } catch (error) {
+      console.error("Error calculating expense stats:", error);
+      throw error;
+    }
+  }
+
+  // ===== EXPENSE CATEGORIES METHODS =====
+
+  async getExpenseCategories(): Promise<ExpenseCategory[]> {
+    try {
+      const categories = await db.select().from(expenseCategories).where(eq(expenseCategories.active, true));
+      return categories;
+    } catch (error) {
+      console.error("Error fetching expense categories:", error);
+      throw error;
+    }
+  }
+
+  async getExpenseCategory(id: number): Promise<ExpenseCategory | undefined> {
+    try {
+      const category = await db.select().from(expenseCategories).where(eq(expenseCategories.id, id));
+      return category[0];
+    } catch (error) {
+      console.error("Error fetching expense category:", error);
+      throw error;
+    }
+  }
+
+  async createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory> {
+    try {
+      const newCategory = await db.insert(expenseCategories).values(category).returning();
+      return newCategory[0];
+    } catch (error) {
+      console.error("Error creating expense category:", error);
+      throw error;
+    }
+  }
+
+  async updateExpenseCategory(id: number, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory> {
+    try {
+      const updatedCategory = await db.update(expenseCategories)
+        .set({ ...category, updatedAt: new Date() })
+        .where(eq(expenseCategories.id, id))
+        .returning();
+
+      if (updatedCategory.length === 0) {
+        throw new Error("Categoria não encontrada");
+      }
+
+      return updatedCategory[0];
+    } catch (error) {
+      console.error("Error updating expense category:", error);
+      throw error;
+    }
+  }
+
+  async deleteExpenseCategory(id: number): Promise<void> {
+    try {
+      // Soft delete - apenas marcar como inativo
+      await db.update(expenseCategories)
+        .set({ active: false, updatedAt: new Date() })
+        .where(eq(expenseCategories.id, id));
+    } catch (error) {
+      console.error("Error deleting expense category:", error);
+      throw error;
+    }
+  }
+
+  // ===== EXPENSE REMINDERS METHODS =====
+
+  async getExpenseReminders(): Promise<ExpenseReminder[]> {
+    try {
+      const reminders = await db.select().from(expenseReminders).where(eq(expenseReminders.active, true));
+      return reminders;
+    } catch (error) {
+      console.error("Error fetching expense reminders:", error);
+      throw error;
+    }
+  }
+
+  async getExpenseReminder(id: number): Promise<ExpenseReminder | undefined> {
+    try {
+      const reminder = await db.select().from(expenseReminders).where(eq(expenseReminders.id, id));
+      return reminder[0];
+    } catch (error) {
+      console.error("Error fetching expense reminder:", error);
+      throw error;
+    }
+  }
+
+  async createExpenseReminder(reminder: InsertExpenseReminder): Promise<ExpenseReminder> {
+    try {
+      const newReminder = await db.insert(expenseReminders).values(reminder).returning();
+      return newReminder[0];
+    } catch (error) {
+      console.error("Error creating expense reminder:", error);
+      throw error;
+    }
+  }
+
+  async updateExpenseReminder(id: number, reminder: Partial<InsertExpenseReminder>): Promise<ExpenseReminder> {
+    try {
+      const updatedReminder = await db.update(expenseReminders)
+        .set({ ...reminder, updatedAt: new Date() })
+        .where(eq(expenseReminders.id, id))
+        .returning();
+
+      if (updatedReminder.length === 0) {
+        throw new Error("Lembrete não encontrado");
+      }
+
+      return updatedReminder[0];
+    } catch (error) {
+      console.error("Error updating expense reminder:", error);
+      throw error;
+    }
+  }
+
+  async deleteExpenseReminder(id: number): Promise<void> {
+    try {
+      await db.update(expenseReminders)
+        .set({ active: false, updatedAt: new Date() })
+        .where(eq(expenseReminders.id, id));
+    } catch (error) {
+      console.error("Error deleting expense reminder:", error);
+      throw error;
+    }
+  }
+
+  async getActiveReminders(): Promise<ExpenseReminder[]> {
+    try {
+      const now = new Date();
+      const reminders = await db.select()
+        .from(expenseReminders)
+        .where(
+          and(
+            eq(expenseReminders.active, true),
+            eq(expenseReminders.sent, false),
+            sql`${expenseReminders.reminderDate} <= ${now}`
+          )
+        );
+      return reminders;
+    } catch (error) {
+      console.error("Error fetching active reminders:", error);
       throw error;
     }
   }
