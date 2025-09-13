@@ -5,3 +5,5 @@ server/public
 vite.config.ts.*
 *.tar.gz
 .env# Git config fixed
+easydev_vps_cc.zip
+logs/
