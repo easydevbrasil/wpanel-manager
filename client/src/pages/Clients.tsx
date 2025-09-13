@@ -320,7 +320,7 @@ export default function Clients() {
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
               Clientes
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -337,7 +337,7 @@ export default function Clients() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-gray-900 dark:text-white">
+                <DialogTitle className="text-foreground">
                   {editingClient ? "Editar Cliente" : "Novo Cliente"}
                 </DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -355,12 +355,12 @@ export default function Clients() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
+                        <FormLabel className="text-foreground">Nome</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Nome completo" 
                             {...field} 
-                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                           />
                         </FormControl>
                         <FormMessage />
@@ -373,13 +373,13 @@ export default function Clients() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Email</FormLabel>
+                        <FormLabel className="text-foreground">Email</FormLabel>
                         <FormControl>
                           <Input 
                             type="email" 
                             placeholder="email@exemplo.com" 
                             {...field} 
-                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                           />
                         </FormControl>
                         <FormMessage />
@@ -392,12 +392,12 @@ export default function Clients() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Telefone</FormLabel>
+                        <FormLabel className="text-foreground">Telefone</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="+55 (11) 99999-9999" 
                             {...field} 
-                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                           />
                         </FormControl>
                         <FormMessage />
@@ -410,12 +410,12 @@ export default function Clients() {
                     name="company"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Empresa</FormLabel>
+                        <FormLabel className="text-foreground">Empresa</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Nome da empresa" 
                             {...field} 
-                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                           />
                         </FormControl>
                         <FormMessage />
@@ -428,12 +428,12 @@ export default function Clients() {
                     name="position"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Cargo</FormLabel>
+                        <FormLabel className="text-foreground">Cargo</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Cargo na empresa" 
                             {...field} 
-                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                           />
                         </FormControl>
                         <FormMessage />
@@ -446,7 +446,7 @@ export default function Clients() {
                     name="image"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Imagem do Cliente</FormLabel>
+                        <FormLabel className="text-foreground">Imagem do Cliente</FormLabel>
                         <FormControl>
                           <div className="space-y-3">
                             {field.value && (
@@ -478,7 +478,7 @@ export default function Clients() {
                               placeholder="https://exemplo.com/imagem.jpg" 
                               value={field.value || ""} 
                               onChange={(e) => field.onChange(e.target.value)}
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                             />
                           </div>
                         </FormControl>
@@ -492,14 +492,14 @@ export default function Clients() {
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                        <FormLabel className="text-foreground">Status</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                            <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                               <SelectValue placeholder="Selecione o status" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                          <SelectContent className="bg-popover border-border">
                             <SelectItem value="active">Ativo</SelectItem>
                             <SelectItem value="inactive">Inativo</SelectItem>
                           </SelectContent>
@@ -514,11 +514,11 @@ export default function Clients() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Observações</FormLabel>
+                        <FormLabel className="text-foreground">Observações</FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder="Observações sobre o cliente..."
-                            className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                             {...field}
                           />
                         </FormControl>
@@ -558,14 +558,14 @@ export default function Clients() {
             placeholder="Buscar clientes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            className="pl-10 bg-popover border-border text-foreground"
           />
         </div>
         <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive" | "pending") => setStatusFilter(value)}>
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+          <SelectTrigger className="w-[180px] bg-popover border-border text-foreground">
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+          <SelectContent className="bg-popover border-border">
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="active">Ativos</SelectItem>
             <SelectItem value="inactive">Inativos</SelectItem>
@@ -594,7 +594,7 @@ export default function Clients() {
       ) : filteredClients.length === 0 ? (
         <div className="text-center py-12">
           <User className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum cliente encontrado</h3>
+          <h3 className="mt-2 text-sm font-medium text-foreground">Nenhum cliente encontrado</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {searchTerm || statusFilter !== "all" 
               ? "Tente ajustar os filtros de busca."
@@ -616,7 +616,7 @@ export default function Clients() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      <h3 className="text-lg font-semibold text-foreground truncate">
                         {client.name}
                       </h3>
                       {client.position && client.company && (
@@ -649,7 +649,7 @@ export default function Clients() {
                       </AlertDialogTrigger>
                       <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <AlertDialogHeader>
-                          <AlertDialogTitle className="text-gray-900 dark:text-white">
+                          <AlertDialogTitle className="text-foreground">
                             Excluir Cliente
                           </AlertDialogTitle>
                           <AlertDialogDescription className="text-gray-600 dark:text-gray-400">

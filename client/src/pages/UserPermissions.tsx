@@ -218,7 +218,7 @@ export default function UserPermissions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-foreground">
             Permissões de Usuários
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -265,7 +265,7 @@ export default function UserPermissions() {
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                       selectedUser === user.id
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        : "border-gray-200 dark:border-gray-700 hover:bg-muted/50 dark:hover:bg-gray-800"
                     }`}
                     onClick={() => {
                       setSelectedUser(user.id);
@@ -275,7 +275,7 @@ export default function UserPermissions() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
+                        <p className="font-medium text-foreground">
                           {user.name}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -456,7 +456,7 @@ export default function UserPermissions() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <HelpCircle className="w-12 h-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   Selecione um usuário
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm">

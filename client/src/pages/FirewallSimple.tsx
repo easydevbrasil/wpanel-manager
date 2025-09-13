@@ -96,7 +96,7 @@ export default function Firewall() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             Firewall Controller
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -113,7 +113,7 @@ export default function Firewall() {
         <CardContent>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-2xl font-bold text-foreground">
                 {serviceStatus?.is_active ? (
                   <span className="text-green-500">Ativo</span>
                 ) : (

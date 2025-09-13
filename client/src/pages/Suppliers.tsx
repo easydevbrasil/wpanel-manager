@@ -405,7 +405,7 @@ export default function Suppliers() {
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
               Fornecedores
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -420,9 +420,9 @@ export default function Suppliers() {
                 Novo Fornecedor
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] bg-white dark:bg-gray-800 max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-gray-900 dark:text-white">
+                <DialogTitle className="text-foreground">
                   {editingSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}
                 </DialogTitle>
                 <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -437,19 +437,19 @@ export default function Suppliers() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Informações Básicas */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Informações Básicas</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Informações Básicas</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Nome/Razão Social *</FormLabel>
+                            <FormLabel className="text-foreground">Nome/Razão Social *</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Nome do fornecedor" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -462,12 +462,12 @@ export default function Suppliers() {
                         name="companyName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Nome Fantasia</FormLabel>
+                            <FormLabel className="text-foreground">Nome Fantasia</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Nome fantasia" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -480,12 +480,12 @@ export default function Suppliers() {
                         name="cnpj"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">CNPJ</FormLabel>
+                            <FormLabel className="text-foreground">CNPJ</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="00.000.000/0001-00" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -498,14 +498,14 @@ export default function Suppliers() {
                         name="status"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                            <FormLabel className="text-foreground">Status</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                                   <SelectValue placeholder="Selecione o status" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              <SelectContent className="bg-popover border-border">
                                 <SelectItem value="active">Ativo</SelectItem>
                                 <SelectItem value="inactive">Inativo</SelectItem>
                               </SelectContent>
@@ -519,20 +519,20 @@ export default function Suppliers() {
 
                   {/* Contato */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Informações de Contato</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Informações de Contato</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Email</FormLabel>
+                            <FormLabel className="text-foreground">Email</FormLabel>
                             <FormControl>
                               <Input 
                                 type="email"
                                 placeholder="contato@fornecedor.com" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -545,12 +545,12 @@ export default function Suppliers() {
                         name="phone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Telefone</FormLabel>
+                            <FormLabel className="text-foreground">Telefone</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="(11) 1234-5678" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -563,12 +563,12 @@ export default function Suppliers() {
                         name="whatsapp"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">WhatsApp</FormLabel>
+                            <FormLabel className="text-foreground">WhatsApp</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="(11) 99999-9999" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -581,12 +581,12 @@ export default function Suppliers() {
                         name="website"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Website</FormLabel>
+                            <FormLabel className="text-foreground">Website</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="https://www.fornecedor.com" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -598,14 +598,14 @@ export default function Suppliers() {
 
                   {/* Vinculações */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Vinculações de Produtos</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Vinculações de Produtos</h3>
                     
                     <FormField
                       control={form.control}
                       name="categories"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Categorias</FormLabel>
+                          <FormLabel className="text-foreground">Categorias</FormLabel>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border rounded p-2 bg-white dark:bg-gray-700">
                             {categories.map((category) => (
                               <div key={category.id} className="flex items-center space-x-2">
@@ -622,7 +622,7 @@ export default function Suppliers() {
                                 />
                                 <label 
                                   htmlFor={`category-${category.id}`}
-                                  className="text-sm text-gray-900 dark:text-white cursor-pointer"
+                                  className="text-sm text-foreground cursor-pointer"
                                 >
                                   {category.name}
                                 </label>
@@ -639,7 +639,7 @@ export default function Suppliers() {
                       name="manufacturers"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Fabricantes</FormLabel>
+                          <FormLabel className="text-foreground">Fabricantes</FormLabel>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border rounded p-2 bg-white dark:bg-gray-700">
                             {manufacturers.map((manufacturer) => (
                               <div key={manufacturer.id} className="flex items-center space-x-2">
@@ -656,7 +656,7 @@ export default function Suppliers() {
                                 />
                                 <label 
                                   htmlFor={`manufacturer-${manufacturer.id}`}
-                                  className="text-sm text-gray-900 dark:text-white cursor-pointer"
+                                  className="text-sm text-foreground cursor-pointer"
                                 >
                                   {manufacturer.name}
                                 </label>
@@ -671,19 +671,19 @@ export default function Suppliers() {
 
                   {/* Condições Comerciais */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Condições Comerciais</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Condições Comerciais</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
                         name="paymentTerms"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Prazo de Pagamento</FormLabel>
+                            <FormLabel className="text-foreground">Prazo de Pagamento</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="30 dias" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -696,12 +696,12 @@ export default function Suppliers() {
                         name="deliveryTime"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Prazo de Entrega</FormLabel>
+                            <FormLabel className="text-foreground">Prazo de Entrega</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="5-7 dias úteis" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -714,12 +714,12 @@ export default function Suppliers() {
                         name="minimumOrder"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Pedido Mínimo</FormLabel>
+                            <FormLabel className="text-foreground">Pedido Mínimo</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="R$ 1.000,00" 
                                 {...field} 
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -731,13 +731,13 @@ export default function Suppliers() {
                   
                   {/* Image Upload */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Imagem</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Imagem</h3>
                     <FormField
                       control={form.control}
                       name="image"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Imagem do Fornecedor</FormLabel>
+                          <FormLabel className="text-foreground">Imagem do Fornecedor</FormLabel>
                           <div className="space-y-4">
                             {field.value ? (
                               <div className="relative">
@@ -771,11 +771,11 @@ export default function Suppliers() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-900 dark:text-white">Observações</FormLabel>
+                        <FormLabel className="text-foreground">Observações</FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder="Informações adicionais sobre o fornecedor..."
-                            className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                            className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                             {...field}
                           />
                         </FormControl>
@@ -815,14 +815,14 @@ export default function Suppliers() {
             placeholder="Buscar fornecedores..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            className="pl-10 bg-popover border-border text-foreground"
           />
         </div>
         <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive") => setStatusFilter(value)}>
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+          <SelectTrigger className="w-[180px] bg-popover border-border text-foreground">
             <SelectValue placeholder="Filtrar por status" />
           </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+          <SelectContent className="bg-popover border-border">
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="active">Ativos</SelectItem>
             <SelectItem value="inactive">Inativos</SelectItem>
@@ -848,7 +848,7 @@ export default function Suppliers() {
       ) : filteredSuppliers.length === 0 ? (
         <div className="text-center py-12">
           <Truck className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum fornecedor encontrado</h3>
+          <h3 className="mt-2 text-sm font-medium text-foreground">Nenhum fornecedor encontrado</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {searchTerm || statusFilter !== "all" 
               ? "Tente ajustar os filtros de busca."
@@ -897,7 +897,7 @@ export default function Suppliers() {
                         </AlertDialogTrigger>
                         <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                           <AlertDialogHeader>
-                            <AlertDialogTitle className="text-gray-900 dark:text-white">
+                            <AlertDialogTitle className="text-foreground">
                               Excluir Fornecedor
                             </AlertDialogTitle>
                             <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
@@ -923,7 +923,7 @@ export default function Suppliers() {
                   {/* Supplier Info */}
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
+                      <h3 className="text-lg font-semibold text-foreground line-clamp-2">
                         {supplier.name}
                       </h3>
                       <Badge 

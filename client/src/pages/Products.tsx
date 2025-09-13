@@ -797,7 +797,7 @@ export default function Products() {
       <div className="mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
               Produtos
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -834,14 +834,14 @@ export default function Products() {
                   placeholder="Buscar produtos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                  className="pl-10 bg-popover border-border text-foreground"
                 />
               </div>
               <Select value={statusFilter} onValueChange={(value: "all" | "active" | "inactive" | "discontinued") => setStatusFilter(value)}>
-                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                <SelectTrigger className="w-[180px] bg-popover border-border text-foreground">
                   <SelectValue placeholder="Filtrar por status" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                <SelectContent className="bg-popover border-border">
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="active">Ativos</SelectItem>
                   <SelectItem value="inactive">Inativos</SelectItem>
@@ -849,10 +849,10 @@ export default function Products() {
                 </SelectContent>
               </Select>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                <SelectTrigger className="w-[180px] bg-popover border-border text-foreground">
                   <SelectValue placeholder="Filtrar por categoria" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                <SelectContent className="bg-popover border-border">
                   <SelectItem value="all">Todas</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id.toString()}>
@@ -872,7 +872,7 @@ export default function Products() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="text-gray-900 dark:text-white">
+                  <DialogTitle className="text-foreground">
                     {editingProduct ? "Editar Produto" : "Novo Produto"}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -891,12 +891,12 @@ export default function Products() {
                         name="name"
                         render={({ field }) => (
                           <FormItem className="md:col-span-2">
-                            <FormLabel className="text-gray-900 dark:text-white">Nome do Produto</FormLabel>
+                            <FormLabel className="text-foreground">Nome do Produto</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Nome do produto"
                                 {...field}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -909,12 +909,12 @@ export default function Products() {
                         name="sku"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">SKU</FormLabel>
+                            <FormLabel className="text-foreground">SKU</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="SKU-001"
                                 {...field}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -927,12 +927,12 @@ export default function Products() {
                         name="barcode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Código de Barras</FormLabel>
+                            <FormLabel className="text-foreground">Código de Barras</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="7891234567890"
                                 {...field}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -945,12 +945,12 @@ export default function Products() {
                         name="price"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Preço de Venda</FormLabel>
+                            <FormLabel className="text-foreground">Preço de Venda</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="99.90"
                                 {...field}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -963,12 +963,12 @@ export default function Products() {
                         name="costPrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Preço de Custo</FormLabel>
+                            <FormLabel className="text-foreground">Preço de Custo</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="75.00"
                                 {...field}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -981,14 +981,14 @@ export default function Products() {
                         name="categoryId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Categoria</FormLabel>
+                            <FormLabel className="text-foreground">Categoria</FormLabel>
                             <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
                               <FormControl>
-                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                                   <SelectValue placeholder="Selecione uma categoria" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              <SelectContent className="bg-popover border-border">
                                 {categories.map((category) => (
                                   <SelectItem key={category.id} value={category.id.toString()}>
                                     {category.name}
@@ -1006,14 +1006,14 @@ export default function Products() {
                         name="manufacturerId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Fabricante</FormLabel>
+                            <FormLabel className="text-foreground">Fabricante</FormLabel>
                             <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} value={field.value?.toString()}>
                               <FormControl>
-                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                                   <SelectValue placeholder="Selecione um fabricante" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              <SelectContent className="bg-popover border-border">
                                 {manufacturers.map((manufacturer) => (
                                   <SelectItem key={manufacturer.id} value={manufacturer.id.toString()}>
                                     {manufacturer.name}
@@ -1031,14 +1031,14 @@ export default function Products() {
                         name="stock"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Estoque Atual</FormLabel>
+                            <FormLabel className="text-foreground">Estoque Atual</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 placeholder="0"
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -1051,14 +1051,14 @@ export default function Products() {
                         name="minStock"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Estoque Mínimo</FormLabel>
+                            <FormLabel className="text-foreground">Estoque Mínimo</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 placeholder="0"
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                                className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               />
                             </FormControl>
                             <FormMessage />
@@ -1071,14 +1071,14 @@ export default function Products() {
                         name="status"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                            <FormLabel className="text-foreground">Status</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                                   <SelectValue placeholder="Selecione o status" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                              <SelectContent className="bg-popover border-border">
                                 <SelectItem value="active">Ativo</SelectItem>
                                 <SelectItem value="inactive">Inativo</SelectItem>
                                 <SelectItem value="discontinued">Descontinuado</SelectItem>
@@ -1095,11 +1095,11 @@ export default function Products() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
+                          <FormLabel className="text-foreground">Descrição</FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Descrição detalhada do produto..."
-                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               {...field}
                             />
                           </FormControl>
@@ -1110,7 +1110,7 @@ export default function Products() {
 
                     {/* Product Images */}
                     <div className="space-y-4">
-                      <Label className="text-gray-900 dark:text-white">Imagens do Produto</Label>
+                      <Label className="text-foreground">Imagens do Produto</Label>
                       
                       <DragDropUpload 
                         onFileSelect={handleProductImageUpload}
@@ -1186,7 +1186,7 @@ export default function Products() {
           ) : displayedProducts.length === 0 ? (
             <div className="text-center py-12">
               <Package className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum produto encontrado</h3>
+              <h3 className="mt-2 text-sm font-medium text-foreground">Nenhum produto encontrado</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {searchTerm || statusFilter !== "all" || categoryFilter !== "all"
                   ? "Tente ajustar os filtros de busca."
@@ -1242,7 +1242,7 @@ export default function Products() {
                               </AlertDialogTrigger>
                               <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-gray-900 dark:text-white">
+                                  <AlertDialogTitle className="text-foreground">
                                     Excluir Produto
                                   </AlertDialogTitle>
                                   <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
@@ -1268,7 +1268,7 @@ export default function Products() {
                         {/* Product Info */}
                         <div className="space-y-2">
                           <div className="flex items-start justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
+                            <h3 className="text-lg font-semibold text-foreground line-clamp-2">
                               {product.name}
                             </h3>
                             <Badge
@@ -1310,7 +1310,7 @@ export default function Products() {
 
                           <div className="flex items-center justify-between pt-2">
                             <div className="space-y-1">
-                              <div className="text-lg font-bold text-gray-900 dark:text-white">
+                              <div className="text-lg font-bold text-foreground">
                                 R$ {parseFloat(product.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                               </div>
                               {product.costPrice && (
@@ -1322,7 +1322,7 @@ export default function Products() {
                             <div className="text-right">
                               <div className="flex items-center text-sm">
                                 <ShoppingCart className="w-4 h-4 mr-1" />
-                                <span className={product.stock <= (product.minStock || 0) ? "text-red-600 dark:text-red-400 font-semibold" : "text-gray-900 dark:text-white"}>
+                                <span className={product.stock <= (product.minStock || 0) ? "text-red-600 dark:text-red-400 font-semibold" : "text-foreground"}>
                                   {product.stock}
                                 </span>
                               </div>
@@ -1378,7 +1378,7 @@ export default function Products() {
         {/* Categories Tab */}
         <TabsContent value="categories" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Categorias</h2>
+            <h2 className="text-xl font-semibold text-foreground">Categorias</h2>
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleNewCategory} className="flex items-center gap-2">
@@ -1388,7 +1388,7 @@ export default function Products() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800">
                 <DialogHeader>
-                  <DialogTitle className="text-gray-900 dark:text-white">
+                  <DialogTitle className="text-foreground">
                     {editingCategory ? "Editar Categoria" : "Nova Categoria"}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -1406,12 +1406,12 @@ export default function Products() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
+                          <FormLabel className="text-foreground">Nome</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Nome da categoria"
                               {...field}
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                             />
                           </FormControl>
                           <FormMessage />
@@ -1424,11 +1424,11 @@ export default function Products() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
+                          <FormLabel className="text-foreground">Descrição</FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Descrição da categoria..."
-                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               {...field}
                             />
                           </FormControl>
@@ -1442,14 +1442,14 @@ export default function Products() {
                       name="status"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                          <FormLabel className="text-foreground">Status</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                                 <SelectValue placeholder="Selecione o status" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                            <SelectContent className="bg-popover border-border">
                               <SelectItem value="active">Ativo</SelectItem>
                               <SelectItem value="inactive">Inativo</SelectItem>
                             </SelectContent>
@@ -1461,7 +1461,7 @@ export default function Products() {
 
                     {/* Category Image */}
                     <div className="space-y-2">
-                      <Label className="text-gray-900 dark:text-white">Imagem da Categoria</Label>
+                      <Label className="text-foreground">Imagem da Categoria</Label>
                       
                       <DragDropUpload 
                         onFileSelect={handleCategoryImageUpload}
@@ -1523,7 +1523,7 @@ export default function Products() {
           ) : categories.length === 0 ? (
             <div className="text-center py-12">
               <FolderPlus className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhuma categoria encontrada</h3>
+              <h3 className="mt-2 text-sm font-medium text-foreground">Nenhuma categoria encontrada</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Comece criando sua primeira categoria.
               </p>
@@ -1569,7 +1569,7 @@ export default function Products() {
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-gray-900 dark:text-white">
+                                <AlertDialogTitle className="text-foreground">
                                   Excluir Categoria
                                 </AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
@@ -1595,7 +1595,7 @@ export default function Products() {
                       {/* Category Info */}
                       <div className="space-y-2">
                         <div className="flex items-start justify-between">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-foreground">
                             {category.name}
                           </h3>
                           <Badge
@@ -1631,7 +1631,7 @@ export default function Products() {
         {/* Manufacturers Tab */}
         <TabsContent value="manufacturers" className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Fabricantes</h2>
+            <h2 className="text-xl font-semibold text-foreground">Fabricantes</h2>
             <Dialog open={isManufacturerDialogOpen} onOpenChange={setIsManufacturerDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleNewManufacturer} className="flex items-center gap-2">
@@ -1641,7 +1641,7 @@ export default function Products() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800">
                 <DialogHeader>
-                  <DialogTitle className="text-gray-900 dark:text-white">
+                  <DialogTitle className="text-foreground">
                     {editingManufacturer ? "Editar Fabricante" : "Novo Fabricante"}
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -1659,12 +1659,12 @@ export default function Products() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Nome</FormLabel>
+                          <FormLabel className="text-foreground">Nome</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Nome do fabricante"
                               {...field}
-                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                             />
                           </FormControl>
                           <FormMessage />
@@ -1677,11 +1677,11 @@ export default function Products() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Descrição</FormLabel>
+                          <FormLabel className="text-foreground">Descrição</FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Descrição do fabricante..."
-                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+                              className="resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground"
                               {...field}
                             />
                           </FormControl>
@@ -1695,14 +1695,14 @@ export default function Products() {
                       name="status"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-900 dark:text-white">Status</FormLabel>
+                          <FormLabel className="text-foreground">Status</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-foreground">
                                 <SelectValue placeholder="Selecione o status" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                            <SelectContent className="bg-popover border-border">
                               <SelectItem value="active">Ativo</SelectItem>
                               <SelectItem value="inactive">Inativo</SelectItem>
                             </SelectContent>
@@ -1714,7 +1714,7 @@ export default function Products() {
 
                     {/* Manufacturer Image */}
                     <div className="space-y-2">
-                      <Label className="text-gray-900 dark:text-white">Imagem</Label>
+                      <Label className="text-foreground">Imagem</Label>
                       
                       <DragDropUpload 
                         onFileSelect={handleManufacturerImageUpload}
@@ -1776,7 +1776,7 @@ export default function Products() {
           ) : manufacturers.length === 0 ? (
             <div className="text-center py-12">
               <Building2 className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum fabricante encontrado</h3>
+              <h3 className="mt-2 text-sm font-medium text-foreground">Nenhum fabricante encontrado</h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Comece criando seu primeiro fabricante.
               </p>
@@ -1822,7 +1822,7 @@ export default function Products() {
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-gray-900 dark:text-white">
+                                <AlertDialogTitle className="text-foreground">
                                   Excluir Fabricante
                                 </AlertDialogTitle>
                                 <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
@@ -1848,7 +1848,7 @@ export default function Products() {
                       {/* Manufacturer Info */}
                       <div className="space-y-2">
                         <div className="flex items-start justify-between">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-foreground">
                             {manufacturer.name}
                           </h3>
                           <Badge

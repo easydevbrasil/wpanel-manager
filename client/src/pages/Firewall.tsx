@@ -583,7 +583,7 @@ export default function Firewall() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             Firewall Controller
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -619,7 +619,7 @@ export default function Firewall() {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Status do Firewall
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {serviceStatus?.is_active ? (
                     <span className="text-green-500">Ativo</span>
                   ) : (
@@ -691,7 +691,7 @@ export default function Firewall() {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Total de Regras
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {stats?.total_rules || 0}
                 </p>
               </div>
@@ -1149,7 +1149,7 @@ export default function Firewall() {
                         
                         {/* Rule description */}
                         <div className="min-w-0">
-                          <p className="text-sm text-gray-900 dark:text-white break-words">
+                          <p className="text-sm text-foreground break-words">
                             {formatRuleDescription(rule)}
                           </p>
                         </div>
@@ -1339,7 +1339,7 @@ export default function Firewall() {
                         {getPortIcon(item.port)}
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-1">
+                        <p className="font-semibold text-foreground flex items-center gap-1">
                           <span>Porta {item.port}</span>
                           {PROTECTED_PORTS.includes(item.port) && (
                             <Lock className="w-4 h-4 text-yellow-500" />

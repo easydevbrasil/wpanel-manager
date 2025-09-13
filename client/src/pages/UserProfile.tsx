@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/components/AuthProviderSimple";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -235,7 +235,7 @@ export default function UserProfile() {
     <div className="w-full p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div className="text-center sm:text-left">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Perfil do Usuário</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Perfil do Usuário</h1>
           <p className="text-gray-600 dark:text-gray-400">Gerencie suas informações pessoais e configurações</p>
         </div>
         <div className="flex items-center justify-center sm:justify-start space-x-3">
@@ -243,7 +243,7 @@ export default function UserProfile() {
             {user?.name?.charAt(0).toUpperCase() || "U"}
           </div>
           <div className="text-center sm:text-left">
-            <p className="font-medium text-gray-900 dark:text-white">{user?.name}</p>
+            <p className="font-medium text-foreground">{user?.name}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user?.username}</p>
           </div>
         </div>
@@ -482,7 +482,7 @@ export default function UserProfile() {
                 <div className="space-y-8">
                   {Object.entries(moduleCategories).map(([categoryName, modules]) => (
                     <div key={categoryName} className="space-y-4">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white border-b pb-2">
+                      <h2 className="text-xl font-bold text-foreground border-b pb-2">
                         {categoryName}
                       </h2>
                       <div className="space-y-6">
@@ -493,7 +493,7 @@ export default function UserProfile() {
                           
                           return (
                             <div key={module} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
-                              <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{label}</h3>
+                              <h3 className="font-semibold text-lg text-foreground">{label}</h3>
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                                 <div className="flex items-center justify-between p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border">
                                   <span className="text-xs sm:text-sm font-medium">Visualizar</span>

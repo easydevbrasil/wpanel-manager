@@ -95,7 +95,7 @@ function CategorySidebar({ selectedCategory, onSelectCategory }: {
   return (
     <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-900 dark:text-white">
+        <h3 className="font-semibold text-foreground">
           Referência da API
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -112,7 +112,7 @@ function CategorySidebar({ selectedCategory, onSelectCategory }: {
               className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
                 selectedCategory === category.id
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-muted/50 dark:hover:bg-gray-700'
               }`}
             >
               <div className="flex items-center space-x-3">
@@ -236,7 +236,7 @@ function APIEndpointCard({ method, endpoint, description, examplePayload, resour
               type="text"
               value={customId}
               onChange={(e) => setCustomId(e.target.value)}
-              className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
               placeholder="1"
             />
           </div>
@@ -912,7 +912,7 @@ export default function Help() {
   return (
     <div className="p-6 w-full">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <h1 className="text-3xl font-bold text-foreground mb-2">
           Central de Ajuda
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
@@ -1226,7 +1226,7 @@ export default function Help() {
             <div className="flex-1 overflow-auto">
               <div className="p-6">
                 <div className="mb-6">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h1 className="text-2xl font-bold text-foreground mb-2">
                     Documentação da API
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400">
@@ -1283,7 +1283,7 @@ export default function Help() {
                           value={webhookConfig.url}
                           onChange={(e) => setWebhookConfig(prev => ({ ...prev, url: e.target.value }))}
                           placeholder="https://sua-api.com/webhooks/projecthub"
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         />
                         <Button onClick={testWebhook} className="flex items-center gap-2">
                           <Play className="w-4 h-4" />
@@ -1300,7 +1300,7 @@ export default function Help() {
                         <select 
                           value={webhookConfig.method}
                           onChange={(e) => setWebhookConfig(prev => ({ ...prev, method: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         >
                           <option value="POST">POST</option>
                           <option value="PUT">PUT</option>
@@ -1315,7 +1315,7 @@ export default function Help() {
                         <select 
                           value={webhookConfig.format}
                           onChange={(e) => setWebhookConfig(prev => ({ ...prev, format: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         >
                           <option value="json">JSON</option>
                           <option value="form">Form Data</option>
@@ -1350,7 +1350,7 @@ export default function Help() {
                               placeholder="Chave (ex: Authorization)"
                               value={header.key}
                               onChange={(e) => updateCustomHeader(header.id, 'key', e.target.value)}
-                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-foreground"
                               disabled={header.key === 'X-Hub-Signature'}
                             />
                             <span className="text-gray-500">:</span>
@@ -1359,7 +1359,7 @@ export default function Help() {
                               placeholder="Valor (ex: Bearer token123)"
                               value={header.value}
                               onChange={(e) => updateCustomHeader(header.id, 'value', e.target.value)}
-                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-foreground"
                               disabled={header.key === 'X-Hub-Signature'}
                             />
                             {header.key !== 'Content-Type' && header.key !== 'X-Hub-Signature' && (
@@ -1717,7 +1717,7 @@ export default function Help() {
                               value={webhookConfig.secretKey}
                               onChange={(e) => setWebhookConfig(prev => ({ ...prev, secretKey: e.target.value }))}
                               placeholder="sua-chave-secreta-hmac"
-                              className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                              className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                             />
                             <button
                               type="button"
@@ -1771,7 +1771,7 @@ export default function Help() {
                         <select 
                           value={selectedTestEvent}
                           onChange={(e) => setSelectedTestEvent(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-foreground"
                         >
                           {getEventExamples().map((event) => (
                             <option key={event.value} value={event.value}>

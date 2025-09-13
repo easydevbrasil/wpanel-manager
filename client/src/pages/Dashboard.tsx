@@ -178,7 +178,7 @@ function SystemGauge({ usage, color }: { usage: number; color: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-bold text-gray-900 dark:text-white">
+        <span className="text-lg font-bold text-foreground">
           {usage}%
         </span>
       </div>
@@ -311,7 +311,7 @@ export default function Dashboard() {
     <div className="w-full">
       {/* Page Header */}
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
           Dashboard Overview
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
@@ -321,19 +321,19 @@ export default function Dashboard() {
 
       {/* System Status Section - Moved to top */}
       <div className="mb-6 md:mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-foreground mb-4">
           Status do Sistema
         </h2>
         
         {!mergedSystemStatus ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {[...Array(4)].map((_, i) => (
-              <Card key={i} className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+              <Card key={i} className="bg-card shadow-sm border-border">
                 <CardContent className="p-4 md:p-6">
                   <div className="animate-pulse">
-                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded mb-3"></div>
-                    <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded mb-2"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-2/3"></div>
+                    <div className="h-4 bg-muted rounded mb-3"></div>
+                    <div className="h-8 bg-muted rounded mb-2"></div>
+                    <div className="h-3 bg-muted rounded w-2/3"></div>
                   </div>
                 </CardContent>
               </Card>
@@ -342,7 +342,7 @@ export default function Dashboard() {
         ) : mergedSystemStatus ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* CPU Card with Gauge */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -365,7 +365,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Memory Card with Gauge */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -390,7 +390,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Storage Card with Gauge */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -415,7 +415,7 @@ export default function Dashboard() {
             </Card>
 
             {/* Proton Drive Card with Gauge */}
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -449,30 +449,30 @@ export default function Dashboard() {
         
         {/* System Info */}
         {mergedSystemStatus && (
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 mt-4">
+          <Card className="bg-card shadow-sm border-border mt-4">
             <CardContent className="p-4 md:p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Uptime</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
+                  <p className="font-semibold text-foreground">
                     {formatUptime(mergedSystemStatus.uptime)}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Plataforma</p>
-                  <p className="font-semibold text-gray-900 dark:text-white capitalize">
+                  <p className="font-semibold text-foreground capitalize">
                     {mergedSystemStatus.platform} {mergedSystemStatus.arch}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Node.js</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
+                  <p className="font-semibold text-foreground">
                     {mergedSystemStatus.nodeVersion}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Atualizado</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
+                  <p className="font-semibold text-foreground">
                     {new Date(mergedSystemStatus.timestamp).toLocaleTimeString('pt-BR')}
                   </p>
                 </div>
@@ -487,7 +487,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* CPU Chart */}
           {cpuChartData && (
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Activity className="w-4 h-4 text-blue-600" />
@@ -574,7 +574,7 @@ export default function Dashboard() {
 
           {/* RAM Chart */}
           {ramChartData && (
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-green-600" />
@@ -658,7 +658,7 @@ export default function Dashboard() {
 
           {/* Network Chart */}
           {networkChartData && (
-            <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Card className="bg-card shadow-sm border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Wifi className="w-4 h-4 text-purple-600" />
@@ -771,18 +771,18 @@ export default function Dashboard() {
 
       {/* Data Counters Section */}
       <div className="mb-6 md:mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-xl font-semibold text-foreground mb-4">
           Resumo dos Dados
         </h2>
         
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
           {/* Clients Counter */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <Card className="bg-card shadow-sm border-border">
             <CardContent className="p-3 sm:p-4 text-center">
               <div className="bg-blue-100 dark:bg-blue-900 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3 mx-auto w-fit">
                 <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1">
                 {stats?.clientsCount || 0}
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -792,12 +792,12 @@ export default function Dashboard() {
           </Card>
 
           {/* Products Counter */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <Card className="bg-card shadow-sm border-border">
             <CardContent className="p-3 sm:p-4 text-center">
               <div className="bg-green-100 dark:bg-green-900 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3 mx-auto w-fit">
                 <Package className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1">
                 {stats?.productsCount || 0}
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -807,12 +807,12 @@ export default function Dashboard() {
           </Card>
 
           {/* Sales Counter */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <Card className="bg-card shadow-sm border-border">
             <CardContent className="p-3 sm:p-4 text-center">
               <div className="bg-purple-100 dark:bg-purple-900 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3 mx-auto w-fit">
                 <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1">
                 {stats?.salesCount || 0}
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -822,12 +822,12 @@ export default function Dashboard() {
           </Card>
 
           {/* Suppliers Counter */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <Card className="bg-card shadow-sm border-border">
             <CardContent className="p-3 sm:p-4 text-center">
               <div className="bg-orange-100 dark:bg-orange-900 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3 mx-auto w-fit">
                 <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400" />
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1">
                 {stats?.suppliersCount || 0}
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -837,12 +837,12 @@ export default function Dashboard() {
           </Card>
 
           {/* Support Tickets Counter */}
-          <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+          <Card className="bg-card shadow-sm border-border">
             <CardContent className="p-3 sm:p-4 text-center">
               <div className="bg-red-100 dark:bg-red-900 p-2 sm:p-3 rounded-lg mb-2 sm:mb-3 mx-auto w-fit">
                 <Headphones className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
               </div>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-1">
                 {stats?.supportTicketsCount || 0}
               </p>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -856,9 +856,9 @@ export default function Dashboard() {
       {/* Content Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Projects */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="bg-card shadow-sm border-border">
           <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+            <CardTitle className="text-lg font-semibold text-foreground">
               Recent Projects
             </CardTitle>
           </CardHeader>
@@ -867,7 +867,7 @@ export default function Dashboard() {
               {recentProjects.map((project, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-muted rounded-lg"
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 ${project.avatarBg} rounded-lg flex items-center justify-center`}>
@@ -876,7 +876,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white">
+                      <h4 className="font-medium text-foreground">
                         {project.name}
                       </h4>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -894,9 +894,9 @@ export default function Dashboard() {
         </Card>
 
         {/* Team Activity */}
-        <Card className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+        <Card className="bg-card shadow-sm border-border">
           <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+            <CardTitle className="text-lg font-semibold text-foreground">
               Team Activity
             </CardTitle>
           </CardHeader>
@@ -906,12 +906,12 @@ export default function Dashboard() {
                 <div key={index} className="flex items-start space-x-3">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={activity.avatar} alt={activity.name} />
-                    <AvatarFallback className="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                    <AvatarFallback className="bg-muted text-muted-foreground">
                       {activity.name.split(" ").map(n => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900 dark:text-white">
+                    <p className="text-sm text-foreground">
                       <span className="font-medium">{activity.name}</span>{" "}
                       {activity.action}
                     </p>

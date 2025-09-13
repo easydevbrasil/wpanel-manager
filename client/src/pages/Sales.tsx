@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText, ChevronDown, ChevronUp, CreditCard, RefreshCw, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
 import type { Sale, InsertSale, Client, Product } from "@shared/schema";
 
 const saleFormSchema = z.object({
@@ -107,6 +107,31 @@ export default function Sales() {
     },
   });
 
+  // Mutações para integração com Asaas
+  const createPaymentMutation = useMutation({
+    mutationFn: ({ saleId, billingType, dueDate }: { saleId: number; billingType: string; dueDate?: string }) =>
+      apiRequest("POST", `/api/sales/${saleId}/create-payment`, { billingType, dueDate }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+    },
+  });
+
+  const syncPaymentMutation = useMutation({
+    mutationFn: (saleId: number) =>
+      apiRequest("POST", `/api/sales/${saleId}/sync-payment`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+    },
+  });
+
+  const getPaymentLinkQuery = (saleId: number) => {
+    return useQuery({
+      queryKey: ["/api/sales", saleId, "payment-link"],
+      queryFn: () => apiRequest("GET", `/api/sales/${saleId}/payment-link`),
+      enabled: false,
+    });
+  };
+
   const form = useForm<SaleFormData>({
     resolver: zodResolver(saleFormSchema),
     defaultValues: {
@@ -180,6 +205,46 @@ export default function Sales() {
       total: "0.00",
     });
     setIsDialogOpen(true);
+  };
+
+  // Funções para integração com Asaas
+  const handleCreatePayment = async (sale: Sale, billingType: string = 'PIX') => {
+    try {
+      await createPaymentMutation.mutateAsync({
+        saleId: sale.id,
+        billingType,
+        dueDate: sale.deliveryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
+      alert('Cobrança criada com sucesso no Asaas!');
+    } catch (error) {
+      console.error('Erro ao criar cobrança:', error);
+      alert('Erro ao criar cobrança no Asaas');
+    }
+  };
+
+  const handleSyncPayment = async (sale: Sale) => {
+    try {
+      await syncPaymentMutation.mutateAsync(sale.id);
+      alert('Status sincronizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao sincronizar status:', error);
+      alert('Erro ao sincronizar status com Asaas');
+    }
+  };
+
+  const handleGetPaymentLink = async (sale: Sale) => {
+    try {
+      const response = await apiRequest("GET", `/api/sales/${sale.id}/payment-link`);
+      const data = await response.json();
+      if (data.paymentLink) {
+        window.open(data.paymentLink, '_blank');
+      } else {
+        alert('Link de pagamento não disponível');
+      }
+    } catch (error) {
+      console.error('Erro ao obter link de pagamento:', error);
+      alert('Erro ao obter link de pagamento');
+    }
   };
 
   const salesArray = Array.isArray(sales) ? sales : [];
@@ -359,7 +424,7 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
               Nova Venda
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingSale ? "Editar Venda" : "Nova Venda"}
@@ -668,6 +733,19 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                     <Badge className={statusColors[getLatestStatus(sale) as keyof typeof statusColors]}>
                       {getLatestStatus(sale).charAt(0).toUpperCase() + getLatestStatus(sale).slice(1)}
                     </Badge>
+                    
+                    {/* Indicador de integração com Asaas */}
+                    {sale.asaasPaymentId && (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="h-4 w-4 text-blue-500" />
+                        <span className="text-xs text-blue-600 font-medium">Asaas</span>
+                      </div>
+                    )}
+                    
+                    {/* Status de pagamento */}
+                    <Badge variant="outline" className={paymentStatusColors[sale.paymentStatus as keyof typeof paymentStatusColors]}>
+                      {sale.paymentStatus ? sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1) : '-'}
+                    </Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {getClientName(sale.clientId)}
@@ -716,6 +794,41 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  
+                  {/* Botões de integração com Asaas */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    {!sale.asaasPaymentId ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCreatePayment(sale)}
+                        disabled={createPaymentMutation.isPending}
+                        title="Criar cobrança no Asaas"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSyncPayment(sale)}
+                          disabled={syncPaymentMutation.isPending}
+                          title="Sincronizar status do pagamento"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGetPaymentLink(sale)}
+                          title="Obter link de pagamento"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>

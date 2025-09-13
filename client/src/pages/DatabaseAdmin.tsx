@@ -589,7 +589,7 @@ export default function DatabaseAdmin() {
     <div className="w-full p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-foreground">
             Administração do Banco de Dados
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -621,7 +621,7 @@ export default function DatabaseAdmin() {
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedTable.name === table.name
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-muted/50 dark:hover:bg-gray-700'
                     }`}
                   >
                     <div className="flex items-center space-x-3">

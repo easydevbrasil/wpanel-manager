@@ -463,7 +463,7 @@ export default function DockerContainers() {
       <div className="flex items-center space-x-3">
         <DockerIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Containers Docker
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -551,28 +551,28 @@ export default function DockerContainers() {
                           <Activity className="w-3 h-3" />
                           Status
                         </p>
-                        <p className="text-gray-900 dark:text-white">{container.Status}</p>
+                        <p className="text-foreground">{container.Status}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
                           <Globe className="w-3 h-3" />
                           Portas Externas
                         </p>
-                        <p className="text-gray-900 dark:text-white font-mono">{getContainerPorts(container)}</p>
+                        <p className="text-foreground font-mono">{getContainerPorts(container)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
                           <Network className="w-3 h-3" />
                           IP do Container
                         </p>
-                        <p className="text-gray-900 dark:text-white font-mono">{getContainerIP(container)}</p>
+                        <p className="text-foreground font-mono">{getContainerIP(container)}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           Uptime
                         </p>
-                        <p className="text-gray-900 dark:text-white">{getUptime(container.Status)}</p>
+                        <p className="text-foreground">{getUptime(container.Status)}</p>
                       </div>
                     </div>
 
@@ -667,7 +667,7 @@ export default function DockerContainers() {
       {containers.length === 0 && !isLoading && (
         <div className="text-center py-12">
           <DockerIcon className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             Nenhum container encontrado
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">

@@ -47,12 +47,10 @@ export default function Login() {
           title: "Login realizado com sucesso! 🎉",
           description: `Bem-vindo de volta, ${data.user.name}!`,
         });
-        
-        // Store session token
-        localStorage.setItem("sessionToken", data.sessionToken);
-        
-        // Redirect to dashboard
-        window.location.href = "/";
+
+        // The server sets HTTP-only cookies, so we just need to trigger a page reload
+        // to let the AuthProvider pick up the new authentication state
+        window.location.reload();
       } else {
         setError(data.message || "Erro ao fazer login");
         toast({
@@ -75,72 +73,71 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo/Header */}
-        <div className="text-center mb-8">
-          <div className="bg-blue-600 w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            wPanel
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Sistema de Gerenciamento Empresarial
-          </p>
-        </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0">
+        <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-r from-cyan-400/20 to-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-40 right-32 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
+        <div className="absolute bottom-20 left-32 w-80 h-80 bg-gradient-to-r from-indigo-400/20 to-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Login Card */}
-        <Card className="bg-white dark:bg-gray-800 shadow-xl border-0">
-          <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-2xl font-semibold text-center text-gray-900 dark:text-white">
-              Fazer Login
-            </CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-              Entre com suas credenciais para acessar o sistema
-            </p>
-          </CardHeader>
-          
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+        <Card className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden">
+          {/* Logo/Header */}
+          <div className="text-center mb-8 mt-8">
+            <div className="relative mx-auto mb-6 w-20 h-20 group">
+              <div className="bg-gradient-to-br from-white/30 to-white/10 w-20 h-20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-2xl group-hover:scale-105 transition-all duration-300">
+                <Shield className="w-10 h-10 text-white drop-shadow-lg" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full border-2 border-white/50 animate-pulse shadow-lg"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-blue-500/20 rounded-2xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
+              wPanel
+            </h1>
+          </div>
+
+          <CardContent className="px-8 pb-8">
+            <form onSubmit={handleLogin} className="space-y-6">
               {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert variant="destructive" className="bg-red-500/10 border border-red-500/20 backdrop-blur-sm">
+                  <AlertDescription className="text-red-200">{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div className="space-y-3">
+                <Label htmlFor="username" className="text-sm font-semibold text-white/90">
                   Usuário
                 </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <div className="relative group">
+                  <User className="absolute left-4 top-4 h-5 w-5 text-white/60 group-focus-within:text-white/90 transition-colors" />
                   <Input
                     id="username"
                     type="text"
                     placeholder="Digite seu usuário"
                     value={formData.username}
                     onChange={(e) => handleInputChange("username", e.target.value)}
-                    className="pl-10"
+                    className="pl-12 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl backdrop-blur-sm focus:bg-white/20 focus:border-white/40 transition-all duration-200"
                     required
                     disabled={isLoading}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div className="space-y-3">
+                <Label htmlFor="password" className="text-sm font-semibold text-white/90">
                   Senha
                 </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-4 h-5 w-5 text-white/60 group-focus-within:text-white/90 transition-colors" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="Digite sua senha"
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
-                    className="pl-10"
+                    className="pl-12 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl backdrop-blur-sm focus:bg-white/20 focus:border-white/40 transition-all duration-200"
                     required
                     disabled={isLoading}
                   />
@@ -149,18 +146,26 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white py-4 text-lg font-semibold rounded-xl shadow-2xl border border-white/20 backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               >
-                {isLoading ? "Entrando..." : "Entrar"}
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>Entrando...</span>
+                  </div>
+                ) : (
+                  "Entrar"
+                )}
               </Button>
             </form>
           </CardContent>
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
-          © 2025 ProjectHub. Sistema seguro de gerenciamento.
+        <div className="text-center mt-8 text-sm text-white/70 font-medium backdrop-blur-sm bg-white/5 rounded-2xl p-4 border border-white/10">
+          <p>© 2025 wPanel Enterprise Suite</p>
+          <p className="text-xs text-white/50 mt-1">Sistema seguro de gerenciamento empresarial</p>
         </div>
       </div>
     </div>
