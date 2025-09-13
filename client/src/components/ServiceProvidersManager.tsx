@@ -273,6 +273,39 @@ export default function ServiceProvidersManager() {
     }
   };
 
+  // Função para limpar formulário
+  const handleClearForm = () => {
+    form.reset({
+      name: "",
+      companyName: "",
+      email: "",
+      phone: "",
+      whatsapp: "",
+      website: "",
+      cnpj: "",
+      cpf: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "Brasil",
+      contactPerson: "",
+      contactRole: "",
+      paymentTerms: "",
+      serviceType: "",
+      categories: [],
+      notes: "",
+      status: "active",
+      rating: 0,
+      image: "",
+    });
+    
+    toast({
+      title: "📝 Formulário Limpo",
+      description: "Todos os campos foram limpos",
+    });
+  };
+
   // Form setup
   const form = useForm<ProviderFormData>({
     resolver: zodResolver(providerSchema),
@@ -649,24 +682,35 @@ export default function ServiceProvidersManager() {
                     />
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4 border-t">
+                  <div className="flex justify-between gap-2 pt-4 border-t">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
+                      onClick={handleClearForm}
+                      className="text-orange-600 border-orange-600 hover:bg-orange-50"
                     >
-                      Cancelar
+                      Limpar Tudo
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {createMutation.isPending || updateMutation.isPending ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      ) : null}
-                      {editingProvider ? "Atualizar" : "Criar"} Prestador
-                    </Button>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        ) : null}
+                        {editingProvider ? "Atualizar" : "Criar"} Prestador
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </Form>
