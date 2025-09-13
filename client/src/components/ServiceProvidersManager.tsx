@@ -11,7 +11,9 @@ import {
   Phone, 
   Mail, 
   Globe,
-  User
+  User,
+  Search,
+  Loader2
 } from 'lucide-react';
 import { apiRequest } from '../lib/queryClient';
 import { useToast } from '../hooks/use-toast';
@@ -96,9 +98,58 @@ const serviceTypes = [
   "Outros"
 ];
 
+// Função para formatar CNPJ
+const formatCNPJ = (value: string): string => {
+  const numbers = value.replace(/\D/g, '');
+  
+  if (numbers.length <= 11) {
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+  
+  return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+};
+
+// Função para limpar CNPJ (apenas números)
+const cleanCNPJ = (value: string): string => {
+  return value.replace(/\D/g, '');
+};
+
+// Função para consultar CNPJ na API da ReceitaWS
+const fetchCNPJData = async (cnpj: string) => {
+  const cleanedCNPJ = cleanCNPJ(cnpj);
+  
+  if (cleanedCNPJ.length !== 14) {
+    throw new Error('CNPJ deve ter 14 dígitos');
+  }
+
+  const response = await fetch(`https://www.receitaws.com.br/v1/cnpj/${cleanedCNPJ}`);
+  
+  if (!response.ok) {
+    throw new Error('Erro ao consultar CNPJ');
+  }
+
+  const data = await response.json();
+  
+  if (data.status === 'ERROR') {
+    throw new Error(data.message || 'CNPJ não encontrado');
+  }
+
+  return {
+    companyName: data.nome || '',
+    email: data.email || '',
+    phone: data.telefone || '',
+    address: `${data.logradouro || ''} ${data.numero || ''}`.trim(),
+    city: data.municipio || '',
+    state: data.uf || '',
+    zipCode: data.cep || '',
+    cnpj: formatCNPJ(cleanedCNPJ)
+  };
+};
+
 export default function ServiceProvidersManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
+  const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -177,6 +228,50 @@ export default function ServiceProvidersManager() {
       });
     },
   });
+
+  // Função para buscar dados do CNPJ
+  const handleCNPJSearch = async () => {
+    const cnpjValue = form.getValues('cnpj');
+    const cleanedCNPJ = cleanCNPJ(cnpjValue);
+    
+    if (cleanedCNPJ.length !== 14) {
+      toast({
+        title: "⚠️ CNPJ Inválido",
+        description: "CNPJ deve ter 14 dígitos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingCNPJ(true);
+    
+    try {
+      const data = await fetchCNPJData(cleanedCNPJ);
+      
+      // Preencher os campos com os dados obtidos
+      form.setValue('companyName', data.companyName);
+      form.setValue('email', data.email);
+      form.setValue('phone', data.phone);
+      form.setValue('address', data.address);
+      form.setValue('city', data.city);
+      form.setValue('state', data.state);
+      form.setValue('zipCode', data.zipCode);
+      form.setValue('cnpj', data.cnpj);
+      
+      toast({
+        title: "✅ Dados Encontrados",
+        description: "Dados da empresa preenchidos automaticamente",
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Erro na Consulta",
+        description: error instanceof Error ? error.message : "Erro ao consultar CNPJ",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingCNPJ(false);
+    }
+  };
 
   // Form setup
   const form = useForm<ProviderFormData>({
@@ -304,6 +399,49 @@ export default function ServiceProvidersManager() {
             <div className="overflow-y-auto flex-1 pr-2">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  {/* CNPJ Field - First Field */}
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="cnpj"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CNPJ</FormLabel>
+                          <FormControl>
+                            <div className="flex gap-2">
+                              <Input 
+                                placeholder="00.000.000/0000-00" 
+                                {...field}
+                                onChange={(e) => {
+                                  const formatted = formatCNPJ(e.target.value);
+                                  field.onChange(formatted);
+                                }}
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCNPJSearch}
+                                disabled={isLoadingCNPJ || !field.value || cleanCNPJ(field.value).length !== 14}
+                                className="shrink-0"
+                              >
+                                {isLoadingCNPJ ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Search className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                          <p className="text-xs text-muted-foreground">
+                            Digite o CNPJ e clique na lupa para preencher automaticamente os dados
+                          </p>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -383,20 +521,6 @@ export default function ServiceProvidersManager() {
                           <FormLabel>Website</FormLabel>
                           <FormControl>
                             <Input placeholder="https://www.exemplo.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="cnpj"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CNPJ</FormLabel>
-                          <FormControl>
-                            <Input placeholder="00.000.000/0000-00" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
