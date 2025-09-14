@@ -686,18 +686,6 @@ export type InsertTaskExecutionLog = z.infer<typeof insertTaskExecutionLogSchema
 export type TaskTemplate = typeof taskTemplates.$inferSelect;
 export type InsertTaskTemplate = z.infer<typeof insertTaskTemplateSchema>;
 
-// Expense Categories table
-export const expenseCategories = pgTable("expense_categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  icon: text("icon").notNull(),
-  color: text("color").notNull(),
-  description: text("description"),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 // Expense Reminders table
 export const expenseReminders = pgTable("expense_reminders", {
   id: serial("id").primaryKey(),
@@ -717,6 +705,9 @@ export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
   description: text("description").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  amountConverted: decimal("amount_converted", { precision: 10, scale: 2 }), // Valor sempre em BRL
+  originalAmount: decimal("original_amount", { precision: 10, scale: 2 }), // Valor na moeda original
+  currency: text("currency").notNull().default("BRL"), // BRL, USD, EUR, etc
   category: text("category").notNull(),
   subcategory: text("subcategory"),
   date: timestamp("date").defaultNow().notNull(),
@@ -734,10 +725,51 @@ export const expenses = pgTable("expenses", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+// Exchange rates table for currency conversion
+export const exchangeRates = pgTable("exchange_rates", {
+  id: serial("id").primaryKey(),
+  fromCurrency: text("from_currency").notNull(), // USD, EUR, etc
+  toCurrency: text("to_currency").notNull().default("BRL"), // Sempre BRL como base
+  rate: decimal("rate", { precision: 10, scale: 6 }).notNull(), // Taxa de câmbio
+  date: timestamp("date").defaultNow().notNull(), // Data da cotação
+  source: text("source").default("external_api"), // Fonte da cotação
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Expense categories table for dynamic category management
+export const expenseCategories = pgTable("expense_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  icon: text("icon").default("FileText"), // Nome do ícone do Lucide
+  color: text("color").default("#6B7280"), // Cor hex para o ícone
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Expense subcategories table
+export const expenseSubcategories = pgTable("expense_subcategories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  categoryId: integer("category_id").references(() => expenseCategories.id, { onDelete: "cascade" }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payment methods table
+export const paymentMethods = pgTable("payment_methods", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  icon: text("icon").default("CreditCard"), // Nome do ícone do Lucide
+  color: text("color").default("#6B7280"), // Cor hex para o ícone
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertExpenseReminderSchema = createInsertSchema(expenseReminders).omit({
@@ -752,13 +784,46 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
   updatedAt: true,
 });
 
-export type ExpenseCategory = typeof expenseCategories.$inferSelect;
-export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
+export const insertExchangeRateSchema = createInsertSchema(exchangeRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExpenseCategoriesSchema = createInsertSchema(expenseCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExpenseSubcategoriesSchema = createInsertSchema(expenseSubcategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentMethodsSchema = createInsertSchema(paymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 export type ExpenseReminder = typeof expenseReminders.$inferSelect;
 export type InsertExpenseReminder = z.infer<typeof insertExpenseReminderSchema>;
 
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+export type InsertExpenseCategory = z.infer<typeof insertExpenseCategoriesSchema>;
+
+export type ExpenseSubcategory = typeof expenseSubcategories.$inferSelect;
+export type InsertExpenseSubcategory = z.infer<typeof insertExpenseSubcategoriesSchema>;
+
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodsSchema>;
+
 export type Expense = typeof expenses.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+
+export type ExchangeRate = typeof exchangeRates.$inferSelect;
+export type InsertExchangeRate = z.infer<typeof insertExchangeRateSchema>;
 
 // Auth types will be added later when tables are properly defined

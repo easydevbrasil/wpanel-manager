@@ -1,0 +1,34 @@
+{
+    "deploy": [
+        {
+            "name": "Start",
+            "icon": "play",
+            "command": "pm2 start all"
+        },
+        {
+            "name": "Stop",
+            "icon": "stop",
+            "command": "pm2 stop all"
+        },
+        {
+            "name": "Build",
+            "icon": "package",
+            "command": "bun run build"
+        },
+        {
+            "name": "Restart",
+            "icon": "refresh",
+            "command": "pm2 restart all"
+        },
+        {
+            "name": "Logs",
+            "icon": "file-text",
+            "command": "pm2 logs"
+        },
+        {
+            "name": "Backup",
+            "icon": "cloud",
+            "command": "zip -r /tmp/backup_$(date +%F_%T).zip /docker/wpanel/ && rclone copy /tmp/backup_$(date +%F_%T).zip protondrive:backups/wpanel/ --progress && rm /tmp/backup_$(date +%F_%T).zip"
+        }
+    ]
+}

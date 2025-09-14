@@ -93,7 +93,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         category: "sistema"
       },
       {
-        id: "2", 
+        id: "2",
         title: "Backup automático",
         message: "Backup diário executado com sucesso às 03:00",
         type: "info",
@@ -233,10 +233,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-gradient-to-r from-cyan-400/20 to-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -top-5 -right-20 w-60 h-60 bg-gradient-to-r from-purple-400/20 to-pink-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
       </div>
-      
+
       {/* Content */}
-      <div className="relative container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between h-16">
+      <div className="relative container mx-auto px-4 py-2">
+        <div className="flex items-center justify-between h-12">
           {/* Logo Section - Redesigned */}
           <div className="flex items-center space-x-6">
             <Button
@@ -247,7 +247,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            
+
             <Link href="/">
               <div className="flex items-center space-x-4">
                 <div className="relative group cursor-pointer">
@@ -336,26 +336,26 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 <div className="p-4">
                   {/* User Stats Card */}
                   <UserStatsCard user={user} />
-                  
+
                   <Separator className="my-4 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
-                  
+
                   {/* Menu Items */}
                   <div className="space-y-1">
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="cursor-pointer rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 transition-all duration-200"
                       onClick={() => setUserProfileDialogOpen(true)}
                     >
                       <UserIcon className="w-4 h-4 mr-3 text-indigo-500" />
                       <span className="font-medium">Perfil</span>
                     </DropdownMenuItem>
-                    
+
                     <DropdownMenuItem className="cursor-pointer rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 transition-all duration-200">
                       <Settings className="w-4 h-4 mr-3 text-purple-500" />
                       <span className="font-medium">Configurações</span>
                     </DropdownMenuItem>
-                    
+
                     <DropdownMenuSeparator />
-                    
+
                     {/* Theme Selector */}
                     <div className="px-2 py-1">
                       <p className="text-sm font-medium mb-2">Tema</p>
@@ -389,9 +389,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                         </Button>
                       </div>
                     </div>
-                    
+
                     <DropdownMenuSeparator />
-                    
+
                     <DropdownMenuItem className="cursor-pointer text-red-600" onClick={logout}>
                       <LogOut className="w-4 h-4 mr-2" />
                       Sair
@@ -427,9 +427,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 </Badge>
               </div>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-2">
               <Button className="w-full" variant="outline">
                 <UserIcon className="w-4 h-4 mr-2" />

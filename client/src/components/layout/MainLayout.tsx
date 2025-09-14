@@ -11,18 +11,30 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // default collapsed
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Set initial sidebar state based on device type
   useEffect(() => {
+    // Only collapse on mobile, otherwise restore from localStorage/user preference
     if (isMobile !== undefined) {
-      setSidebarCollapsed(isMobile); // Collapsed on mobile, expanded on desktop by default
+      if (isMobile) {
+        setSidebarCollapsed(true);
+      } else {
+        // Try to restore from localStorage (for instant UX)
+        const saved = localStorage.getItem('sidebarCollapsed');
+        if (saved !== null) {
+          setSidebarCollapsed(saved === 'true');
+        }
+      }
     }
   }, [isMobile]);
 
   const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
+    setSidebarCollapsed((prev) => {
+      localStorage.setItem('sidebarCollapsed', (!prev).toString());
+      return !prev;
+    });
   };
 
   // Handle click outside sidebar to collapse it
@@ -47,7 +59,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header onToggleSidebar={toggleSidebar} />
-      <div className="pt-20 flex h-screen">
+      <div className="pt-16 flex h-screen">
         <div ref={sidebarRef}>
           <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         </div>

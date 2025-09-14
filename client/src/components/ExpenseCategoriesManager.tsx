@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { 
+import {
   Plus, Edit3, Trash2, Palette,
-  Server, Code, Megaphone, Users, Settings, Building, 
-  CreditCard, ShoppingCart, Truck, Wifi, Smartphone, 
-  Monitor, Coffee, Car, Home, DollarSign, TrendingUp, FileText 
+  Server, Code, Megaphone, Users, Settings, Building,
+  CreditCard, ShoppingCart, Truck, Wifi, Smartphone,
+  Monitor, Coffee, Car, Home, DollarSign, TrendingUp, FileText
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
@@ -48,7 +48,7 @@ const availableIcons = [
 
 // Cores disponíveis
 const availableColors = [
-  '#3B82F6', '#8B5CF6', '#EF4444', '#10B981', 
+  '#3B82F6', '#8B5CF6', '#EF4444', '#10B981',
   '#F59E0B', '#6366F1', '#EC4899', '#14B8A6',
   '#F97316', '#84CC16', '#06B6D4', '#8B5CF6'
 ];
@@ -87,7 +87,7 @@ export function ExpenseCategoriesManager() {
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['expense-categories'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/expenses/categories');
+      const response = await apiRequest('GET', '/api/expense-categories');
       return response.json();
     }
   });
@@ -95,7 +95,7 @@ export function ExpenseCategoriesManager() {
   // Criar categoria
   const createMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
-      const response = await apiRequest('POST', '/api/expenses/categories', data);
+      const response = await apiRequest('POST', '/api/expense-categories', data);
       return response.json();
     },
     onSuccess: () => {
@@ -119,7 +119,7 @@ export function ExpenseCategoriesManager() {
   // Atualizar categoria
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number, data: Partial<CategoryFormData> }) => {
-      const response = await apiRequest('PUT', `/api/expenses/categories/${id}`, data);
+      const response = await apiRequest('PUT', `/api/expense-categories/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -143,7 +143,7 @@ export function ExpenseCategoriesManager() {
   // Excluir categoria
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest('DELETE', `/api/expenses/categories/${id}`);
+      const response = await apiRequest('DELETE', `/api/expense-categories/${id}`);
       return response.json();
     },
     onSuccess: () => {
@@ -173,7 +173,7 @@ export function ExpenseCategoriesManager() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingCategory) {
       updateMutation.mutate({ id: editingCategory.id, data: formData });
     } else {
@@ -212,7 +212,7 @@ export function ExpenseCategoriesManager() {
             Configure as categorias de despesas com ícones personalizados
           </p>
         </div>
-        
+
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => { resetForm(); setEditingCategory(null); }}>
@@ -226,7 +226,7 @@ export function ExpenseCategoriesManager() {
                 {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
               </DialogTitle>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome</Label>
@@ -257,11 +257,10 @@ export function ExpenseCategoriesManager() {
                     <button
                       key={icon.name}
                       type="button"
-                      className={`p-2 rounded-md border transition-colors ${
-                        formData.icon === icon.name 
-                          ? 'border-primary bg-primary/10' 
+                      className={`p-2 rounded-md border transition-colors ${formData.icon === icon.name
+                          ? 'border-primary bg-primary/10'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                       onClick={() => setFormData(prev => ({ ...prev, icon: icon.name }))}
                       title={icon.label}
                     >
@@ -278,9 +277,8 @@ export function ExpenseCategoriesManager() {
                     <button
                       key={color}
                       type="button"
-                      className={`w-8 h-8 rounded-full border-2 transition-transform ${
-                        formData.color === color ? 'border-gray-400 scale-110' : 'border-gray-200'
-                      }`}
+                      className={`w-8 h-8 rounded-full border-2 transition-transform ${formData.color === color ? 'border-gray-400 scale-110' : 'border-gray-200'
+                        }`}
                       style={{ backgroundColor: color }}
                       onClick={() => setFormData(prev => ({ ...prev, color }))}
                     />
@@ -300,7 +298,7 @@ export function ExpenseCategoriesManager() {
                 >
                   Cancelar
                 </Button>
-                <Button 
+                <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
@@ -318,7 +316,7 @@ export function ExpenseCategoriesManager() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div 
+                  <div
                     className="p-2 rounded-full"
                     style={{ backgroundColor: `${category.color}20`, color: category.color }}
                   >
@@ -333,8 +331,8 @@ export function ExpenseCategoriesManager() {
                     )}
                   </div>
                 </div>
-                
-                <Badge 
+
+                <Badge
                   variant={category.active ? "default" : "secondary"}
                   style={{ backgroundColor: category.active ? category.color : undefined }}
                 >
@@ -342,7 +340,7 @@ export function ExpenseCategoriesManager() {
                 </Badge>
               </div>
             </CardHeader>
-            
+
             <CardContent className="pt-0">
               <div className="flex justify-end space-x-2">
                 <Button
@@ -355,7 +353,7 @@ export function ExpenseCategoriesManager() {
                 >
                   <Edit3 className="h-4 w-4" />
                 </Button>
-                
+
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -366,7 +364,7 @@ export function ExpenseCategoriesManager() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Remover Categoria</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Tem certeza que deseja remover a categoria "{category.name}"? 
+                        Tem certeza que deseja remover a categoria "{category.name}"?
                         Esta ação não pode ser desfeita.
                       </AlertDialogDescription>
                     </AlertDialogHeader>

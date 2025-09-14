@@ -1,3 +1,12 @@
+// Add documentation link manually
+const documentationItem = {
+  id: 9999,
+  label: 'Documentação',
+  href: '/documentation',
+  icon: 'FileText',
+  parentId: null
+};
+
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -139,7 +148,7 @@ interface UserPreferences {
 const defaultPreferences: UserPreferences = {
   sidebarCollapsed: false,
   sidebarColor: 'default',
-  headerColor: 'default', 
+  headerColor: 'default',
   primaryColor: 'blue',
   autoCollapse: false
 };
@@ -196,19 +205,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     }
   }, [preferencesData]);
 
-  // Auto-collapse on mobile devices
+  // Auto-collapse on mobile devices only
   useEffect(() => {
-    if (isMobile !== undefined) {
-      // On mobile, force collapse regardless of user preference
-      if (isMobile && !collapsed) {
-        onToggle();
-      }
-      // On desktop, respect user preference
-      else if (!isMobile && userPreferences.sidebarCollapsed && !collapsed) {
-        onToggle();
-      }
+    if (isMobile !== undefined && isMobile && !collapsed) {
+      onToggle();
     }
-  }, [isMobile, userPreferences.sidebarCollapsed]);
+  }, [isMobile]);
 
   // Functions to update preferences
   const updatePreference = async (key: keyof UserPreferences, value: any) => {
@@ -220,10 +222,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const toggleSidebarMode = async () => {
     const newCollapsed = !collapsed;
     onToggle();
-    // Only save preference if not on mobile (mobile is always collapsed)
-    if (!isMobile) {
-      await updatePreference('sidebarCollapsed', newCollapsed);
-    }
+    // Always save preference for user
+    await updatePreference('sidebarCollapsed', newCollapsed);
   };
 
   const updateSidebarColor = async (color: string) => {
@@ -269,7 +269,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           return 'bg-gray-100/80 dark:bg-gray-800/60 text-gray-800 dark:text-gray-200 shadow-sm';
       }
     }
-    
+
     switch (color) {
       case 'blue':
         return 'text-gray-600 dark:text-gray-400 hover:bg-blue-50/80 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-300';
@@ -307,7 +307,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const renderIcon = (iconName: string) => {
     const Icon = iconMap[iconName as keyof typeof iconMap];
-    return Icon ? <Icon className={collapsed ? "w-6 h-6" : "w-5 h-5"} /> : <LayoutDashboard className={collapsed ? "w-6 h-6" : "w-5 h-5"} />;
+    return Icon ? <Icon className={collapsed ? "w-5 h-5" : "w-4 h-4"} /> : <LayoutDashboard className={collapsed ? "w-5 h-5" : "w-4 h-4"} />;
   };
 
   const isActive = (href: string | null) => {
@@ -323,39 +323,38 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           "bg-gradient-to-b from-slate-50/80 via-white/80 to-slate-100/80 dark:from-gray-900/80 dark:via-gray-800/80 dark:to-gray-900/80",
           "border-gradient-to-b border-gray-200/50 dark:border-gray-700/50 backdrop-blur-xl",
           "shadow-2xl shadow-gray-200/20 dark:shadow-gray-900/40",
-          collapsed ? "w-20" : "w-80"
+          collapsed ? "w-16" : "w-64"
         )}
       >
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/30 via-transparent to-purple-50/30 dark:from-indigo-900/20 dark:via-transparent dark:to-purple-900/20 pointer-events-none"></div>
-        
+
         {/* Main Navigation */}
-        <div className="relative flex-1 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+        <div className="relative flex-1 p-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
           {/* Toggle Button */}
-          <div className="mb-6">
+          <div className="mb-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={onToggle}
               className={cn(
-                "group relative p-3 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-2xl transition-all duration-300",
-                "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
+                "group relative rounded-xl p-2 text-gray-700 dark:text-gray-300 transition-all duration-300 ease-in-out",
+                "hover:bg-indigo-100/80 dark:hover:bg-indigo-900/40 hover:text-indigo-700 dark:hover:text-indigo-300",
                 "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30 hover:scale-105",
-                "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
+                "backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30",
                 collapsed ? "w-full justify-center" : "ml-auto"
               )}
-              data-sidebar-toggle
             >
               {collapsed ? (
-                <ChevronRight className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
+                <ChevronRight className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
               ) : (
-                <ChevronLeft className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
+                <ChevronLeft className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
               )}
             </Button>
           </div>
-          
-          <nav className="space-y-2">
-            {parentItems.map((item) => {
+
+          <nav className="space-y-1">
+            {[...parentItems, documentationItem].map((item) => {
               const children = childrenByParent[item.id] || [];
               const hasChildren = children.length > 0;
               const isOpen = openItems.has(item.id);
@@ -376,7 +375,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                           "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
                           "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
                           "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
-                          collapsed ? "justify-center px-4 py-3 h-14" : "justify-between px-5 py-3 h-12"
+                          collapsed ? "justify-center px-3 py-2 h-10" : "justify-between px-4 py-2 h-10"
                         )}
                       >
                         <div className="flex items-center gap-4">
@@ -409,7 +408,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                               "border-l-4 border-transparent hover:border-indigo-400 dark:hover:border-indigo-500",
                               "hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 dark:hover:from-indigo-900/10 dark:hover:to-purple-900/10",
                               "hover:shadow-md hover:shadow-indigo-200/20 dark:hover:shadow-indigo-900/20",
-                              isActive(child.href) 
+                              isActive(child.href)
                                 ? "bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-500 shadow-md font-medium"
                                 : "text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                             )}
@@ -429,7 +428,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         "flex items-center gap-4 rounded-2xl transition-all duration-300 cursor-pointer group relative hover:scale-[1.02]",
                         "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
                         "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
-                        collapsed ? "justify-center px-4 py-3 h-14" : "px-5 py-3 h-12",
+                        collapsed ? "justify-center px-3 py-2 h-10" : "px-4 py-2 h-10",
                         itemIsActive
                           ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 border-indigo-400/50"
                           : "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-300"
@@ -469,7 +468,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
                   "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
                   "text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400",
-                  collapsed ? "justify-center px-4 py-3 h-14" : "justify-start px-5 py-3 h-12"
+                  collapsed ? "justify-center px-3 py-2 h-10" : "justify-start px-4 py-2 h-10"
                 )}
               >
                 <div className="flex items-center gap-4">
@@ -481,14 +480,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              side={collapsed ? "right" : "top"} 
+            <DropdownMenuContent
+              side={collapsed ? "right" : "top"}
               className="w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 shadow-2xl rounded-2xl p-2"
             >
-              <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl mb-2">
+              <div className="px-3 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl mb-2">
                 <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">Tema do Sistema</p>
               </div>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setTheme("light")}
                 className="rounded-xl hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 dark:hover:from-yellow-900/20 dark:hover:to-orange-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
@@ -496,7 +495,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <span className="font-medium">Claro</span>
                 {theme === "light" && <span className="ml-auto text-yellow-500 font-bold">✓</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setTheme("dark")}
                 className="rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
@@ -504,7 +503,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <span className="font-medium">Escuro</span>
                 {theme === "dark" && <span className="ml-auto text-blue-500 font-bold">✓</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setTheme("system")}
                 className="rounded-xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-slate-50 dark:hover:from-gray-900/20 dark:hover:to-slate-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >
@@ -512,15 +511,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <span className="font-medium">Sistema</span>
                 {theme === "system" && <span className="ml-auto text-gray-500 font-bold">✓</span>}
               </DropdownMenuItem>
-              
+
               <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600 my-2" />
-              
-              <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl mb-2">
+
+              <div className="px-3 py-2 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl mb-2">
                 <p className="text-sm font-bold text-purple-700 dark:text-purple-300">Aparência</p>
               </div>
-              
+
               {/* Sidebar Mode Toggle */}
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={toggleSidebarMode}
                 className="rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 text-gray-900 dark:text-gray-100 transition-all duration-200"
               >

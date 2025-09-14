@@ -8,6 +8,7 @@ import { useColorTheme } from "@/hooks/useColorTheme";
 import { Switch, Route } from "wouter";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "@/pages/Dashboard";
+import Documentation from "@/pages/Documentation";
 import Clients from "@/pages/Clients";
 import Products from "@/pages/Products";
 import Suppliers from "@/pages/Suppliers";
@@ -68,6 +69,7 @@ function AuthenticatedRouter() {
         <Route path="/reminders" component={Reminders} />
         <Route path="/banco" component={Banco} />
         <Route path="/help" component={Help} />
+        <Route path="/documentation" component={Documentation} />
         <Route component={NotFound} />
       </Switch>
     </MainLayout>
@@ -76,7 +78,7 @@ function AuthenticatedRouter() {
 
 function App() {
   console.log('App component rendering with auth routing...');
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

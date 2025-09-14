@@ -8,12 +8,8 @@ import {
   Edit,
   Trash2,
   Building,
-  Phone,
-  Mail,
-  Globe,
-  User,
-  Search,
-  Loader2
+  Upload,
+  X
 } from 'lucide-react';
 import { apiRequest } from '../lib/queryClient';
 import { useToast } from '../hooks/use-toast';
@@ -28,30 +24,78 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 
+// Componente para upload com drag & drop
+const DragDropUpload = ({
+  onFileSelect,
+  className = ""
+}: {
+  onFileSelect: (files: FileList) => void;
+  className?: string;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      onFileSelect(files);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onFileSelect(e.target.files);
+    }
+  };
+
+  return (
+    <div
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging
+        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+        } ${className}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className="flex flex-col items-center space-y-2">
+        <Upload className="w-8 h-8 text-gray-400" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Arraste e solte uma imagem aqui ou
+        </p>
+        <label className="cursor-pointer">
+          <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            clique para selecionar
+          </span>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileInput}
+          />
+        </label>
+      </div>
+    </div>
+  );
+};
+
 // Provider schema
 const providerSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  companyName: z.string().optional(),
-  email: z.string().email("Email inválido").optional(),
-  phone: z.string().optional(),
-  whatsapp: z.string().optional(),
-  website: z.string().optional(),
-  cnpj: z.string().optional(),
-  cpf: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  country: z.string().default("Brasil"),
-  contactPerson: z.string().optional(),
-  contactRole: z.string().optional(),
-  paymentTerms: z.string().optional(),
-  serviceType: z.string().optional(),
-  categories: z.array(z.string()).default([]),
-  notes: z.string().optional(),
-  status: z.enum(["active", "inactive"]).default("active"),
-  rating: z.number().min(0).max(5).default(0),
-  image: z.string().optional(),
+  serviceType: z.string().min(1, "Categoria é obrigatória"),
+  image: z.string().min(1, "Logo é obrigatório"),
 });
 
 type ProviderFormData = z.infer<typeof providerSchema>;
@@ -59,27 +103,8 @@ type ProviderFormData = z.infer<typeof providerSchema>;
 interface Provider {
   id: number;
   name: string;
-  companyName?: string;
-  email?: string;
-  phone?: string;
-  whatsapp?: string;
-  website?: string;
-  cnpj?: string;
-  cpf?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
-  contactPerson?: string;
-  contactRole?: string;
-  paymentTerms?: string;
-  serviceType?: string;
-  categories?: string[];
-  notes?: string;
-  status: string;
-  rating: number;
-  image?: string;
+  serviceType: string;
+  image: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,55 +123,11 @@ const serviceTypes = [
   "Outros"
 ];
 
-// Função para formatar CNPJ
-const formatCNPJ = (value: string): string => {
-  const numbers = value.replace(/\D/g, '');
 
-  if (numbers.length <= 11) {
-    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-  }
-
-  return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-};
-
-// Função para limpar CNPJ (apenas números)
-const cleanCNPJ = (value: string): string => {
-  return value.replace(/\D/g, '');
-};
-
-// Função para consultar CNPJ na API do backend
-const fetchCNPJData = async (cnpj: string) => {
-  const cleanedCNPJ = cleanCNPJ(cnpj);
-
-  if (cleanedCNPJ.length !== 14) {
-    throw new Error('CNPJ deve ter 14 dígitos');
-  }
-
-  const response = await fetch(`/api/cnpj/${cleanedCNPJ}`);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao consultar CNPJ');
-  }
-
-  const data = await response.json();
-
-  return {
-    companyName: data.companyName || '',
-    email: data.email || '',
-    phone: data.phone || '',
-    address: data.address || '',
-    city: data.city || '',
-    state: data.state || '',
-    zipCode: data.zipCode || '',
-    cnpj: formatCNPJ(cleanedCNPJ)
-  };
-};
 
 export default function ServiceProvidersManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
-  const [isLoadingCNPJ, setIsLoadingCNPJ] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -158,6 +139,50 @@ export default function ServiceProvidersManager() {
       return response.json();
     }
   });
+
+  // Upload image function
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/upload/provider-image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (files: FileList) => {
+    try {
+      const imageUrl = await uploadImage(files[0]);
+      form.setValue('image', imageUrl);
+      toast({
+        title: "Logo carregado",
+        description: "O logo foi carregado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro no upload",
+        description: "Falha ao carregar o logo. Tente novamente.",
+      });
+    }
+  };
 
   // Mutations
   const createMutation = useMutation({
@@ -226,108 +251,12 @@ export default function ServiceProvidersManager() {
     },
   });
 
-  // Função para buscar dados do CNPJ
-  const handleCNPJSearch = async () => {
-    const cnpjValue = form.getValues('cnpj');
-    const cleanedCNPJ = cleanCNPJ(cnpjValue);
-
-    if (cleanedCNPJ.length !== 14) {
-      toast({
-        title: "⚠️ CNPJ Inválido",
-        description: "CNPJ deve ter 14 dígitos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoadingCNPJ(true);
-
-    try {
-      const data = await fetchCNPJData(cleanedCNPJ);
-
-      // Preencher os campos com os dados obtidos
-      form.setValue('companyName', data.companyName);
-      form.setValue('email', data.email);
-      form.setValue('phone', data.phone);
-      form.setValue('address', data.address);
-      form.setValue('city', data.city);
-      form.setValue('state', data.state);
-      form.setValue('zipCode', data.zipCode);
-      form.setValue('cnpj', data.cnpj);
-
-      toast({
-        title: "✅ Dados Encontrados",
-        description: "Dados da empresa preenchidos automaticamente",
-      });
-    } catch (error) {
-      toast({
-        title: "❌ Erro na Consulta",
-        description: error instanceof Error ? error.message : "Erro ao consultar CNPJ",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingCNPJ(false);
-    }
-  };
-
-  // Função para limpar formulário
-  const handleClearForm = () => {
-    form.reset({
-      name: "",
-      companyName: "",
-      email: "",
-      phone: "",
-      whatsapp: "",
-      website: "",
-      cnpj: "",
-      cpf: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "Brasil",
-      contactPerson: "",
-      contactRole: "",
-      paymentTerms: "",
-      serviceType: "",
-      categories: [],
-      notes: "",
-      status: "active",
-      rating: 0,
-      image: "",
-    });
-
-    toast({
-      title: "📝 Formulário Limpo",
-      description: "Todos os campos foram limpos",
-    });
-  };
-
   // Form setup
   const form = useForm<ProviderFormData>({
     resolver: zodResolver(providerSchema),
     defaultValues: {
       name: "",
-      companyName: "",
-      email: "",
-      phone: "",
-      whatsapp: "",
-      website: "",
-      cnpj: "",
-      cpf: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "Brasil",
-      contactPerson: "",
-      contactRole: "",
-      paymentTerms: "",
       serviceType: "",
-      categories: [],
-      notes: "",
-      status: "active",
-      rating: 0,
       image: "",
     },
   });
@@ -344,27 +273,8 @@ export default function ServiceProvidersManager() {
     setEditingProvider(provider);
     form.reset({
       name: provider.name,
-      companyName: provider.companyName || "",
-      email: provider.email || "",
-      phone: provider.phone || "",
-      whatsapp: provider.whatsapp || "",
-      website: provider.website || "",
-      cnpj: provider.cnpj || "",
-      cpf: provider.cpf || "",
-      address: provider.address || "",
-      city: provider.city || "",
-      state: provider.state || "",
-      zipCode: provider.zipCode || "",
-      country: provider.country || "Brasil",
-      contactPerson: provider.contactPerson || "",
-      contactRole: provider.contactRole || "",
-      paymentTerms: provider.paymentTerms || "",
-      serviceType: provider.serviceType || "",
-      categories: provider.categories || [],
-      notes: provider.notes || "",
-      status: (provider.status as "active" | "inactive") || "active",
-      rating: provider.rating || 0,
-      image: provider.image || "",
+      serviceType: provider.serviceType,
+      image: provider.image,
     });
     setIsDialogOpen(true);
   };
@@ -379,26 +289,7 @@ export default function ServiceProvidersManager() {
     setEditingProvider(null);
     form.reset({
       name: "",
-      companyName: "",
-      email: "",
-      phone: "",
-      whatsapp: "",
-      website: "",
-      cnpj: "",
-      cpf: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "Brasil",
-      contactPerson: "",
-      contactRole: "",
-      paymentTerms: "",
       serviceType: "",
-      categories: [],
-      notes: "",
-      status: "active",
-      rating: 0,
       image: "",
     });
     setIsDialogOpen(true);
@@ -410,7 +301,9 @@ export default function ServiceProvidersManager() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Prestadores de Serviços</h2>
-          <p className="text-gray-600">Gerencie os prestadores de serviços do sistema</p>
+          <p className="text-gray-600">
+            Gerencie os prestadores de serviços do sistema ({providers.length} prestadores)
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -428,296 +321,103 @@ export default function ServiceProvidersManager() {
 
             <div className="overflow-y-auto flex-1 pr-2">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {/* CNPJ Field - First Field */}
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="cnpj"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CNPJ</FormLabel>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {/* Nome Field */}
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome do Prestador *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do prestador de serviços" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Categoria Field */}
+                  <FormField
+                    control={form.control}
+                    name="serviceType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categoria *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="00.000.000/0000-00"
-                                {...field}
-                                onChange={(e) => {
-                                  const formatted = formatCNPJ(e.target.value);
-                                  field.onChange(formatted);
-                                }}
-                                className="flex-1"
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a categoria do serviço" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {serviceTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Logo Upload Field */}
+                  <FormField
+                    control={form.control}
+                    name="image"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Logo do Prestador *</FormLabel>
+                        <div className="space-y-4">
+                          {field.value ? (
+                            <div className="relative inline-block">
+                              <img
+                                src={field.value}
+                                alt="Logo do prestador"
+                                className="w-32 h-32 object-contain border rounded-lg bg-white"
                               />
                               <Button
                                 type="button"
-                                variant="outline"
-                                onClick={handleCNPJSearch}
-                                disabled={isLoadingCNPJ || !field.value || cleanCNPJ(field.value).length !== 14}
-                                className="shrink-0"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute -top-2 -right-2 w-8 h-8 p-0 rounded-full"
+                                onClick={() => field.onChange("")}
                               >
-                                {isLoadingCNPJ ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Search className="h-4 w-4" />
-                                )}
+                                <X className="w-4 h-4" />
                               </Button>
                             </div>
-                          </FormControl>
-                          <FormMessage />
-                          <p className="text-xs text-muted-foreground">
-                            Digite o CNPJ e clique na lupa para preencher automaticamente os dados
-                          </p>
-                          {field.value && cleanCNPJ(field.value).length > 0 && cleanCNPJ(field.value).length < 14 && (
-                            <p className="text-xs text-orange-600">
-                              CNPJ incompleto ({cleanCNPJ(field.value).length}/14 dígitos)
-                            </p>
-                          )}
-                          {field.value && cleanCNPJ(field.value).length === 14 && (
-                            <p className="text-xs text-green-600">
-                              ✓ CNPJ válido - clique na lupa para buscar dados
-                            </p>
-                          )}
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nome do prestador" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="companyName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome da Empresa</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Razão social" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="email@exemplo.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(11) 99999-9999" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="whatsapp"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>WhatsApp</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(11) 99999-9999" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="website"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Website</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://www.exemplo.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="cpf"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CPF</FormLabel>
-                          <FormControl>
-                            <Input placeholder="000.000.000-00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="serviceType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Serviço</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {serviceTypes.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="active">Ativo</SelectItem>
-                              <SelectItem value="inactive">Inativo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="contactPerson"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pessoa de Contato</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nome do contato" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="contactRole"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cargo do Contato</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: Gerente, Suporte" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="paymentTerms"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Condições de Pagamento</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ex: 30 dias, À vista, etc." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Observações</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Informações adicionais sobre o prestador..."
-                              className="resize-none"
-                              {...field}
+                          ) : (
+                            <DragDropUpload
+                              onFileSelect={handleImageUpload}
+                              className="w-full"
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                  <div className="flex justify-between gap-2 pt-4 border-t">
+                  <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={handleClearForm}
-                      className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                      onClick={() => setIsDialogOpen(false)}
                     >
-                      Limpar Tudo
+                      Cancelar
                     </Button>
-
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={createMutation.isPending || updateMutation.isPending}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {createMutation.isPending || updateMutation.isPending ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        ) : null}
-                        {editingProvider ? "Atualizar" : "Criar"} Prestador
-                      </Button>
-                    </div>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {createMutation.isPending || updateMutation.isPending ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : null}
+                      {editingProvider ? "Atualizar" : "Criar"} Prestador
+                    </Button>
                   </div>
                 </form>
               </Form>
@@ -726,99 +426,83 @@ export default function ServiceProvidersManager() {
         </Dialog>
       </div>
 
-      {/* Providers List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Prestadores ({providers.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-sm text-muted-foreground">Carregando prestadores...</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {providers.length > 0 ? (
-                providers.map((provider) => (
-                  <div key={provider.id} className="flex items-center justify-between p-4 border-border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-gray-500" />
-                        <div className="flex flex-col">
-                          <div className="font-medium">{provider.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {provider.serviceType && (
-                              <Badge variant="outline" className="mr-2">
-                                {provider.serviceType}
-                              </Badge>
-                            )}
-                            {provider.contactPerson && (
-                              <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {provider.contactPerson}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+      {/* Providers Grid */}
+      {isLoading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Carregando prestadores...</p>
+        </div>
+      ) : providers.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {providers.map((provider) => (
+            <Card key={provider.id} className="hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 border rounded-lg overflow-hidden bg-white flex items-center justify-center shadow-sm">
+                      {provider.image ? (
+                        <img
+                          src={provider.image}
+                          alt={`Logo ${provider.name}`}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <Building className="h-6 w-6 text-gray-400" />
+                      )}
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      {provider.email && (
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
-                          <Mail className="h-3 w-3" />
-                          {provider.email}
-                        </div>
-                      )}
-
-                      {provider.phone && (
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
-                          <Phone className="h-3 w-3" />
-                          {provider.phone}
-                        </div>
-                      )}
-
-                      <Badge
-                        variant={provider.status === 'active' ? 'default' : 'secondary'}
-                        className={provider.status === 'active' ? 'bg-green-100 text-green-800' : ''}
-                      >
-                        {provider.status === 'active' ? 'Ativo' : 'Inativo'}
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg truncate">{provider.name}</CardTitle>
+                      <Badge variant="outline" className="mt-1 bg-blue-50 text-blue-700 border-blue-200">
+                        {provider.serviceType}
                       </Badge>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(provider)}
-                        className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(provider.id, provider.name)}
-                        disabled={deleteMutation.isPending}
-                        className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Building className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium mb-2">Nenhum prestador encontrado</p>
-                  <p className="text-sm">Adicione um novo prestador para começar.</p>
                 </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardHeader>
+
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Criado em {new Date(provider.createdAt).toLocaleDateString('pt-BR')}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(provider)}
+                      className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(provider.id, provider.name)}
+                      disabled={deleteMutation.isPending}
+                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <Building className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">Nenhum prestador encontrado</h3>
+          <p className="text-muted-foreground mb-4">
+            Adicione um novo prestador para começar.
+          </p>
+          <Button onClick={openNewProviderDialog} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Prestador
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

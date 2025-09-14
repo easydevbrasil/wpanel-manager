@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, sql, desc, asc, and } from 'drizzle-orm';
+import { eq, sql, desc, asc, and, gte } from 'drizzle-orm';
 import * as crypto from 'crypto';
 import * as argon2 from 'argon2';
 import * as bcrypt from 'bcrypt';
@@ -38,7 +38,10 @@ import {
   taskTemplates,
   expenses,
   expenseCategories,
+  expenseSubcategories,
+  paymentMethods,
   expenseReminders,
+  exchangeRates,
   type User,
   type UserPreferences,
   type InsertUserPreferences,
@@ -99,8 +102,14 @@ import {
   type InsertExpense,
   type ExpenseCategory,
   type InsertExpenseCategory,
+  type ExpenseSubcategory,
+  type InsertExpenseSubcategory,
+  type PaymentMethod,
+  type InsertPaymentMethod,
   type ExpenseReminder,
-  type InsertExpenseReminder
+  type InsertExpenseReminder,
+  type ExchangeRate,
+  type InsertExchangeRate
 } from "@shared/schema";
 
 export interface IStorage {
@@ -309,6 +318,20 @@ export interface IStorage {
   updateExpenseCategory(id: number, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory>;
   deleteExpenseCategory(id: number): Promise<void>;
 
+  // Expense Subcategories methods
+  getExpenseSubcategories(categoryId?: number): Promise<ExpenseSubcategory[]>;
+  getExpenseSubcategory(id: number): Promise<ExpenseSubcategory | undefined>;
+  createExpenseSubcategory(subcategory: InsertExpenseSubcategory): Promise<ExpenseSubcategory>;
+  updateExpenseSubcategory(id: number, subcategory: Partial<InsertExpenseSubcategory>): Promise<ExpenseSubcategory>;
+  deleteExpenseSubcategory(id: number): Promise<void>;
+
+  // Payment Methods methods
+  getPaymentMethods(): Promise<PaymentMethod[]>;
+  getPaymentMethod(id: number): Promise<PaymentMethod | undefined>;
+  createPaymentMethod(method: InsertPaymentMethod): Promise<PaymentMethod>;
+  updatePaymentMethod(id: number, method: Partial<InsertPaymentMethod>): Promise<PaymentMethod>;
+  deletePaymentMethod(id: number): Promise<void>;
+
   // Expense Reminders methods
   getExpenseReminders(): Promise<ExpenseReminder[]>;
   getExpenseReminder(id: number): Promise<ExpenseReminder | undefined>;
@@ -316,6 +339,16 @@ export interface IStorage {
   updateExpenseReminder(id: number, reminder: Partial<InsertExpenseReminder>): Promise<ExpenseReminder>;
   deleteExpenseReminder(id: number): Promise<void>;
   getActiveReminders(): Promise<ExpenseReminder[]>;
+
+  // Exchange Rates methods
+  getExchangeRates(): Promise<ExchangeRate[]>;
+  getExchangeRate(fromCurrency: string, toCurrency?: string): Promise<ExchangeRate | undefined>;
+  createExchangeRate(rate: InsertExchangeRate): Promise<ExchangeRate>;
+  updateExchangeRate(id: number, rate: Partial<InsertExchangeRate>): Promise<ExchangeRate>;
+  deleteExchangeRate(id: number): Promise<void>;
+  getLatestExchangeRate(fromCurrency: string, toCurrency?: string): Promise<ExchangeRate | undefined>;
+  getExchangeRateHistory(fromCurrency: string, toCurrency?: string, days?: number): Promise<ExchangeRate[]>;
+  updateExchangeRates(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -446,52 +479,31 @@ export class DatabaseStorage implements IStorage {
           parentId: null
         },
         {
-          label: 'Administração',
-          href: null,
-          icon: 'Settings',
+          label: 'Banco de Dados',
+          href: '/database-admin',
+          icon: 'Database',
           position: 9,
+          parentId: null
+        },
+        {
+          label: 'Docker Containers',
+          href: '/docker-containers',
+          icon: 'Container',
+          position: 10,
+          parentId: null
+        },
+        {
+          label: 'Hosts Nginx',
+          href: '/nginx-hosts',
+          icon: 'Server',
+          position: 11,
           parentId: null
         }
       ];
 
       const insertedItems = await db.insert(navigationItems).values(defaultItems).returning();
 
-      // Create sub-items for Administration
-      const adminParent = insertedItems.find(item => item.label === 'Administração');
-      if (adminParent) {
-        const subItems = [
-          {
-            label: 'Usuários',
-            href: '/database-admin',
-            icon: 'User',
-            position: 1,
-            parentId: adminParent.id
-          },
-          {
-            label: 'Sistema',
-            href: '/system-status',
-            icon: 'Monitor',
-            position: 2,
-            parentId: adminParent.id
-          },
-          {
-            label: 'Docker Containers',
-            href: '/docker-containers',
-            icon: 'Container',
-            position: 3,
-            parentId: adminParent.id
-          },
-          {
-            label: 'Hosts Nginx',
-            href: '/nginx-hosts',
-            icon: 'Server',
-            position: 4,
-            parentId: adminParent.id
-          }
-        ];
-
-        await db.insert(navigationItems).values(subItems);
-      }
+      // No longer need sub-items as they are now at root level
 
       console.log('Default navigation items created successfully');
     } catch (error) {
@@ -3592,7 +3604,10 @@ export class DatabaseStorage implements IStorage {
 
   async getExpenseCategories(): Promise<ExpenseCategory[]> {
     try {
-      const categories = await db.select().from(expenseCategories).where(eq(expenseCategories.active, true));
+      const categories = await db.select()
+        .from(expenseCategories)
+        .where(eq(expenseCategories.isActive, true))
+        .orderBy(expenseCategories.sortOrder, expenseCategories.name);
       return categories;
     } catch (error) {
       console.error("Error fetching expense categories:", error);
@@ -3642,10 +3657,146 @@ export class DatabaseStorage implements IStorage {
     try {
       // Soft delete - apenas marcar como inativo
       await db.update(expenseCategories)
-        .set({ active: false, updatedAt: new Date() })
+        .set({ isActive: false, updatedAt: new Date() })
         .where(eq(expenseCategories.id, id));
     } catch (error) {
       console.error("Error deleting expense category:", error);
+      throw error;
+    }
+  }
+
+  // ===== EXPENSE SUBCATEGORIES METHODS =====
+
+  async getExpenseSubcategories(categoryId?: number): Promise<ExpenseSubcategory[]> {
+    try {
+      const whereConditions = [eq(expenseSubcategories.isActive, true)];
+
+      if (categoryId) {
+        whereConditions.push(eq(expenseSubcategories.categoryId, categoryId));
+      }
+
+      const subcategories = await db.select().from(expenseSubcategories)
+        .where(and(...whereConditions))
+        .orderBy(expenseSubcategories.sortOrder, expenseSubcategories.name);
+
+      return subcategories;
+    } catch (error) {
+      console.error("Error fetching expense subcategories:", error);
+      throw error;
+    }
+  }
+
+  async getExpenseSubcategory(id: number): Promise<ExpenseSubcategory | undefined> {
+    try {
+      const subcategory = await db.select().from(expenseSubcategories).where(eq(expenseSubcategories.id, id));
+      return subcategory[0];
+    } catch (error) {
+      console.error("Error fetching expense subcategory:", error);
+      throw error;
+    }
+  }
+
+  async createExpenseSubcategory(subcategory: InsertExpenseSubcategory): Promise<ExpenseSubcategory> {
+    try {
+      const newSubcategory = await db.insert(expenseSubcategories).values(subcategory).returning();
+      return newSubcategory[0];
+    } catch (error) {
+      console.error("Error creating expense subcategory:", error);
+      throw error;
+    }
+  }
+
+  async updateExpenseSubcategory(id: number, subcategory: Partial<InsertExpenseSubcategory>): Promise<ExpenseSubcategory> {
+    try {
+      const updatedSubcategory = await db.update(expenseSubcategories)
+        .set({ ...subcategory, updatedAt: new Date() })
+        .where(eq(expenseSubcategories.id, id))
+        .returning();
+
+      if (updatedSubcategory.length === 0) {
+        throw new Error("Subcategoria não encontrada");
+      }
+
+      return updatedSubcategory[0];
+    } catch (error) {
+      console.error("Error updating expense subcategory:", error);
+      throw error;
+    }
+  }
+
+  async deleteExpenseSubcategory(id: number): Promise<void> {
+    try {
+      // Soft delete - apenas marcar como inativo
+      await db.update(expenseSubcategories)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(expenseSubcategories.id, id));
+    } catch (error) {
+      console.error("Error deleting expense subcategory:", error);
+      throw error;
+    }
+  }
+
+  // ===== PAYMENT METHODS METHODS =====
+
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    try {
+      const methods = await db.select()
+        .from(paymentMethods)
+        .where(eq(paymentMethods.isActive, true))
+        .orderBy(paymentMethods.sortOrder, paymentMethods.name);
+      return methods;
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      throw error;
+    }
+  }
+
+  async getPaymentMethod(id: number): Promise<PaymentMethod | undefined> {
+    try {
+      const method = await db.select().from(paymentMethods).where(eq(paymentMethods.id, id));
+      return method[0];
+    } catch (error) {
+      console.error("Error fetching payment method:", error);
+      throw error;
+    }
+  }
+
+  async createPaymentMethod(method: InsertPaymentMethod): Promise<PaymentMethod> {
+    try {
+      const newMethod = await db.insert(paymentMethods).values(method).returning();
+      return newMethod[0];
+    } catch (error) {
+      console.error("Error creating payment method:", error);
+      throw error;
+    }
+  }
+
+  async updatePaymentMethod(id: number, method: Partial<InsertPaymentMethod>): Promise<PaymentMethod> {
+    try {
+      const updatedMethod = await db.update(paymentMethods)
+        .set({ ...method, updatedAt: new Date() })
+        .where(eq(paymentMethods.id, id))
+        .returning();
+
+      if (updatedMethod.length === 0) {
+        throw new Error("Método de pagamento não encontrado");
+      }
+
+      return updatedMethod[0];
+    } catch (error) {
+      console.error("Error updating payment method:", error);
+      throw error;
+    }
+  }
+
+  async deletePaymentMethod(id: number): Promise<void> {
+    try {
+      // Soft delete - apenas marcar como inativo
+      await db.update(paymentMethods)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(paymentMethods.id, id));
+    } catch (error) {
+      console.error("Error deleting payment method:", error);
       throw error;
     }
   }
@@ -3726,6 +3877,183 @@ export class DatabaseStorage implements IStorage {
       return reminders;
     } catch (error) {
       console.error("Error fetching active reminders:", error);
+      throw error;
+    }
+  }
+
+  // ===== EXCHANGE RATES METHODS =====
+
+  async getExchangeRates(): Promise<ExchangeRate[]> {
+    try {
+      return await db.select().from(exchangeRates).orderBy(desc(exchangeRates.updatedAt));
+    } catch (error) {
+      console.error("Error fetching exchange rates:", error);
+      throw error;
+    }
+  }
+
+  async getExchangeRate(fromCurrency: string, toCurrency: string = 'BRL'): Promise<ExchangeRate | undefined> {
+    try {
+      const rates = await db.select()
+        .from(exchangeRates)
+        .where(
+          and(
+            eq(exchangeRates.fromCurrency, fromCurrency),
+            eq(exchangeRates.toCurrency, toCurrency)
+          )
+        )
+        .orderBy(desc(exchangeRates.updatedAt))
+        .limit(1);
+
+      return rates[0];
+    } catch (error) {
+      console.error("Error fetching exchange rate:", error);
+      throw error;
+    }
+  }
+
+  async createExchangeRate(rate: InsertExchangeRate): Promise<ExchangeRate> {
+    try {
+      const newRate = await db.insert(exchangeRates)
+        .values({
+          ...rate,
+          updatedAt: new Date()
+        })
+        .returning();
+      return newRate[0];
+    } catch (error) {
+      console.error("Error creating exchange rate:", error);
+      throw error;
+    }
+  }
+
+  async updateExchangeRate(id: number, rate: Partial<InsertExchangeRate>): Promise<ExchangeRate> {
+    try {
+      const updatedRate = await db.update(exchangeRates)
+        .set({
+          ...rate,
+          updatedAt: new Date()
+        })
+        .where(eq(exchangeRates.id, id))
+        .returning();
+
+      if (updatedRate.length === 0) {
+        throw new Error("Exchange rate not found");
+      }
+
+      return updatedRate[0];
+    } catch (error) {
+      console.error("Error updating exchange rate:", error);
+      throw error;
+    }
+  }
+
+  async deleteExchangeRate(id: number): Promise<void> {
+    try {
+      const result = await db.delete(exchangeRates)
+        .where(eq(exchangeRates.id, id))
+        .returning();
+
+      if (result.length === 0) {
+        throw new Error("Exchange rate not found");
+      }
+    } catch (error) {
+      console.error("Error deleting exchange rate:", error);
+      throw error;
+    }
+  }
+
+  async getLatestExchangeRate(fromCurrency: string, toCurrency: string = 'BRL'): Promise<ExchangeRate | undefined> {
+    try {
+      // Get the most recent rate for the currency pair
+      const rates = await db.select()
+        .from(exchangeRates)
+        .where(
+          and(
+            eq(exchangeRates.fromCurrency, fromCurrency),
+            eq(exchangeRates.toCurrency, toCurrency)
+          )
+        )
+        .orderBy(desc(exchangeRates.updatedAt))
+        .limit(1);
+
+      return rates[0];
+    } catch (error) {
+      console.error("Error fetching latest exchange rate:", error);
+      throw error;
+    }
+  }
+
+  async getExchangeRateHistory(fromCurrency: string, toCurrency: string = 'BRL', days: number = 30): Promise<ExchangeRate[]> {
+    try {
+      const dateLimit = new Date();
+      dateLimit.setDate(dateLimit.getDate() - days);
+
+      const rates = await db.select()
+        .from(exchangeRates)
+        .where(
+          and(
+            eq(exchangeRates.fromCurrency, fromCurrency),
+            eq(exchangeRates.toCurrency, toCurrency),
+            gte(exchangeRates.date, dateLimit)
+          )
+        )
+        .orderBy(desc(exchangeRates.date))
+        .limit(100); // Limit to avoid too much data
+
+      return rates;
+    } catch (error) {
+      console.error("Error fetching exchange rate history:", error);
+      throw error;
+    }
+  }
+
+  async updateExchangeRates(): Promise<void> {
+    try {
+      // Fetch current rates from API (example: exchangerate-api.com)
+      const apiKey = process.env.EXCHANGE_API_KEY;
+      if (!apiKey) {
+        console.warn("EXCHANGE_API_KEY not set, skipping exchange rate update");
+        return;
+      }
+
+      const currencies = ['USD', 'EUR']; // Add more currencies as needed
+      const baseCurrency = 'BRL';
+
+      for (const currency of currencies) {
+        if (currency === baseCurrency) continue;
+
+        try {
+          // Fetch rate from API
+          const response = await fetch(`https://v6.exchangerate-api.com/v6/${apiKey}/pair/${currency}/${baseCurrency}`);
+          const data = await response.json();
+
+          if (data.result === 'success') {
+            // Check if rate exists
+            const existingRate = await this.getLatestExchangeRate(currency, baseCurrency);
+
+            if (existingRate) {
+              // Update existing rate
+              await this.updateExchangeRate(existingRate.id, {
+                rate: data.conversion_rate
+              });
+            } else {
+              // Create new rate
+              await this.createExchangeRate({
+                fromCurrency: currency,
+                toCurrency: baseCurrency,
+                rate: data.conversion_rate
+              });
+            }
+
+            console.log(`Updated exchange rate: ${currency} to ${baseCurrency} = ${data.conversion_rate}`);
+          }
+        } catch (error) {
+          console.error(`Error updating exchange rate for ${currency}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating exchange rates:", error);
       throw error;
     }
   }

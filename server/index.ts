@@ -1,11 +1,15 @@
 // Load environment variables from .env file
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path";
+
+// Load from the docker .env file specifically  
+dotenv.config({ path: '/docker/.env' });
 
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -31,7 +35,7 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
+    if (path.startsWith("/api") && !path.includes("/api/system/stats")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -67,6 +71,32 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Setup periodic exchange rate updates
+  const startExchangeRateUpdater = () => {
+    // Update exchange rates every hour
+    const updateInterval = 60 * 60 * 1000; // 1 hour in milliseconds
+
+    const updateExchangeRates = async () => {
+      try {
+        log("Updating exchange rates...");
+        await storage.updateExchangeRates();
+        log("Exchange rates updated successfully");
+      } catch (error) {
+        log(`Error updating exchange rates: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+
+    // Update immediately on startup
+    setTimeout(() => {
+      updateExchangeRates();
+    }, 5000); // Wait 5 seconds after server starts
+
+    // Then update every hour
+    setInterval(updateExchangeRates, updateInterval);
+  };
+
+  startExchangeRateUpdater();
 
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.

@@ -1,8 +1,11 @@
+// Route to list nginx hosts from directory specified in .env
+// This route must be defined after authenticateToken is declared
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage as dbStorage } from "./storage";
+import { cloudflareService } from "./cloudflare";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
@@ -11,6 +14,58 @@ import { spawn, exec } from "child_process";
 import { promisify } from "util";
 import os from "os";
 import Docker from "dockerode";
+
+// Helper function to detect Linux distribution
+async function getLinuxDistribution(): Promise<string> {
+  try {
+    if (os.platform() !== 'linux') {
+      return os.platform();
+    }
+
+    // Try to read /etc/os-release first
+    if (fs.existsSync('/etc/os-release')) {
+      const osRelease = await fs.promises.readFile('/etc/os-release', 'utf8');
+      const lines = osRelease.split('\n');
+
+      let distro = '';
+      let codename = '';
+
+      for (const line of lines) {
+        if (line.startsWith('ID=')) {
+          distro = line.split('=')[1].replace(/"/g, '').toLowerCase();
+        }
+        if (line.startsWith('VERSION_CODENAME=')) {
+          codename = line.split('=')[1].replace(/"/g, '');
+        }
+      }
+
+      if (distro && codename) {
+        return `${distro} ${codename}`;
+      } else if (distro) {
+        return distro;
+      }
+    }
+
+    // Fallback to other detection methods
+    if (fs.existsSync('/etc/debian_version')) {
+      return 'debian';
+    }
+    if (fs.existsSync('/etc/redhat-release')) {
+      return 'rhel';
+    }
+    if (fs.existsSync('/etc/SuSE-release')) {
+      return 'suse';
+    }
+    if (fs.existsSync('/etc/arch-release')) {
+      return 'arch';
+    }
+
+    return 'linux';
+  } catch (error) {
+    console.error('Error detecting Linux distribution:', error);
+    return 'linux';
+  }
+}
 
 // Helper function to measure CPU usage
 function getCpuUsageMeasure() {
@@ -291,7 +346,7 @@ function getSwapUsage(): Promise<{ total: number; used: number; free: number; us
 // Cache for Proton Drive data (updated every 30 seconds)
 let protonDriveCache: { total: number; used: number; free: number; usagePercent: number } | null = null;
 let protonDriveCacheTime = 0;
-const PROTON_CACHE_DURATION = 30000; // 30 seconds
+const PROTON_CACHE_DURATION = 5000; // 5 seconds
 
 // Memory and CPU history for charts
 let cpuHistory: number[] = [];
@@ -403,12 +458,13 @@ function getProtonDriveUsage(): Promise<{ total: number; used: number; free: num
       return;
     }
 
-    const configFile = process.env.PROTON_CONFIG_FILE || '/docker/nginx/config/protondrive.conf';
+    const configFile = process.env.PROTON_CONFIG_FILE || '/docker/config/rclone.conf';
 
     // Get total storage
-    exec(`rclone --config=${configFile} about proton: | grep 'Total:' | awk '{print $2$3}'`, (totalError, totalStdout, totalStderr) => {
-      if (totalError) {
-        console.error('Error getting Proton Drive total:', totalError);
+    const instance = process.env.PROTONDRIVE_INSTANCE || 'proton';
+    exec(`rclone about ${instance}: --json --config ${configFile}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error('Error getting Proton Drive info:', error);
         const fallbackData = {
           total: 0,
           used: 0,
@@ -420,58 +476,30 @@ function getProtonDriveUsage(): Promise<{ total: number; used: number; free: num
         resolve(fallbackData);
         return;
       }
-
-      // Get used storage
-      exec(`rclone --config=${configFile} about proton: | grep 'Used:' | awk '{print $2$3}'`, (usedError, usedStdout, usedStderr) => {
-        if (usedError) {
-          console.error('Error getting Proton Drive used:', usedError);
-          const fallbackData = {
-            total: 0,
-            used: 0,
-            free: 0,
-            usagePercent: 0
-          };
-          protonDriveCache = fallbackData;
-          protonDriveCacheTime = now;
-          resolve(fallbackData);
-          return;
-        }
-
-        try {
-          const totalStr = totalStdout.trim();
-          const usedStr = usedStdout.trim();
-
-          // Parse sizes (e.g., "200GiB" -> bytes)
-          const total = parseProtonDriveSize(totalStr);
-          const used = parseProtonDriveSize(usedStr);
-          const free = total - used;
-          const usagePercent = total > 0 ? Math.round((used / total) * 100) : 0;
-
-          const data = {
-            total,
-            used,
-            free,
-            usagePercent
-          };
-
-          // Update cache
-          protonDriveCache = data;
-          protonDriveCacheTime = now;
-
-          resolve(data);
-        } catch (parseError) {
-          console.error('Error parsing Proton Drive usage:', parseError);
-          const fallbackData = {
-            total: 0,
-            used: 0,
-            free: 0,
-            usagePercent: 0
-          };
-          protonDriveCache = fallbackData;
-          protonDriveCacheTime = now;
-          resolve(fallbackData);
-        }
-      });
+      try {
+        const info = JSON.parse(stdout);
+        // rclone about --json output example:
+        // { "total": 21474836480, "used": 1234567890, "free": 20240268590 }
+        const total = typeof info.total === 'number' ? info.total : 0;
+        const used = typeof info.used === 'number' ? info.used : 0;
+        const free = typeof info.free === 'number' ? info.free : (total - used);
+        const usagePercent = total > 0 ? Math.round((used / total) * 100) : 0;
+        const data = { total, used, free, usagePercent };
+        protonDriveCache = data;
+        protonDriveCacheTime = now;
+        resolve(data);
+      } catch (parseError) {
+        console.error('Error parsing Proton Drive usage:', parseError);
+        const fallbackData = {
+          total: 0,
+          used: 0,
+          free: 0,
+          usagePercent: 0
+        };
+        protonDriveCache = fallbackData;
+        protonDriveCacheTime = now;
+        resolve(fallbackData);
+      }
     });
   });
 }
@@ -912,6 +940,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.post(
+    "/api/upload/provider-image",
+    authenticateToken,
+    upload.single("image"),
+    (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Nenhum arquivo enviado" });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, filename: req.file.filename });
+      } catch (error) {
+        res.status(500).json({ message: "Falha no upload da imagem" });
+      }
+    },
+  );
+
   // Authentication routes (no auth required)
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -1225,6 +1271,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Exchange Rates routes
+  app.get("/api/exchange-rates", async (req, res) => {
+    try {
+      const rates = await dbStorage.getExchangeRates();
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching exchange rates:", error);
+      res.status(500).json({ message: "Erro ao buscar cotações" });
+    }
+  });
+
+  app.get("/api/exchange-rates/:from/:to?", async (req, res) => {
+    try {
+      const fromCurrency = req.params.from.toUpperCase();
+      const toCurrency = (req.params.to || 'BRL').toUpperCase();
+
+      const rate = await dbStorage.getLatestExchangeRate(fromCurrency, toCurrency);
+
+      if (!rate) {
+        return res.status(404).json({ message: "Cotação não encontrada" });
+      }
+
+      res.json(rate);
+    } catch (error) {
+      console.error("Error fetching exchange rate:", error);
+      res.status(500).json({ message: "Erro ao buscar cotação" });
+    }
+  });
+
+  app.post("/api/exchange-rates", async (req, res) => {
+    try {
+      const rateData = req.body;
+
+      // Validate required fields
+      if (!rateData.fromCurrency || !rateData.toCurrency || !rateData.rate) {
+        return res.status(400).json({
+          message: "Campos obrigatórios: fromCurrency, toCurrency, rate"
+        });
+      }
+
+      const newRate = await dbStorage.createExchangeRate({
+        fromCurrency: rateData.fromCurrency.toUpperCase(),
+        toCurrency: rateData.toCurrency.toUpperCase(),
+        rate: rateData.rate
+      });
+
+      res.status(201).json(newRate);
+    } catch (error) {
+      console.error("Error creating exchange rate:", error);
+      res.status(500).json({ message: "Erro ao criar cotação" });
+    }
+  });
+
+  app.put("/api/exchange-rates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rateData = req.body;
+
+      const updatedRate = await dbStorage.updateExchangeRate(id, {
+        ...rateData,
+        rate: rateData.rate ? parseFloat(rateData.rate) : undefined
+      });
+
+      res.json(updatedRate);
+    } catch (error) {
+      console.error("Error updating exchange rate:", error);
+      res.status(500).json({ message: "Erro ao atualizar cotação" });
+    }
+  });
+
+  app.delete("/api/exchange-rates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteExchangeRate(id);
+      res.status(200).json({ message: "Cotação excluída com sucesso" });
+    } catch (error) {
+      console.error("Error deleting exchange rate:", error);
+      res.status(500).json({ message: "Erro ao excluir cotação" });
+    }
+  });
+
+  app.post("/api/exchange-rates/update", async (req, res) => {
+    try {
+      await dbStorage.updateExchangeRates();
+      res.json({ message: "Cotações atualizadas com sucesso" });
+    } catch (error) {
+      console.error("Error updating exchange rates:", error);
+      res.status(500).json({ message: "Erro ao atualizar cotações" });
+    }
+  });
+
+  // Get historical exchange rates
+  app.get("/api/exchange-rates/history/:from/:to?", async (req, res) => {
+    try {
+      const fromCurrency = req.params.from.toUpperCase();
+      const toCurrency = (req.params.to || 'BRL').toUpperCase();
+      const days = parseInt(req.query.days as string) || 30;
+
+      console.log(`Getting exchange rate history for ${fromCurrency} to ${toCurrency}, last ${days} days`);
+
+      const history = await dbStorage.getExchangeRateHistory(fromCurrency, toCurrency, days);
+      console.log(`Found ${history.length} historical records`);
+
+      res.json(history);
+    } catch (error) {
+      console.error("Error getting exchange rate history:", error);
+      res.status(500).json({
+        message: "Erro ao buscar histórico de cotações",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Currency conversion helper endpoint
+  app.get("/api/convert/:amount/:from/:to?", async (req, res) => {
+    try {
+      const amount = parseFloat(req.params.amount);
+      const fromCurrency = req.params.from.toUpperCase();
+      const toCurrency = (req.params.to || 'BRL').toUpperCase();
+
+      if (isNaN(amount)) {
+        return res.status(400).json({ message: "Valor inválido" });
+      }
+
+      if (fromCurrency === toCurrency) {
+        return res.json({
+          originalAmount: amount,
+          convertedAmount: amount,
+          fromCurrency,
+          toCurrency,
+          rate: 1,
+          lastUpdated: new Date()
+        });
+      }
+
+      const exchangeRate = await dbStorage.getLatestExchangeRate(fromCurrency, toCurrency);
+
+      if (!exchangeRate) {
+        return res.status(404).json({
+          message: `Cotação não encontrada para ${fromCurrency} -> ${toCurrency}`
+        });
+      }
+
+      const convertedAmount = amount * parseFloat(exchangeRate.rate.toString());
+
+      res.json({
+        originalAmount: amount,
+        convertedAmount: parseFloat(convertedAmount.toFixed(2)),
+        fromCurrency,
+        toCurrency,
+        rate: exchangeRate.rate,
+        lastUpdated: exchangeRate.updatedAt
+      });
+
+    } catch (error) {
+      console.error("Error converting currency:", error);
+      res.status(500).json({ message: "Erro ao converter moeda" });
+    }
+  });
+
   // Expense CRUD routes
   app.get("/api/expenses", async (req, res) => {
     try {
@@ -1233,6 +1439,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting expenses:", error);
       res.status(500).json({ message: "Erro ao buscar despesas" });
+    }
+  });
+
+  // Get expense statistics (must be before /:id route)
+  app.get("/api/expenses/stats", async (req, res) => {
+    try {
+      console.log("Getting expense stats...");
+      const expenses = await dbStorage.getExpenses();
+      console.log(`Found ${expenses.length} expenses`);
+
+      // Calculate real stats
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+      const totalMonth = expenses
+        .filter(expense => new Date(expense.date) >= startOfMonth)
+        .reduce((sum, expense) => sum + parseFloat(expense.amount?.toString() || '0'), 0);
+
+      const totalYear = expenses
+        .filter(expense => new Date(expense.date) >= startOfYear)
+        .reduce((sum, expense) => sum + parseFloat(expense.amount?.toString() || '0'), 0);
+
+      // Group by category
+      const categoryMap = new Map();
+      expenses.forEach(expense => {
+        const category = expense.category || 'Outros';
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, { category, total: 0, count: 0 });
+        }
+        const cat = categoryMap.get(category);
+        cat.total += parseFloat(expense.amount?.toString() || '0');
+        cat.count += 1;
+      });
+
+      const byCategory = Array.from(categoryMap.values());
+
+      // Monthly trend (last 6 months)
+      const monthlyTrend = [];
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+        const monthTotal = expenses
+          .filter(expense => {
+            const expenseDate = new Date(expense.date);
+            return expenseDate >= monthStart && expenseDate <= monthEnd;
+          })
+          .reduce((sum, expense) => sum + parseFloat(expense.amount?.toString() || '0'), 0);
+
+        monthlyTrend.push({
+          month: monthStart.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          total: monthTotal
+        });
+      }
+
+      const stats = {
+        totalMonth,
+        totalYear,
+        byCategory,
+        monthlyTrend
+      };
+
+      console.log("Returning stats:", stats);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting expense stats:", error);
+      res.status(500).json({
+        message: "Erro ao buscar estatísticas de despesas",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -1265,6 +1542,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expenseData.amount = parseFloat(expenseData.amount);
       }
 
+      // Calculate amountConverted based on currency
+      let amountConverted = expenseData.amount;
+
+      if (expenseData.currency && expenseData.currency !== 'BRL') {
+        try {
+          // Get latest exchange rate for the currency
+          const exchangeRate = await dbStorage.getLatestExchangeRate(expenseData.currency, 'BRL');
+          if (exchangeRate) {
+            // Use originalAmount if available, otherwise use amount
+            const baseAmount = expenseData.originalAmount || expenseData.amount;
+            amountConverted = baseAmount * parseFloat(exchangeRate.rate.toString());
+            console.log(`Converting ${baseAmount} ${expenseData.currency} to ${amountConverted} BRL (rate: ${exchangeRate.rate})`);
+          } else {
+            console.warn(`No exchange rate found for ${expenseData.currency} to BRL, using original amount`);
+          }
+        } catch (error) {
+          console.error("Error getting exchange rate:", error);
+        }
+      }
+
+      // Add amountConverted to expense data
+      expenseData.amountConverted = amountConverted;
+
       // Convert dates to Date objects if they are strings
       if (expenseData.date && typeof expenseData.date === 'string') {
         expenseData.date = new Date(expenseData.date);
@@ -1281,8 +1581,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expense = await dbStorage.createExpense(expenseData);
       res.status(201).json(expense);
     } catch (error) {
-      console.error("Error creating expense:", error);
-      res.status(500).json({ message: "Erro ao criar despesa", error: error.message });
+      console.error("Error creating expense:", error as any);
+      let errorMsg = "";
+      if (typeof error === "object" && error && "message" in error) {
+        errorMsg = (error as any).message;
+      }
+      res.status(500).json({ message: "Erro ao criar despesa", error: errorMsg });
     }
   });
 
@@ -1301,6 +1605,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expenseData.amount = parseFloat(expenseData.amount);
       }
 
+      // Calculate amountConverted based on currency
+      let amountConverted = expenseData.amount;
+
+      if (expenseData.currency && expenseData.currency !== 'BRL') {
+        try {
+          // Get latest exchange rate for the currency
+          const exchangeRate = await dbStorage.getLatestExchangeRate(expenseData.currency, 'BRL');
+          if (exchangeRate) {
+            // Use originalAmount if available, otherwise use amount
+            const baseAmount = expenseData.originalAmount || expenseData.amount;
+            amountConverted = baseAmount * parseFloat(exchangeRate.rate.toString());
+            console.log(`Converting ${baseAmount} ${expenseData.currency} to ${amountConverted} BRL (rate: ${exchangeRate.rate})`);
+          } else {
+            console.warn(`No exchange rate found for ${expenseData.currency} to BRL, using original amount`);
+          }
+        } catch (error) {
+          console.error("Error getting exchange rate:", error);
+        }
+      }
+
+      // Add amountConverted to expense data
+      expenseData.amountConverted = amountConverted;
+
       // Convert dates to Date objects if they are strings
       if (expenseData.date && typeof expenseData.date === 'string') {
         expenseData.date = new Date(expenseData.date);
@@ -1317,8 +1644,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expense = await dbStorage.updateExpense(id, expenseData);
       res.json(expense);
     } catch (error) {
-      console.error("Error updating expense:", error);
-      res.status(500).json({ message: "Erro ao atualizar despesa", error: error.message });
+      console.error("Error updating expense:", error as any);
+      let errorMsg = "";
+      if (typeof error === "object" && error && "message" in error) {
+        errorMsg = (error as any).message;
+      }
+      res.status(500).json({ message: "Erro ao atualizar despesa", error: errorMsg });
     }
   });
 
@@ -1330,6 +1661,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting expense:", error);
       res.status(500).json({ message: "Erro ao excluir despesa" });
+    }
+  });
+
+  // Fix existing expenses that have currency but no proper conversion
+  app.post("/api/expenses/fix-currency", async (req, res) => {
+    try {
+      console.log("Starting to fix currency for existing expenses...");
+      const expenses = await dbStorage.getExpenses();
+      let updateCount = 0;
+
+      for (const expense of expenses) {
+        let amountConverted = parseFloat(expense.amount.toString());
+
+        // If currency is not BRL and amountConverted is null, calculate it
+        if (expense.currency !== 'BRL' && !expense.amountConverted) {
+          try {
+            const exchangeRate = await dbStorage.getLatestExchangeRate(expense.currency, 'BRL');
+            if (exchangeRate) {
+              // Use originalAmount if available, otherwise use amount
+              const baseAmount = expense.originalAmount
+                ? parseFloat(expense.originalAmount.toString())
+                : parseFloat(expense.amount.toString());
+
+              amountConverted = baseAmount * parseFloat(exchangeRate.rate.toString());
+              console.log(`Converting expense ${expense.id}: ${baseAmount} ${expense.currency} to ${amountConverted} BRL (rate: ${exchangeRate.rate})`);
+            } else {
+              console.warn(`No exchange rate found for ${expense.currency} to BRL for expense ${expense.id}`);
+            }
+          } catch (error) {
+            console.error(`Error getting exchange rate for expense ${expense.id}:`, error);
+          }
+        } else if (expense.currency === 'BRL' && !expense.amountConverted) {
+          // For BRL expenses, amountConverted should be the same as amount
+          amountConverted = parseFloat(expense.amount.toString());
+        } else if (expense.amountConverted) {
+          // Already has amountConverted, skip
+          continue;
+        }
+
+        // Update the expense with amountConverted
+        await dbStorage.updateExpense(parseInt(expense.id.toString()), {
+          amountConverted: amountConverted.toFixed(2)
+        });
+        updateCount++;
+      }
+
+      console.log(`Updated ${updateCount} expenses with amountConverted field`);
+      res.json({
+        message: `Successfully updated ${updateCount} expenses with converted amounts`,
+        updatedCount: updateCount,
+        totalExpenses: expenses.length
+      });
+    } catch (error) {
+      console.error("Error fixing currency for expenses:", error);
+      res.status(500).json({ message: "Erro ao converter despesas", error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // ===== EXPENSE CATEGORIES ROUTES =====  // ===== EXPENSE CATEGORIES ROUTES =====
+
+  app.get("/api/expense-categories", async (req, res) => {
+    try {
+      const categories = await dbStorage.getExpenseCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error getting expense categories:", error);
+      res.status(500).json({ message: "Erro ao buscar categorias" });
+    }
+  });
+
+  app.get("/api/expense-categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const category = await dbStorage.getExpenseCategory(id);
+
+      if (!category) {
+        return res.status(404).json({ message: "Categoria não encontrada" });
+      }
+
+      res.json(category);
+    } catch (error) {
+      console.error("Error getting expense category:", error);
+      res.status(500).json({ message: "Erro ao buscar categoria" });
+    }
+  });
+
+  app.post("/api/expense-categories", async (req, res) => {
+    try {
+      const category = await dbStorage.createExpenseCategory(req.body);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating expense category:", error);
+      res.status(500).json({ message: "Erro ao criar categoria" });
+    }
+  });
+
+  app.put("/api/expense-categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const category = await dbStorage.updateExpenseCategory(id, req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating expense category:", error);
+      res.status(500).json({ message: "Erro ao atualizar categoria" });
+    }
+  });
+
+  app.delete("/api/expense-categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteExpenseCategory(id);
+      res.json({ message: "Categoria removida com sucesso" });
+    } catch (error) {
+      console.error("Error deleting expense category:", error);
+      res.status(500).json({ message: "Erro ao remover categoria" });
+    }
+  });
+
+  // ===== EXPENSE SUBCATEGORIES ROUTES =====
+
+  app.get("/api/expense-subcategories", async (req, res) => {
+    try {
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      const subcategories = await dbStorage.getExpenseSubcategories(categoryId);
+      res.json(subcategories);
+    } catch (error) {
+      console.error("Error getting expense subcategories:", error);
+      res.status(500).json({ message: "Erro ao buscar subcategorias" });
+    }
+  });
+
+  app.get("/api/expense-subcategories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const subcategory = await dbStorage.getExpenseSubcategory(id);
+
+      if (!subcategory) {
+        return res.status(404).json({ message: "Subcategoria não encontrada" });
+      }
+
+      res.json(subcategory);
+    } catch (error) {
+      console.error("Error getting expense subcategory:", error);
+      res.status(500).json({ message: "Erro ao buscar subcategoria" });
+    }
+  });
+
+  app.post("/api/expense-subcategories", async (req, res) => {
+    try {
+      const subcategory = await dbStorage.createExpenseSubcategory(req.body);
+      res.status(201).json(subcategory);
+    } catch (error) {
+      console.error("Error creating expense subcategory:", error);
+      res.status(500).json({ message: "Erro ao criar subcategoria" });
+    }
+  });
+
+  app.put("/api/expense-subcategories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const subcategory = await dbStorage.updateExpenseSubcategory(id, req.body);
+      res.json(subcategory);
+    } catch (error) {
+      console.error("Error updating expense subcategory:", error);
+      res.status(500).json({ message: "Erro ao atualizar subcategoria" });
+    }
+  });
+
+  app.delete("/api/expense-subcategories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteExpenseSubcategory(id);
+      res.json({ message: "Subcategoria removida com sucesso" });
+    } catch (error) {
+      console.error("Error deleting expense subcategory:", error);
+      res.status(500).json({ message: "Erro ao remover subcategoria" });
+    }
+  });
+
+  // ===== PAYMENT METHODS ROUTES =====
+
+  app.get("/api/payment-methods", async (req, res) => {
+    try {
+      const methods = await dbStorage.getPaymentMethods();
+      res.json(methods);
+    } catch (error) {
+      console.error("Error getting payment methods:", error);
+      res.status(500).json({ message: "Erro ao buscar métodos de pagamento" });
+    }
+  });
+
+  app.get("/api/payment-methods/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const method = await dbStorage.getPaymentMethod(id);
+
+      if (!method) {
+        return res.status(404).json({ message: "Método de pagamento não encontrado" });
+      }
+
+      res.json(method);
+    } catch (error) {
+      console.error("Error getting payment method:", error);
+      res.status(500).json({ message: "Erro ao buscar método de pagamento" });
+    }
+  });
+
+  app.post("/api/payment-methods", async (req, res) => {
+    try {
+      const method = await dbStorage.createPaymentMethod(req.body);
+      res.status(201).json(method);
+    } catch (error) {
+      console.error("Error creating payment method:", error);
+      res.status(500).json({ message: "Erro ao criar método de pagamento" });
+    }
+  });
+
+  app.put("/api/payment-methods/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const method = await dbStorage.updatePaymentMethod(id, req.body);
+      res.json(method);
+    } catch (error) {
+      console.error("Error updating payment method:", error);
+      res.status(500).json({ message: "Erro ao atualizar método de pagamento" });
+    }
+  });
+
+  app.delete("/api/payment-methods/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deletePaymentMethod(id);
+      res.json({ message: "Método de pagamento removido com sucesso" });
+    } catch (error) {
+      console.error("Error deleting payment method:", error);
+      res.status(500).json({ message: "Erro ao remover método de pagamento" });
     }
   });
 
@@ -1717,6 +2284,578 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nginx Hosts routes
+  app.get("/api/nginx/hosts", authenticateToken, async (req: any, res: any) => {
+    try {
+      const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
+      if (!fs.existsSync(hostsDir)) {
+        return res.status(404).json({ message: "NGINX hosts directory not found", hosts: [] });
+      }
+      const files = await fs.promises.readdir(hostsDir);
+      const hostFiles = files.filter(f => f.endsWith(".conf"));
+      const hosts = [];
+      for (const file of hostFiles) {
+        const filePath = path.join(hostsDir, file);
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          const domain = file.replace(".conf", "");
+
+          // Extract server information from nginx config
+          const serverNameMatch = content.match(/server_name\s+([^;]+);/);
+          const listenMatch = content.match(/listen\s+(\d+)/);
+          const proxyPassMatch = content.match(/proxy_pass\s+http:\/\/[^:]+:(\d+)/);
+
+          const serverName = serverNameMatch ? serverNameMatch[1].trim() : domain;
+          const port = proxyPassMatch ? parseInt(proxyPassMatch[1]) : (listenMatch ? parseInt(listenMatch[1]) : 80);
+          const subdomain = domain.split('.')[0];
+
+          // Get file stats for timestamps
+          const stats = await fs.promises.stat(filePath);
+
+          hosts.push({
+            id: domain, // Use domain as ID for compatibility
+            filename: file,
+            subdomain: subdomain,
+            serverName: serverName,
+            domain: domain,
+            port: port,
+            content: content,
+            path: filePath,
+            createdAt: stats.birthtime.toISOString(),
+            modifiedAt: stats.mtime.toISOString()
+          });
+        } catch (err) {
+          // Still add the file even if we can't read it
+          hosts.push({
+            id: file.replace('.conf', ''),
+            filename: file,
+            subdomain: file.replace('.conf', '').split('.')[0],
+            serverName: file.replace('.conf', ''),
+            domain: file.replace('.conf', ''),
+            port: 80,
+            error: "Failed to read file",
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString()
+          });
+        }
+      }
+      res.json(hosts);
+    } catch (error) {
+      console.error("Error reading nginx hosts:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to read nginx hosts", error: errMsg });
+    }
+  });
+
+  app.get("/api/nginx/hosts/:id", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
+
+      // Try to find the config file for this host
+      const possibleFiles = [
+        `${id}.conf`,
+        `${id}.easydev.com.br.conf`,
+        `www.${id}.conf`
+      ];
+
+      let configFile = null;
+      let configPath = null;
+
+      for (const filename of possibleFiles) {
+        const filePath = path.join(hostsDir, filename);
+        if (fs.existsSync(filePath)) {
+          configFile = filename;
+          configPath = filePath;
+          break;
+        }
+      }
+
+      if (!configFile || !configPath) {
+        return res.status(404).json({
+          message: "Host configuration file not found",
+          id: id
+        });
+      }
+
+      const content = await fs.promises.readFile(configPath, "utf8");
+      const stats = await fs.promises.stat(configPath);
+
+      // Extract server information from nginx config
+      const serverNameMatch = content.match(/server_name\s+([^;]+);/);
+      const listenMatch = content.match(/listen\s+(\d+)/);
+      const proxyPassMatch = content.match(/proxy_pass\s+http:\/\/[^:]+:(\d+)/);
+
+      const serverName = serverNameMatch ? serverNameMatch[1].trim() : id;
+      const port = proxyPassMatch ? parseInt(proxyPassMatch[1]) : (listenMatch ? parseInt(listenMatch[1]) : 80);
+
+      res.json({
+        id,
+        filename: configFile,
+        content: content,
+        serverName: serverName,
+        port: port,
+        path: configPath,
+        createdAt: stats.birthtime.toISOString(),
+        modifiedAt: stats.mtime.toISOString()
+      });
+    } catch (error) {
+      console.error("Error getting nginx host details:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to get nginx host details", error: errMsg });
+    }
+  });
+
+  // Cloudflare credentials endpoint
+  app.get("/api/cloudflare/credentials", authenticateToken, async (req: any, res: any) => {
+    try {
+      const credentials = {
+        email: process.env.CLOUDFLARE_EMAIL || '',
+        apiKey: process.env.CLOUDFLARE_API_KEY || '',
+        zoneId: process.env.CLOUDFLARE_ZONE_ID || ''
+      };
+
+      // Check if all credentials are available
+      const hasCredentials = credentials.email && credentials.apiKey && credentials.zoneId;
+
+      res.json({
+        available: hasCredentials,
+        credentials: hasCredentials ? credentials : null,
+        message: hasCredentials ? 'Cloudflare credentials loaded from environment' : 'Some Cloudflare credentials are missing in environment variables'
+      });
+    } catch (error) {
+      console.error("Error getting Cloudflare credentials:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to get Cloudflare credentials", error: errMsg });
+    }
+  });
+
+  app.post("/api/nginx/hosts", authenticateToken, async (req, res) => {
+    try {
+      const { subdomain, port } = req.body;
+
+      if (!subdomain || !port) {
+        return res.status(400).json({
+          message: "Subdomínio e porta são obrigatórios"
+        });
+      }
+
+      // Validate subdomain
+      if (!/^[a-zA-Z0-9-]+$/.test(subdomain)) {
+        return res.status(400).json({
+          message: "Subdomínio pode conter apenas letras, números e hífens"
+        });
+      }
+
+      // Validate port
+      const portNum = parseInt(port);
+      if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+        return res.status(400).json({
+          message: "Porta deve estar entre 1 e 65535"
+        });
+      }
+
+      // Check if the script exists
+      const scriptPath = "/docker/nginx/nginx_proxy.sh";
+      if (!fs.existsSync(scriptPath)) {
+        return res.status(500).json({
+          message: "Script nginx_proxy.sh não encontrado",
+          path: scriptPath
+        });
+      }
+
+      console.log(`Creating nginx host: ${subdomain} -> port ${port}`);
+
+      // Execute the nginx_proxy.sh script
+      const { spawn } = require('child_process');
+
+      const scriptProcess = spawn('bash', [scriptPath, subdomain, port.toString()], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 600000 // 10 minutes timeout
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      scriptProcess.stdout.on('data', (data: any) => {
+        const output = data.toString();
+        stdout += output;
+        console.log('Script stdout:', output);
+      });
+
+      scriptProcess.stderr.on('data', (data: any) => {
+        const output = data.toString();
+        stderr += output;
+        console.log('Script stderr:', output);
+      });
+
+      scriptProcess.on('close', (code: number) => {
+        console.log(`Script finished with code: ${code}`);
+
+        if (code === 0) {
+          // Success
+          res.json({
+            message: "Host nginx criado com sucesso",
+            subdomain: subdomain,
+            port: port,
+            stdout: stdout,
+            stderr: stderr
+          });
+        } else {
+          // Error
+          res.status(500).json({
+            message: "Falha ao criar host nginx",
+            subdomain: subdomain,
+            port: port,
+            exitCode: code,
+            stdout: stdout,
+            stderr: stderr
+          });
+        }
+      });
+
+      scriptProcess.on('error', (error: any) => {
+        console.error('Script execution error:', error);
+        res.status(500).json({
+          message: "Erro ao executar script nginx_proxy.sh",
+          error: error.message
+        });
+      });
+
+    } catch (error) {
+      console.error("Error creating nginx host:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({
+        message: "Erro interno ao criar host nginx",
+        error: errMsg
+      });
+    }
+  });
+
+  app.put("/api/nginx/hosts/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // For now, return mock response - will be implemented later
+      res.json({ message: "Nginx host update will be implemented", id });
+    } catch (error) {
+      console.error("Error updating nginx host:", error);
+      res.status(500).json({ message: "Failed to update nginx host" });
+    }
+  });
+
+  app.delete("/api/nginx/hosts/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // For now, return mock response - will be implemented later
+      res.json({ message: "Nginx host deletion will be implemented", id });
+    } catch (error) {
+      console.error("Error deleting nginx host:", error);
+      res.status(500).json({ message: "Failed to delete nginx host" });
+    }
+  });
+
+  app.get("/api/nginx/hosts/:id/ssl", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // For now, return mock SSL info - will be implemented later
+      res.json({
+        issued: false,
+        configuredInHost: false,
+        domain: `host-${id}.example.com`
+      });
+    } catch (error) {
+      console.error("Error getting SSL info:", error);
+      res.status(500).json({ message: "Failed to get SSL info" });
+    }
+  });
+
+  app.post("/api/nginx/hosts/:id/ssl/issue", authenticateToken, async (req: any, res: any) => {
+    try {
+      // Check if your SSL script exists
+      const sslScriptPath = "/docker/nginx/certbot_ssl.sh";
+      if (!fs.existsSync(sslScriptPath)) {
+        return res.status(500).json({
+          message: "Script SSL não encontrado",
+          error: "O script /docker/nginx/certbot_ssl.sh não foi encontrado no sistema"
+        });
+      }
+
+      const { id } = req.params;
+      const { email, cloudflareApiToken, cloudflareZoneId } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          message: "Email é obrigatório para emissão de certificados SSL"
+        });
+      }
+
+      if (!cloudflareApiToken || !cloudflareZoneId) {
+        return res.status(400).json({
+          message: "Credenciais da Cloudflare são obrigatórias",
+          error: "API Token e Zone ID da Cloudflare são necessários para emitir certificados SSL"
+        });
+      }
+
+      // Extract subdomain from host ID
+      // Examples: "www" from "www", "api" from "api", etc.
+      const subdomain = id;
+
+      console.log(`🔐 Emitindo certificado SSL para subdomínio: ${subdomain}`);
+      console.log(`📧 Email: ${email}`);
+      console.log(`🌐 Cloudflare Zone ID: ${cloudflareZoneId}`);
+
+      // Execute your SSL script
+      const execAsync = promisify(exec);
+
+      try {
+        // Use your script: /docker/nginx/certbot_ssl.sh subdomain
+        const scriptCommand = `/docker/nginx/certbot_ssl.sh ${subdomain}`;
+        console.log(`🚀 Executando comando: ${scriptCommand}`);
+
+        const result = await execAsync(scriptCommand, {
+          timeout: 600000, // 10 minutes timeout
+          maxBuffer: 1024 * 1024 * 20, // 20MB buffer
+          env: {
+            ...process.env,
+            // Use credentials from frontend form, fallback to .env file (already loaded in process.env)
+            CLOUDFLARE_EMAIL: email || process.env.CLOUDFLARE_EMAIL,
+            CLOUDFLARE_API_KEY: cloudflareApiToken || process.env.CLOUDFLARE_API_KEY,
+            CLOUDFLARE_ZONE_ID: cloudflareZoneId || process.env.CLOUDFLARE_ZONE_ID,
+            DOMAIN: process.env.DOMAIN || 'easydev.com.br'
+          }
+        });
+
+        console.log('Script SSL executado com sucesso:', result.stdout);
+        if (result.stderr) {
+          console.log('Script SSL stderr:', result.stderr);
+        }
+
+        // Check if certificate was created successfully
+        const certPath = `/docker/certbot/live/${subdomain}.${process.env.DOMAIN || 'easydev.com.br'}/fullchain.pem`;
+        const keyPath = `/docker/certbot/live/${subdomain}.${process.env.DOMAIN || 'easydev.com.br'}/privkey.pem`;
+
+        if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+          res.json({
+            message: `Certificado SSL emitido com sucesso para ${subdomain}`,
+            subdomain: subdomain,
+            domain: `${subdomain}.${process.env.DOMAIN || 'easydev.com.br'}`,
+            certPath: certPath,
+            keyPath: keyPath,
+            method: "Script personalizado + Cloudflare DNS",
+            output: result.stdout
+          });
+        } else {
+          return res.status(500).json({
+            message: "Script executado, mas certificados não foram encontrados",
+            subdomain: subdomain,
+            expectedCertPath: certPath,
+            expectedKeyPath: keyPath,
+            output: result.stdout,
+            error: result.stderr
+          });
+        }
+
+      } catch (scriptError: any) {
+        console.error('Erro ao executar script SSL:', scriptError);
+
+        let errorMessage = "Erro desconhecido ao executar script SSL";
+        if (scriptError.message) {
+          errorMessage = scriptError.message;
+        }
+        if (scriptError.stderr) {
+          errorMessage = scriptError.stderr;
+        }
+
+        return res.status(500).json({
+          message: "Falha na execução do script SSL",
+          subdomain: subdomain,
+          error: errorMessage,
+          details: scriptError.stdout || "Sem detalhes adicionais",
+          command: `/docker/nginx/certbot_ssl.sh ${subdomain}`
+        });
+      }
+
+    } catch (error) {
+      console.error("Error issuing SSL certificate:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({
+        message: "Erro interno ao emitir certificado SSL",
+        error: errMsg
+      });
+    }
+  });
+
+  // Helper function to update nginx config for SSL
+  async function updateNginxConfigForSSL(originalConfig: string, domain: string, certPath: string, keyPath: string): Promise<string> {
+    // If config already has SSL, return as is
+    if (originalConfig.includes('ssl_certificate')) {
+      return originalConfig;
+    }
+
+    // Find the server block and add SSL configuration
+    let updatedConfig = originalConfig;
+
+    // Add SSL configuration after the listen directive
+    const listenMatch = updatedConfig.match(/(listen\s+80[^;]*;)/);
+    if (listenMatch) {
+      const sslConfig = `    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    
+    ssl_certificate ${certPath};
+    ssl_certificate_key ${keyPath};
+    
+    # SSL Configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;`;
+
+      updatedConfig = updatedConfig.replace(listenMatch[1], listenMatch[1] + '\n' + sslConfig);
+    }
+
+    // Add HTTP to HTTPS redirect server block
+    const redirectBlock = `
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${domain};
+    return 301 https://$server_name$request_uri;
+}
+
+`;
+
+    updatedConfig = redirectBlock + updatedConfig;
+
+    return updatedConfig;
+  }
+
+  app.post("/api/nginx/hosts/:id/ssl/renew", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // For now, return mock response - will be implemented later
+      res.json({ message: "SSL certificate renewal will be implemented", id });
+    } catch (error) {
+      console.error("Error renewing SSL certificate:", error);
+      res.status(500).json({ message: "Failed to renew SSL certificate" });
+    }
+  });
+
+  app.get("/api/nginx/hosts/:id/config", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // For now, return mock config - will be implemented later
+      res.json({
+        config: `# Nginx configuration for host ${id}\n# Configuration editing will be implemented`
+      });
+    } catch (error) {
+      console.error("Error getting nginx config:", error);
+      res.status(500).json({ message: "Failed to get nginx config" });
+    }
+  });
+
+  app.put("/api/nginx/hosts/:id/config", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { config } = req.body;
+      // For now, return mock response - will be implemented later
+      res.json({
+        message: "Nginx configuration update will be implemented",
+        id,
+        configLength: config?.length || 0
+      });
+    } catch (error) {
+      console.error("Error updating nginx config:", error);
+      res.status(500).json({ message: "Failed to update nginx config" });
+    }
+  });
+
+  // DNS routes
+  app.get("/api/dns/zone", authenticateToken, async (req, res) => {
+    try {
+      const zone = await cloudflareService.getZone();
+      res.json(zone);
+    } catch (error) {
+      console.error("Error getting DNS zone:", error);
+      res.status(500).json({ message: "Failed to get DNS zone" });
+    }
+  });
+
+  app.get("/api/dns/records", authenticateToken, async (req, res) => {
+    try {
+      const { type, name } = req.query;
+      const records = await cloudflareService.listDNSRecords(
+        type as string | undefined,
+        name as string | undefined
+      );
+      res.json(records);
+    } catch (error) {
+      console.error("Error getting DNS records:", error);
+      res.status(500).json({ message: "Failed to get DNS records" });
+    }
+  });
+
+  app.get("/api/dns/test", authenticateToken, async (req, res) => {
+    try {
+      const connected = await cloudflareService.testConnection();
+      const accountInfo = await cloudflareService.getAccountInfo();
+      res.json({
+        connected,
+        accountInfo
+      });
+    } catch (error) {
+      console.error("Error testing DNS connection:", error);
+      res.json({
+        connected: false,
+        accountInfo: null
+      });
+    }
+  });
+
+  app.post("/api/dns/records", authenticateToken, async (req, res) => {
+    try {
+      const record = await cloudflareService.createDNSRecord(req.body);
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Error creating DNS record:", error);
+      res.status(500).json({ message: "Failed to create DNS record" });
+    }
+  });
+
+  app.put("/api/dns/records/:id", authenticateToken, async (req, res) => {
+    try {
+      const recordId = req.params.id;
+      const record = await cloudflareService.updateDNSRecord(recordId, req.body);
+      res.json(record);
+    } catch (error) {
+      console.error("Error updating DNS record:", error);
+      res.status(500).json({ message: "Failed to update DNS record" });
+    }
+  });
+
+  app.delete("/api/dns/records/:id", authenticateToken, async (req, res) => {
+    try {
+      const recordId = req.params.id;
+      await cloudflareService.deleteDNSRecord(recordId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting DNS record:", error);
+      res.status(500).json({ message: "Failed to delete DNS record" });
+    }
+  });
+
+  app.post("/api/dns/sync", authenticateToken, async (req, res) => {
+    try {
+      const { types } = req.body;
+      const result = await cloudflareService.syncDNSRecords(types);
+      res.json(result);
+    } catch (error) {
+      console.error("Error syncing DNS records:", error);
+      res.status(500).json({ message: "Failed to sync DNS records" });
+    }
+  });
+
   // Product routes
   app.get("/api/products", authenticateToken, async (req, res) => {
     try {
@@ -2061,6 +3200,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to get Python version
+  async function getPythonVersion(): Promise<{ version: string; available: boolean }> {
+    try {
+      const execAsync = promisify(exec);
+      const { stdout } = await execAsync('python3 --version 2>&1');
+      const version = stdout.trim().replace('Python ', '');
+      return { version, available: true };
+    } catch (error) {
+      try {
+        const { stdout } = await execAsync('python --version 2>&1');
+        const version = stdout.trim().replace('Python ', '');
+        return { version, available: true };
+      } catch {
+        return { version: 'Not installed', available: false };
+      }
+    }
+  }
+
+  // Helper function to check for updates
+  async function checkForUpdates(): Promise<{ node: boolean; python: boolean }> {
+    try {
+      const execAsync = promisify(exec);
+
+      // Check Node.js updates using npm outdated
+      let nodeUpdatesAvailable = false;
+      try {
+        await execAsync('npm outdated -g');
+      } catch (error: any) {
+        // npm outdated returns exit code 1 when updates are available
+        nodeUpdatesAvailable = error.code === 1;
+      }
+
+      // For Python, we'll check if pip itself needs updating
+      let pythonUpdatesAvailable = false;
+      try {
+        const { stdout } = await execAsync('python3 -m pip list --outdated 2>/dev/null || python -m pip list --outdated 2>/dev/null');
+        pythonUpdatesAvailable = stdout.includes('pip') || stdout.trim().length > 0;
+      } catch {
+        pythonUpdatesAvailable = false;
+      }
+
+      return {
+        node: nodeUpdatesAvailable,
+        python: pythonUpdatesAvailable
+      };
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+      return { node: false, python: false };
+    }
+  }
+
   // System Status routes
   app.get("/api/system/status", authenticateToken, async (req, res) => {
     try {
@@ -2069,11 +3259,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const freeMem = os.freemem();
       const usedMem = totalMem - freeMem;
 
-      // Get accurate CPU usage, disk usage, and Proton Drive usage
-      const [cpuUsage, diskUsage, protonDriveUsage] = await Promise.all([
+      // Get accurate CPU usage, disk usage, Proton Drive usage, Python version and updates
+      const [cpuUsage, diskUsage, protonDriveUsage, pythonInfo, updates] = await Promise.all([
         getCpuUsage(),
         getDiskUsage(),
-        getProtonDriveUsage()
+        getProtonDriveUsage(),
+        getPythonVersion(),
+        checkForUpdates()
       ]);
 
       const systemStatus = {
@@ -2101,9 +3293,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           usagePercent: protonDriveUsage.usagePercent,
         },
         uptime: os.uptime(),
-        platform: os.platform(),
+        platform: await getLinuxDistribution(),
         arch: os.arch(),
         nodeVersion: process.version,
+        pythonVersion: pythonInfo.version,
+        pythonAvailable: pythonInfo.available,
+        updates: {
+          node: updates.node,
+          python: updates.python
+        },
         timestamp: new Date().toISOString(),
       };
 
@@ -2114,7 +3312,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Real-time chart data routes
+  // Update system packages route
+  app.post("/api/system/update", authenticateToken, async (req, res) => {
+    const { type } = req.body; // 'node' or 'python' or 'all'
+
+    try {
+      let commands: string[] = [];
+
+      if (type === 'node' || type === 'all') {
+        commands.push('npm update -g');
+      }
+
+      if (type === 'python' || type === 'all') {
+        // Check if we need --break-system-packages flag (Debian 12 or Python 12+)
+        const platform = await getLinuxDistribution();
+        const pythonInfo = await getPythonVersion();
+
+        let pipFlags = '';
+        let installFlags = '';
+
+        // Check if we're on Debian 12+ or Python 3.12+
+        const needsBreakSystemPackages =
+          platform.toLowerCase().includes('debian 12') ||
+          platform.toLowerCase().includes('bookworm') ||
+          (pythonInfo.available && pythonInfo.version.startsWith('3.12')) ||
+          (pythonInfo.available && pythonInfo.version.startsWith('3.13'));
+
+        if (needsBreakSystemPackages) {
+          pipFlags = '--break-system-packages';
+          installFlags = '--break-system-packages';
+        }
+
+        // Update pip first
+        commands.push(`python3 -m pip install --upgrade pip ${pipFlags} || python -m pip install --upgrade pip ${pipFlags}`);
+
+        // Update all outdated packages
+        commands.push(`python3 -m pip list --outdated --format=freeze | grep -v "^\-e" | cut -d = -f 1 | xargs -n1 python3 -m pip install -U ${installFlags} || true`);
+      }
+
+      if (commands.length === 0) {
+        return res.status(400).json({ error: 'Invalid update type' });
+      }
+
+      // Execute commands and stream output
+      const fullCommand = commands.join(' && ');
+      const child = spawn('bash', ['-c', fullCommand], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let output = '';
+
+      child.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        output += data.toString();
+      });
+
+      child.on('close', (code) => {
+        res.json({
+          success: code === 0,
+          output,
+          exitCode: code,
+          type: type
+        });
+      });
+
+    } catch (error) {
+      console.error('Error updating system:', error);
+      res.status(500).json({ error: 'Failed to update system packages' });
+    }
+  });  // Real-time chart data routes
   app.get("/api/charts/cpu", authenticateToken, async (req, res) => {
     try {
       const cpuInfo = os.cpus();
@@ -2597,7 +3866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const clients = new Map<WebSocket, { sessionToken?: string; user?: any }>();
 
   wss.on("connection", (ws: WebSocket, req: any) => {
-    console.log("New WebSocket connection established");
+    // console.log("New WebSocket connection established"); // Removed WebSocket log
 
     // Try to extract session token from cookies or headers
     let sessionToken: string | undefined;
@@ -2696,13 +3965,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+        // console.error("Error parsing WebSocket message:", error); // Removed WebSocket log
       }
     });
 
     // Handle disconnection
     ws.on("close", () => {
-      console.log("WebSocket connection closed");
+      // console.log("WebSocket connection closed"); // Removed WebSocket log
       clients.delete(ws);
     });
 

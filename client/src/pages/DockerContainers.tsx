@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
-import { 
-  Play, 
-  Square, 
+import {
+  Play,
+  Square,
   RotateCcw,
   Container,
   Server,
@@ -25,9 +25,9 @@ import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
 // Docker icon component usando a imagem fornecida
 const DockerIcon = ({ className = "w-6 h-6" }) => (
   <div className={className}>
-    <img 
-      src="/uploads/docker-logo.png" 
-      alt="Docker" 
+    <img
+      src="/uploads/docker-logo.png"
+      alt="Docker"
       className="w-full h-full object-contain"
       onError={(e) => {
         // Fallback para SVG se a imagem não carregar
@@ -86,17 +86,17 @@ const getContainerPorts = (container: DockerApiContainer) => {
     .filter(port => port.PublicPort) // Only show ports that are externally exposed
     .map(port => `${port.PublicPort}`)
     .join(', ');
-  
+
   return externalPorts || 'Nenhuma porta externa';
 };
 
 const getContainerIP = (container: DockerApiContainer): string => {
   const networks = container.NetworkSettings?.Networks;
   if (!networks) return 'N/A';
-  
+
   const networkNames = Object.keys(networks);
   if (networkNames.length === 0) return 'N/A';
-  
+
   const firstNetwork = networks[networkNames[0]];
   return firstNetwork?.IPAddress || 'N/A';
 };
@@ -105,16 +105,16 @@ const getUptime = (status: string): string => {
   // Parse the uptime from status string like "Up 2 hours" or "Exited (0) 5 minutes ago"
   if (status.startsWith('Up ')) {
     const uptimeText = status.replace('Up ', '');
-    
+
     // Parse different formats
     const timeMatch = uptimeText.match(/(\d+)\s*(second|minute|hour|day)s?/gi);
     if (timeMatch) {
       let totalMinutes = 0;
-      
+
       timeMatch.forEach(match => {
         const [, value, unit] = match.match(/(\d+)\s*(second|minute|hour|day)s?/i) || [];
         const num = parseInt(value);
-        
+
         switch (unit.toLowerCase()) {
           case 'second':
             totalMinutes += num / 60;
@@ -130,25 +130,25 @@ const getUptime = (status: string): string => {
             break;
         }
       });
-      
+
       const days = Math.floor(totalMinutes / (60 * 24));
       const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
       const minutes = Math.floor(totalMinutes % 60);
-      
+
       if (days > 0) return `${days}d ${hours}h`;
       if (hours > 0) return `${hours}h ${minutes}m`;
       return `${minutes}m`;
     }
-    
+
     // Fallback: return simplified version
     return uptimeText;
   }
-  
+
   // If not running, show stopped status
   if (status.includes('Exited')) {
     return 'Parado';
   }
-  
+
   return 'N/A';
 };
 
@@ -160,7 +160,7 @@ const generateMockUsageData = () => {
     const trend = Math.sin(i * 0.3) * 10; // Small wave pattern
     const noise = (Math.random() - 0.5) * 15; // Random variation
     const value = Math.max(0, Math.min(100, baseValue + trend + noise));
-    
+
     return {
       time: i,
       cpu: value,
@@ -287,9 +287,8 @@ export default function DockerContainers() {
   const containers = allContainers.filter(container => {
     const name = getContainerName(container).toLowerCase();
     // Filter out system containers but keep all user containers
-    return !name.includes('docker-socket-proxy') && 
-           !name.includes('replit-') && 
-           !name.startsWith('k8s_');
+    return !name.includes('docker-socket-proxy') &&
+      !name.startsWith('k8s_');
   });
 
   // Mutations corrigidas
@@ -302,7 +301,7 @@ export default function DockerContainers() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = 'Falha ao iniciar container';
@@ -314,7 +313,7 @@ export default function DockerContainers() {
           }
           throw new Error(errorMessage);
         }
-        
+
         const result = await response.json();
         return result;
       } catch (error: any) {
@@ -328,7 +327,7 @@ export default function DockerContainers() {
         queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
         queryClient.refetchQueries({ queryKey: ["/api/docker/containers"] });
       }, 1000);
-      
+
       toast({
         title: "▶️ Container iniciado",
         description: data.mock ? "Container iniciado (modo demo)" : "Container Docker iniciado com sucesso!",
@@ -352,7 +351,7 @@ export default function DockerContainers() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = 'Falha ao parar container';
@@ -364,7 +363,7 @@ export default function DockerContainers() {
           }
           throw new Error(errorMessage);
         }
-        
+
         const result = await response.json();
         return result;
       } catch (error: any) {
@@ -378,7 +377,7 @@ export default function DockerContainers() {
         queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
         queryClient.refetchQueries({ queryKey: ["/api/docker/containers"] });
       }, 1000);
-      
+
       toast({
         title: "⏹️ Container parado",
         description: data.mock ? "Container parado (modo demo)" : "Container Docker parado com sucesso!",
@@ -403,7 +402,7 @@ export default function DockerContainers() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = 'Falha ao reiniciar container';
@@ -415,7 +414,7 @@ export default function DockerContainers() {
           }
           throw new Error(errorMessage);
         }
-        
+
         const result = await response.json();
         return result;
       } catch (error: any) {
@@ -429,7 +428,7 @@ export default function DockerContainers() {
         queryClient.invalidateQueries({ queryKey: ["/api/docker/containers"] });
         queryClient.refetchQueries({ queryKey: ["/api/docker/containers"] });
       }, 1000);
-      
+
       toast({
         title: "🔄 Container reiniciado",
         description: data.mock ? "Container reiniciado (modo demo)" : "Container Docker reiniciado com sucesso!",
@@ -497,10 +496,10 @@ export default function DockerContainers() {
                 <div className="w-32 flex-shrink-0 relative group">
                   <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-l-lg p-2">
                     {containerLogos[container.Id] ? (
-                      <img 
-                        src={containerLogos[container.Id]} 
-                        alt="Logo" 
-                        className="w-full h-4/5 object-contain" 
+                      <img
+                        src={containerLogos[container.Id]}
+                        alt="Logo"
+                        className="w-full h-4/5 object-contain"
                       />
                     ) : (
                       getImageIcon(container.Image, container.Id)
@@ -536,7 +535,7 @@ export default function DockerContainers() {
                           <span>{container.Image}</span>
                         </CardDescription>
                       </div>
-                      <Badge 
+                      <Badge
                         className={`${getStatusColor(container.State)} text-white`}
                       >
                         {getStatusText(container.State)}
@@ -588,7 +587,7 @@ export default function DockerContainers() {
                             const data = generateMockUsageData();
                             const currentCpu = data[data.length - 1]?.cpu || 0;
                             const currentMemory = data[data.length - 1]?.memory || 0;
-                            
+
                             return (
                               <>
                                 <div className="space-y-1">

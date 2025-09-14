@@ -1,8 +1,20 @@
 # WPanel API Documentation
+# Novidades
+
+- Sidebar colapsável por padrão, com preferência do usuário salva e restaurada automaticamente.
+- Preferências de usuário (tema, cores, sidebar) persistidas no backend e frontend.
+- Indicador WebSocket com animação de transmissão de dados e contador de reconexões por falha.
+- Link direto para esta documentação na sidebar do sistema.
+
 
 ## Visão Geral
 
-A API do WPanel fornece acesso programático às funcionalidades de gerenciamento de sistema, firewall, Docker e contas de email. Todas as rotas da API (exceto autenticação e Swagger) requerem autenticação via API key.
+O WPanel oferece gerenciamento completo de sistema, firewall, Docker, contas de email e preferências do usuário. Todas as rotas da API (exceto autenticação e Swagger) requerem autenticação via API key.
+
+Funcionalidades recentes:
+- Sidebar colapsável e personalizável
+- Preferências persistentes do usuário
+- Indicador WebSocket com reconexão automática e contador de quedas
 
 ## Autenticação
 
@@ -31,6 +43,13 @@ A documentação interativa permite:
 - Configurar autenticação com API key
 
 ## Principais Endpoints
+### Preferências do Usuário
+- `GET /api/user/preferences` - Buscar preferências do usuário
+- `PUT /api/user/preferences` - Atualizar preferências do usuário
+
+### WebSocket
+- `/ws` - Conexão WebSocket para notificações em tempo real, reconexão automática e contador de quedas
+
 
 ### Sistema
 - `GET /api/system/stats` - Estatísticas do sistema (CPU, memória, disco)
