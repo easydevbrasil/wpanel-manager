@@ -602,14 +602,6 @@ export default function Firewall() {
         </div>
       </div>
 
-      {/* Warning Alert */}
-      <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
-        <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-        <AlertDescription className="text-yellow-800 dark:text-yellow-300">
-          <strong>Atenção:</strong> As portas 22 (SSH), 80 (HTTP), 443 (HTTPS), 25 (SMTP), 587, 993 e 995 são protegidas contra bloqueio para evitar perda de acesso.
-        </AlertDescription>
-      </Alert>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>

@@ -864,17 +864,26 @@ export default function Suppliers() {
                 <div className="space-y-4">
                   {/* Supplier Image */}
                   <div className="relative">
-                    {supplier.image ? (
+                    {supplier.image && supplier.image.trim() !== "" ? (
                       <img
                         src={supplier.image}
                         alt={supplier.name}
                         className="w-full h-48 object-cover rounded-lg"
+                        onError={(e) => {
+                          // Se a imagem falhar ao carregar, mostrar placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const placeholder = target.nextElementSibling as HTMLElement;
+                          if (placeholder) placeholder.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                        <Building className="w-12 h-12 text-gray-400" />
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={`w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center ${supplier.image && supplier.image.trim() !== "" ? 'hidden' : 'flex'}`}>
+                      <Building className="w-12 h-12 text-gray-400 mb-2" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center px-2">
+                        Sem imagem
+                      </p>
+                    </div>
                     <div className="absolute top-2 right-2 flex items-center space-x-1">
                       <Button
                         variant="ghost"

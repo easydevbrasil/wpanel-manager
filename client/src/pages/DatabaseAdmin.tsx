@@ -456,32 +456,61 @@ function DataTable({ table }: { table: TableInfo }) {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{records.length}</div>
-            <p className="text-sm text-gray-600">Total de registros</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{filteredRecords.length}</div>
-            <p className="text-sm text-gray-600">Filtrados</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{selectedRecords.length}</div>
-            <p className="text-sm text-gray-600">Selecionados</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{table.fields.length}</div>
-            <p className="text-sm text-gray-600">Campos</p>
-          </CardContent>
-        </Card>
+      {/* Enhanced Stats for Current Table */}
+      <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+          <table.icon className="w-4 h-4" />
+          Estatísticas de {table.label}
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-blue-100 dark:border-blue-800">
+            <div className="flex items-center space-x-2">
+              <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-lg">
+                <Database className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{records.length}</div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Total de registros</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-green-100 dark:border-green-800">
+            <div className="flex items-center space-x-2">
+              <div className="bg-green-100 dark:bg-green-900 p-2 rounded-lg">
+                <Filter className="w-4 h-4 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-green-600 dark:text-green-400">{filteredRecords.length}</div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtrados</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-purple-100 dark:border-purple-800">
+            <div className="flex items-center space-x-2">
+              <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-lg">
+                <Eye className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-purple-600 dark:text-purple-400">{selectedRecords.length}</div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Selecionados</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-orange-100 dark:border-orange-800">
+            <div className="flex items-center space-x-2">
+              <div className="bg-orange-100 dark:bg-orange-900 p-2 rounded-lg">
+                <Settings className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-orange-600 dark:text-orange-400">{table.fields.length}</div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Campos</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Data Table */}
@@ -584,6 +613,56 @@ function DataTable({ table }: { table: TableInfo }) {
 
 export default function DatabaseAdmin() {
   const [selectedTable, setSelectedTable] = useState(tableConfigs[0]);
+  const { toast } = useToast();
+
+  // Fetch overview statistics
+  const { data: overviewStats, isLoading: overviewLoading } = useQuery({
+    queryKey: ['database-overview'],
+    queryFn: async () => {
+      try {
+        const [
+          usersRes,
+          clientsRes,
+          productsRes,
+          salesRes,
+          suppliersRes,
+          ticketsRes
+        ] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/clients'),
+          fetch('/api/products'),
+          fetch('/api/sales'),
+          fetch('/api/suppliers'),
+          fetch('/api/support/tickets')
+        ]);
+
+        const [users, clients, products, sales, suppliers, tickets] = await Promise.all([
+          usersRes.ok ? usersRes.json() : [],
+          clientsRes.ok ? clientsRes.json() : [],
+          productsRes.ok ? productsRes.json() : [],
+          salesRes.ok ? salesRes.json() : [],
+          suppliersRes.ok ? suppliersRes.json() : [],
+          ticketsRes.ok ? ticketsRes.json() : []
+        ]);
+
+        return {
+          users: users.length || 0,
+          clients: clients.length || 0,
+          products: products.length || 0,
+          sales: sales.length || 0,
+          suppliers: suppliers.length || 0,
+          tickets: tickets.length || 0,
+          total: (users.length || 0) + (clients.length || 0) + (products.length || 0) + 
+                 (sales.length || 0) + (suppliers.length || 0) + (tickets.length || 0)
+        };
+      } catch (error) {
+        console.error('Error fetching overview stats:', error);
+        return {
+          users: 0, clients: 0, products: 0, sales: 0, suppliers: 0, tickets: 0, total: 0
+        };
+      }
+    },
+  });
 
   return (
     <div className="w-full p-6 space-y-6">
@@ -601,6 +680,102 @@ export default function DatabaseAdmin() {
           <span>PostgreSQL</span>
         </Badge>
       </div>
+
+      {/* Database Overview Statistics */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+            <Zap className="w-5 h-5" />
+            <span>Visão Geral do Sistema</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {overviewLoading ? (
+            <div className="flex justify-center items-center h-24">
+              <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                    {overviewStats?.total || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Total de Registros
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600 mb-1">
+                    {overviewStats?.users || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Usuários
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-600 mb-1">
+                    {overviewStats?.clients || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Clientes
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-yellow-600 mb-1">
+                    {overviewStats?.products || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Produtos
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-orange-600 mb-1">
+                    {overviewStats?.sales || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Vendas
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-teal-600 mb-1">
+                    {overviewStats?.suppliers || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Fornecedores
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-red-600 mb-1">
+                    {overviewStats?.tickets || 0}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Tickets
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar */}

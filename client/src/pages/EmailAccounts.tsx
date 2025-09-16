@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -20,7 +21,16 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  Star
+  Star,
+  Upload,
+  X,
+  XCircle,
+  Camera,
+  User,
+  Settings,
+  CheckCircle2,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { useWebSocket } from '@/hooks/use-websocket';
 
@@ -44,6 +54,7 @@ interface EmailAccount {
   signature?: string;
   autoReply: boolean;
   autoReplyMessage?: string;
+  avatar?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +64,7 @@ const emailAccountSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   signature: z.string().optional(),
+  avatar: z.string().optional(),
 });
 
 type EmailAccountFormData = z.infer<typeof emailAccountSchema>;
@@ -62,12 +74,72 @@ export default function EmailAccounts() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   useWebSocket();
 
   const form = useForm<EmailAccountFormData>({
     resolver: zodResolver(emailAccountSchema),
     defaultValues: {},
   });
+
+  // Upload de avatar
+  const uploadAvatar = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    try {
+      const response = await fetch('/api/upload/email-avatar', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload avatar');
+      }
+      
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      throw error;
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const avatarUrl = await uploadAvatar(file);
+      form.setValue('avatar', avatarUrl);
+      toast({
+        title: "📸 Avatar carregado",
+        description: "Avatar carregado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Erro",
+        description: "Falha ao carregar avatar. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active': return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'inactive': return <Clock className="w-4 h-4 text-gray-500" />;
+      case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      default: return <Clock className="w-4 h-4 text-gray-500" />;
+    }
+  };
 
   const { data: accounts = [], isLoading } = useQuery<EmailAccount[]>({
     queryKey: ['/api/email-accounts'],
@@ -321,6 +393,55 @@ export default function EmailAccounts() {
                   )}
                 />
 
+                {/* Campo de Avatar */}
+                <FormField
+                  control={form.control}
+                  name="avatar"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Foto de Perfil</FormLabel>
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="w-20 h-20">
+                          <AvatarImage src={field.value} alt="Avatar" />
+                          <AvatarFallback>
+                            {form.getValues('name') ? getInitials(form.getValues('name')) : <User className="w-8 h-8" />}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-2">
+                          <div>
+                            <label htmlFor="avatar-upload" className="cursor-pointer">
+                              <div className="flex items-center justify-center w-32 h-10 px-4 border border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+                                <Camera className="w-4 h-4 mr-2" />
+                                <span className="text-sm">Escolher Foto</span>
+                              </div>
+                            </label>
+                            <input
+                              id="avatar-upload"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleAvatarUpload}
+                              disabled={uploadingAvatar}
+                            />
+                          </div>
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => field.onChange("")}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Remover
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
                     type="button"
@@ -360,64 +481,94 @@ export default function EmailAccounts() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-6 grid-cols-1">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {accounts.map((account) => (
-            <Card key={account.id} className="relative overflow-hidden">
+            <Card key={account.id} className="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
               {account.isDefault && (
-                <div className="absolute top-0 right-0 bg-yellow-500 text-white px-2 py-1 text-xs font-medium">
+                <div className="absolute top-3 right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1">
+                  <Star className="w-3 h-3" />
                   Padrão
                 </div>
               )}
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{getProviderIcon(account.provider)}</span>
-                    <CardTitle className="text-lg">{account.name}</CardTitle>
+              
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  {/* Avatar */}
+                  <Avatar className="w-16 h-16 border-2 border-white shadow-lg">
+                    <AvatarImage src={account.avatar} alt={account.name} />
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-400 to-purple-600 text-white font-semibold">
+                      {getInitials(account.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Account Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 truncate">
+                        {account.name}
+                      </h3>
+                      {getStatusIcon(account.status)}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 truncate">
+                      {account.email}
+                    </p>
+                    
+                    {/* Status Badge */}
+                    <Badge 
+                      variant="secondary" 
+                      className={`${getStatusColor(account.status)} text-xs font-medium`}
+                    >
+                      {account.status === 'active' ? 'Ativo' : 
+                       account.status === 'inactive' ? 'Inativo' : 
+                       account.status === 'error' ? 'Erro' : account.status}
+                    </Badge>
                   </div>
-                  <Badge className={getStatusColor(account.status)}>
-                    {account.status === 'active' ? 'Ativo' : 
-                     account.status === 'inactive' ? 'Inativo' : 
-                     account.status === 'error' ? 'Erro' : account.status}
-                  </Badge>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{account.email}</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
+
                 {account.signature && (
-                  <div>
-                    <div className="font-medium text-gray-600 dark:text-gray-400 mb-1">Assinatura</div>
-                    <div className="text-sm bg-gray-50 dark:bg-gray-700 p-2 rounded whitespace-pre-wrap">
+                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border-l-4 border-indigo-500">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">
+                      Assinatura
+                    </div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap line-clamp-3">
                       {account.signature}
                     </div>
                   </div>
                 )}
 
-                <Separator />
+                <Separator className="my-4" />
 
-                <div className="flex justify-between">
-                  <div className="flex space-x-1">
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between">
+                  <div className="flex space-x-2">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => openDialog(account)}
+                      className="hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 dark:hover:bg-indigo-900/20"
                     >
-                      <Edit className="w-3 h-3" />
+                      <Edit className="w-3 h-3 mr-1" />
+                      Editar
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => deleteMutation.mutate(account.id)}
                       disabled={deleteMutation.isPending}
+                      className="hover:bg-red-50 hover:border-red-200 hover:text-red-700 dark:hover:bg-red-900/20"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Excluir
                     </Button>
                   </div>
+                  
                   {!account.isDefault && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => setDefaultMutation.mutate(account.id)}
                       disabled={setDefaultMutation.isPending}
+                      className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
                     >
                       <Star className="w-3 h-3 mr-1" />
                       Definir Padrão

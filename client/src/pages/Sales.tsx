@@ -578,7 +578,7 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-full p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Vendas</h1>
@@ -591,7 +591,7 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
               Nova Venda
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingSale ? "Editar Venda" : "Nova Venda"}
@@ -1029,12 +1029,12 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
           <Card key={sale.id} className="overflow-hidden">
             {/* Versão Compacta - Sempre Visível */}
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 {/* Informações Básicas */}
-                <div className="flex items-center space-x-4 flex-1">
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 flex-1 gap-2 sm:gap-0">
                   <div className="flex items-center space-x-3">
-                    <span className="font-semibold">{sale.saleNumber}</span>
+                    <ShoppingCart className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-semibold text-sm sm:text-base">{sale.saleNumber}</span>
                     <Badge className={statusColors[getLatestStatus(sale) as keyof typeof statusColors]}>
                       {getLatestStatus(sale).charAt(0).toUpperCase() + getLatestStatus(sale).slice(1)}
                     </Badge>
@@ -1046,25 +1046,27 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                         <span className="text-xs text-blue-600 font-medium">Asaas</span>
                       </div>
                     )}
-                    
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-2">
                     {/* Status de pagamento */}
                     <Badge variant="outline" className={paymentStatusColors[sale.paymentStatus as keyof typeof paymentStatusColors]}>
                       {sale.paymentStatus ? sale.paymentStatus.charAt(0).toUpperCase() + sale.paymentStatus.slice(1) : '-'}
                     </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {getClientName(sale.clientId)}
-                  </div>
-                  <div className="text-sm">
-                    {formatDate(sale.saleDate)}
-                  </div>
-                  <div className="font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(sale.total)}
+                    <div className="text-sm text-muted-foreground">
+                      {getClientName(sale.clientId)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {formatDate(sale.saleDate)}
+                    </div>
+                    <div className="font-semibold text-green-600 dark:text-green-400">
+                      {formatCurrency(sale.total)}
+                    </div>
                   </div>
                 </div>
 
                 {/* Botões de Ação */}
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 justify-end">
                   <Button
                     variant="ghost"
                     size="sm"
