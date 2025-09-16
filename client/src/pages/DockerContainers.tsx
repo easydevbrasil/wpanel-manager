@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { useContainerStats, generateHistoricalData, StatsDataPoint } from "@/hooks/useContainerStats";
 
 // Docker icon component usando a imagem fornecida
 const DockerIcon = ({ className = "w-6 h-6" }) => (
@@ -152,25 +153,8 @@ const getUptime = (status: string): string => {
   return 'N/A';
 };
 
-// Mock data for usage charts - in real implementation, this would come from container stats API
-const generateMockUsageData = () => {
-  // Generate more realistic usage data with some trend
-  const baseValue = Math.random() * 50 + 20; // Base between 20-70%
-  return Array.from({ length: 20 }, (_, i) => {
-    const trend = Math.sin(i * 0.3) * 10; // Small wave pattern
-    const noise = (Math.random() - 0.5) * 15; // Random variation
-    const value = Math.max(0, Math.min(100, baseValue + trend + noise));
-
-    return {
-      time: i,
-      cpu: value,
-      memory: Math.max(0, Math.min(100, value + (Math.random() - 0.5) * 20)),
-    };
-  });
-};
-
 // Usage Chart Component
-const UsageChart = ({ data, type }: { data: any[], type: 'cpu' | 'memory' }) => {
+const UsageChart = ({ data, type }: { data: StatsDataPoint[], type: 'cpu' | 'memory' }) => {
   const config: ChartConfig = {
     [type]: {
       label: type === 'cpu' ? 'CPU' : 'Memória',
@@ -193,6 +177,83 @@ const UsageChart = ({ data, type }: { data: any[], type: 'cpu' | 'memory' }) => 
         </AreaChart>
       </ResponsiveContainer>
     </ChartContainer>
+  );
+};
+
+// Real-time container stats component
+const ContainerStatsDisplay = ({ container }: { container: DockerApiContainer }) => {
+  const [historicalData, setHistoricalData] = useState<StatsDataPoint[]>([]);
+  const { data: stats, error, isError } = useContainerStats(container.Id, container.State === "running");
+
+  // Update historical data when new stats arrive
+  useEffect(() => {
+    if (stats && !stats.mock) {
+      setHistoricalData(prev => generateHistoricalData(stats, prev));
+    }
+  }, [stats]);
+
+  // Fallback to mock data if real stats fail or for non-running containers
+  const useMockData = !stats || stats.mock || isError || container.State !== "running";
+
+  let displayData = historicalData;
+  let currentCpu = stats?.cpu || 0;
+  let currentMemory = stats?.memory || 0;
+
+  if (useMockData || displayData.length === 0) {
+    // Generate mock data for display
+    const baseValue = Math.random() * 50 + 20;
+    displayData = Array.from({ length: 20 }, (_, i) => {
+      const trend = Math.sin(i * 0.3) * 10;
+      const noise = (Math.random() - 0.5) * 15;
+      const value = Math.max(0, Math.min(100, baseValue + trend + noise));
+      return {
+        time: i,
+        cpu: value,
+        memory: Math.max(0, Math.min(100, value + (Math.random() - 0.5) * 20)),
+      };
+    });
+    currentCpu = displayData[displayData.length - 1]?.cpu || 0;
+    currentMemory = displayData[displayData.length - 1]?.memory || 0;
+  }
+
+  const isRealData = !useMockData && stats && !stats.mock && !isError;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Uso de Recursos</h4>
+        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+          {isRealData ? (
+            <>
+              <Activity className="w-3 h-3 text-green-500" />
+              Dados em tempo real
+            </>
+          ) : (
+            "Dados simulados"
+          )}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500 dark:text-gray-400">CPU</span>
+            <span className="text-blue-600 dark:text-blue-400 font-medium">
+              {currentCpu.toFixed(1)}%
+            </span>
+          </div>
+          <UsageChart data={displayData} type="cpu" />
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500 dark:text-gray-400">Memória</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">
+              {currentMemory.toFixed(1)}%
+            </span>
+          </div>
+          <UsageChart data={displayData} type="memory" />
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -577,42 +638,7 @@ export default function DockerContainers() {
 
                     {/* Usage Charts */}
                     {container.State === "running" && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Uso de Recursos</h4>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Dados simulados</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          {(() => {
-                            const data = generateMockUsageData();
-                            const currentCpu = data[data.length - 1]?.cpu || 0;
-                            const currentMemory = data[data.length - 1]?.memory || 0;
-
-                            return (
-                              <>
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-500 dark:text-gray-400">CPU</span>
-                                    <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                      {currentCpu.toFixed(1)}%
-                                    </span>
-                                  </div>
-                                  <UsageChart data={data} type="cpu" />
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-gray-500 dark:text-gray-400">Memória</span>
-                                    <span className="text-green-600 dark:text-green-400 font-medium">
-                                      {currentMemory.toFixed(1)}%
-                                    </span>
-                                  </div>
-                                  <UsageChart data={data} type="memory" />
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
+                      <ContainerStatsDisplay container={container} />
                     )}
 
                     <div className="flex gap-2 mt-4">

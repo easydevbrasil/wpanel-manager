@@ -11,7 +11,9 @@ module.exports = {
       env_file: '/docker/.env',
       env: {
         PORT: 8000,
-        NODE_ENV: 'development'
+        NODE_ENV: 'development',
+        VITE_HMR: 'false',
+        VITE_WS: 'false'
       },
       log_file: './logs/wpanel.log',
       out_file: './logs/wpanel-out.log',

@@ -154,6 +154,26 @@ export const products = pgTable("products", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const services = pgTable("services", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  sku: text("sku").notNull().unique(),
+  price: text("price").notNull(), // Store as string to avoid decimal issues
+  categoryId: integer("category_id"),
+  duration: text("duration"), // Duration in minutes, hours, days, etc.
+  durationType: text("duration_type").default("hours"), // minutes, hours, days, weeks, months
+  requiresBooking: boolean("requires_booking").default(false),
+  maxBookingsPerDay: integer("max_bookings_per_day"),
+  images: text("images").array(), // Array of image URLs
+  defaultImageIndex: integer("default_image_index").default(0),
+  status: text("status").notNull().default("active"), // active, inactive, discontinued
+  featured: boolean("featured").default(false),
+  tags: text("tags").array(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const suppliers = pgTable("suppliers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -807,6 +827,15 @@ export const insertPaymentMethodsSchema = createInsertSchema(paymentMethods).omi
   createdAt: true,
   updatedAt: true,
 });
+
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertService = z.infer<typeof insertServiceSchema>;
+export type Service = typeof services.$inferSelect;
 
 export type ExpenseReminder = typeof expenseReminders.$inferSelect;
 export type InsertExpenseReminder = z.infer<typeof insertExpenseReminderSchema>;

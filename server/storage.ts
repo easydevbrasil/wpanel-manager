@@ -20,6 +20,7 @@ import {
   manufacturers,
   productGroups,
   products,
+  services,
   suppliers,
   providers,
   sales,
@@ -66,6 +67,8 @@ import {
   type InsertProductGroup,
   type Product,
   type InsertProduct,
+  type Service,
+  type InsertService,
   type Supplier,
   type InsertSupplier,
   type Provider,
@@ -110,7 +113,7 @@ import {
   type InsertExpenseReminder,
   type ExchangeRate,
   type InsertExchangeRate
-} from "@shared/schema";
+} from "../shared/schema";
 
 export interface IStorage {
   // Authentication
@@ -193,6 +196,13 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
+
+  // Services
+  getServices(): Promise<Service[]>;
+  getService(id: number): Promise<Service | undefined>;
+  createService(service: InsertService): Promise<Service>;
+  updateService(id: number, service: Partial<InsertService>): Promise<Service>;
+  deleteService(id: number): Promise<void>;
 
   // Suppliers
   getSuppliers(): Promise<Supplier[]>;
@@ -2524,6 +2534,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  // Service CRUD operations
+  async getServices(): Promise<Service[]> {
+    return await db.select().from(services).orderBy(services.name);
+  }
+
+  async getService(id: number): Promise<Service | undefined> {
+    const [service] = await db.select().from(services).where(eq(services.id, id));
+    return service || undefined;
+  }
+
+  async createService(service: InsertService): Promise<Service> {
+    const now = new Date().toISOString();
+    const [newService] = await db.insert(services).values({
+      ...service,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return newService;
+  }
+
+  async updateService(id: number, serviceData: Partial<InsertService>): Promise<Service> {
+    const now = new Date().toISOString();
+    const [updatedService] = await db.update(services)
+      .set({ ...serviceData, updatedAt: now })
+      .where(eq(services.id, id))
+      .returning();
+    return updatedService;
+  }
+
+  async deleteService(id: number): Promise<void> {
+    await db.delete(services).where(eq(services.id, id));
   }
 
   // Supplier CRUD operations

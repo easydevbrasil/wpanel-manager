@@ -37,6 +37,7 @@ export default function Login() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies
         body: JSON.stringify(formData),
       });
 
@@ -48,9 +49,8 @@ export default function Login() {
           description: `Bem-vindo de volta, ${data.user.name}!`,
         });
 
-        // The server sets HTTP-only cookies, so we just need to trigger a page reload
-        // to let the AuthProvider pick up the new authentication state
-        window.location.reload();
+        // Force a re-render by triggering the auth check
+        window.location.href = "/";
       } else {
         setError(data.message || "Erro ao fazer login");
         toast({
@@ -166,6 +166,11 @@ export default function Login() {
         <div className="text-center mt-8 text-sm text-white/70 font-medium backdrop-blur-sm bg-white/5 rounded-2xl p-4 border border-white/10">
           <p>© 2025 wPanel Enterprise Suite</p>
           <p className="text-xs text-white/50 mt-1">Sistema seguro de gerenciamento empresarial</p>
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <p className="text-xs text-white/60 font-mono">
+              Credenciais padrão: admin / admin
+            </p>
+          </div>
         </div>
       </div>
     </div>

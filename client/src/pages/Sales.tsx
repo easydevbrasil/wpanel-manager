@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText, ChevronDown, ChevronUp, CreditCard, RefreshCw, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
-import type { Sale, InsertSale, Client, Product } from "@shared/schema";
+import type { Sale, InsertSale, Client, Product, Service } from "@shared/schema";
 
 const saleFormSchema = z.object({
   saleNumber: z.string().min(1, "Número da venda é obrigatório"),
@@ -72,6 +72,10 @@ export default function Sales() {
     queryKey: ["/api/products"],
   });
 
+  const { data: services = [] } = useQuery({
+    queryKey: ["/api/services"],
+  });
+
   // Hook para buscar itens de uma venda específica
   const useSaleItems = (saleId: number) => {
     return useQuery({
@@ -79,13 +83,26 @@ export default function Sales() {
       queryFn: () => apiRequest("GET", `/api/sales/${saleId}/items`),
     });
   };
-
+  
+  // Estado para os itens de venda atual (sendo editados)
+  const [currentSaleItems, setCurrentSaleItems] = useState<Array<{
+    productId?: number;
+    serviceId?: number;
+    quantity: number;
+    unitPrice: string;
+    totalPrice: string;
+    product?: any;
+    service?: any;
+    type: 'product' | 'service';
+  }>>([]);
+  
   const createMutation = useMutation({
     mutationFn: (data: InsertSale) => apiRequest("POST", "/api/sales", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
       setIsDialogOpen(false);
       form.reset();
+      setCurrentSaleItems([]);
     },
   });
 
@@ -97,6 +114,7 @@ export default function Sales() {
       setIsDialogOpen(false);
       setEditingSale(null);
       form.reset();
+      setCurrentSaleItems([]);
     },
   });
 
@@ -150,13 +168,138 @@ export default function Sales() {
     },
   });
 
-  const onSubmit = (data: SaleFormData) => {
+  // Função para calcular o total da venda
+  const calculateTotal = (items: any[], subtotal: string, discount: string, tax: string, shipping: string) => {
+    let itemsTotal = 0;
+    if (Array.isArray(items)) {
+      itemsTotal = items.reduce((acc, item) => {
+        const unitPrice = item.unitPrice ? Number(item.unitPrice) : 0;
+        return acc + unitPrice * item.quantity;
+      }, 0);
+    }
+    const sub = subtotal ? Number(subtotal) : itemsTotal;
+    const disc = discount ? Number(discount) : 0;
+    const tx = tax ? Number(tax) : 0;
+    const ship = shipping ? Number(shipping) : 0;
+    return (sub - disc + tx + ship).toFixed(2);
+  };
+  
+  // Função para atualizar os totais com base nos itens selecionados
+  const updateFormTotals = () => {
+    const itemsTotal = currentSaleItems.reduce((acc, item) => {
+      return acc + (Number(item.unitPrice) * item.quantity);
+    }, 0);
+    
+    form.setValue("subtotal", itemsTotal.toFixed(2));
+    
+    // Recalcular o total com base no subtotal atualizado
+    const subtotal = itemsTotal;
+    const discount = Number(form.getValues("discount") || 0);
+    const tax = Number(form.getValues("tax") || 0);
+    const shipping = Number(form.getValues("shipping") || 0);
+    
+    const total = (subtotal - discount + tax + shipping).toFixed(2);
+    form.setValue("total", total);
+  };
+  
+  // Função para adicionar um produto à venda atual
+  const addProductToSale = (productId: number, quantity: number = 1) => {
+    if (!products || !Array.isArray(products)) return;
+    const product = products.find((p: any) => p.id === productId);
+    if (!product) return;
+    
+    const unitPrice = product.price || "0.00";
+    const totalPrice = (Number(unitPrice) * quantity).toFixed(2);
+    
+    const newItem = {
+      productId,
+      quantity,
+      unitPrice,
+      totalPrice,
+      product,
+      type: 'product' as const
+    };
+    
+    setCurrentSaleItems(prev => [...prev, newItem]);
+    
+    // Atualizar os valores no formulário
+    setTimeout(updateFormTotals, 0);
+  };
+
+  // Função para adicionar um serviço à venda atual
+  const addServiceToSale = (serviceId: number, quantity: number = 1) => {
+    if (!services || !Array.isArray(services)) return;
+    const service = services.find((s: any) => s.id === serviceId);
+    if (!service) return;
+    
+    const unitPrice = service.price || "0.00";
+    const totalPrice = (Number(unitPrice) * quantity).toFixed(2);
+    
+    const newItem = {
+      serviceId,
+      quantity,
+      unitPrice,
+      totalPrice,
+      service,
+      type: 'service' as const
+    };
+    
+    setCurrentSaleItems(prev => [...prev, newItem]);
+    
+    // Atualizar os valores no formulário
+    setTimeout(updateFormTotals, 0);
+  };
+  
+  // Função para remover um item da venda atual
+  const removeItemFromSale = (index: number) => {
+    setCurrentSaleItems(prev => prev.filter((_, i) => i !== index));
+    
+    // Atualizar os valores no formulário
+    setTimeout(updateFormTotals, 0);
+  };
+  
+  // Função para atualizar a quantidade de um item
+  const updateItemQuantity = (index: number, newQuantity: number) => {
+    setCurrentSaleItems(prev => {
+      const updated = [...prev];
+      const item = updated[index];
+      if (item) {
+        const unitPrice = Number(item.unitPrice);
+        updated[index] = {
+          ...item,
+          quantity: newQuantity,
+          totalPrice: (unitPrice * newQuantity).toFixed(2)
+        };
+      }
+      return updated;
+    });
+    
+    // Atualizar os valores no formulário
+    setTimeout(updateFormTotals, 0);
+  };
+
+  const onSubmit = async (data: SaleFormData) => {
+    // Usar os itens atuais que estão sendo editados na interface
+    const items = currentSaleItems.map(item => ({
+      productId: item.productId || null,
+      serviceId: item.serviceId || null,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      type: item.type
+    }));
+    
+    // Calcular o total final com os valores atuais
+    const total = calculateTotal(items, data.subtotal, data.discount, data.tax, data.shipping);
+    
     const formattedData = {
       ...data,
       clientId: Number(data.clientId),
       userId: 1, // Mock user ID
+      total,
+      items: items, // Adicionar itens de venda junto com os dados da venda
     };
-
+    
     if (editingSale) {
       updateMutation.mutate({ id: editingSale.id, data: formattedData });
     } else {
@@ -164,8 +307,32 @@ export default function Sales() {
     }
   };
 
-  const handleEdit = (sale: Sale) => {
+  const handleEdit = async (sale: Sale) => {
     setEditingSale(sale);
+    
+    // Carregar os itens da venda sendo editada
+    try {
+      const response = await apiRequest("GET", `/api/sales/${sale.id}/items`);
+      const items = await response.json();
+      
+      // Converter os itens para o formato usado pelo componente
+      const formattedItems = items.map((item: any) => {
+        const product = Array.isArray(products) ? products.find((p: any) => p.id === item.productId) : null;
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || "0.00",
+          totalPrice: ((Number(item.unitPrice) || 0) * item.quantity).toFixed(2),
+          product
+        };
+      });
+      
+      setCurrentSaleItems(formattedItems);
+    } catch (error) {
+      console.error("Erro ao carregar itens da venda:", error);
+      setCurrentSaleItems([]);
+    }
+    
     form.reset({
       saleNumber: sale.saleNumber,
       clientId: sale.clientId || 0,
@@ -470,6 +637,144 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                       </FormItem>
                     )}
                   />
+                </div>
+                
+                {/* Seção de Seleção de Produtos e Serviços */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Produtos e Serviços</h3>
+                    <div className="flex gap-2">
+                      <Select onValueChange={(value) => {
+                        const [type, id] = value.split('-');
+                        if (type === 'product') {
+                          addProductToSale(parseInt(id));
+                        } else if (type === 'service') {
+                          addServiceToSale(parseInt(id));
+                        }
+                      }}>
+                        <SelectTrigger className="w-[300px]">
+                          <SelectValue placeholder="Selecionar produto ou serviço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem disabled value="products-header">--- PRODUTOS ---</SelectItem>
+                          {Array.isArray(products) && products.map((product: any) => (
+                            <SelectItem key={`product-${product.id}`} value={`product-${product.id}`}>
+                              {product.name} - {formatCurrency(product.price)}
+                            </SelectItem>
+                          ))}
+                          <SelectItem disabled value="services-header">--- SERVIÇOS ---</SelectItem>
+                          {Array.isArray(services) && services.map((service: any) => (
+                            <SelectItem key={`service-${service.id}`} value={`service-${service.id}`}>
+                              {service.name} - {formatCurrency(service.price)}
+                              {service.duration && ` (${service.duration} ${service.durationType})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Lista de itens selecionados */}
+                  <div className="border rounded-md">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="px-4 py-2 text-left">Item</th>
+                          <th className="px-4 py-2 text-center">Tipo</th>
+                          <th className="px-4 py-2 text-center">Quantidade</th>
+                          <th className="px-4 py-2 text-right">Preço Unit.</th>
+                          <th className="px-4 py-2 text-right">Total</th>
+                          <th className="px-4 py-2 text-center">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentSaleItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-4 text-center text-muted-foreground">
+                              Nenhum item selecionado. Selecione produtos ou serviços para adicionar à venda.
+                            </td>
+                          </tr>
+                        ) : (
+                          currentSaleItems.map((item, index) => (
+                            <tr key={`${item.type}-${item.productId || item.serviceId}-${index}`} className="border-b">
+                              <td className="px-4 py-2">
+                                {item.type === 'product' 
+                                  ? (item.product?.name || `Produto #${item.productId}`)
+                                  : (item.service?.name || `Serviço #${item.serviceId}`)
+                                }
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <Badge variant={item.type === 'product' ? 'default' : 'secondary'}>
+                                  {item.type === 'product' ? 'Produto' : 'Serviço'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button 
+                                    type="button"
+                                    variant="outline" 
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => updateItemQuantity(index, Math.max(1, item.quantity - 1))}
+                                  >
+                                    -
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    className="w-16 text-center h-7"
+                                    min="1"
+                                    value={item.quantity}
+                                    onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
+                                  />
+                                  <Button 
+                                    type="button"
+                                    variant="outline" 
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                                  >
+                                    +
+                                  </Button>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                {formatCurrency(item.unitPrice)}
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                {formatCurrency(item.totalPrice)}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => removeItemFromSale(index)}
+                                  className="h-8 w-8 p-0 text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                      {currentSaleItems.length > 0 && (
+                        <tfoot>
+                          <tr>
+                            <td colSpan={4} className="px-4 py-2 text-right font-medium">
+                              Total dos Itens:
+                            </td>
+                            <td className="px-4 py-2 text-right font-medium">
+                              {formatCurrency(
+                                currentSaleItems.reduce((acc, item) => acc + Number(item.totalPrice), 0).toFixed(2)
+                              )}
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

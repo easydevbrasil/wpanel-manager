@@ -243,34 +243,34 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  // Fetch real system status from API (CPU, RAM, Disk - every 5 seconds)
+  // Fetch real system status from API (CPU, RAM, Disk)
   const { data: systemStatus, isLoading: isLoadingSystemStatus } = useQuery<SystemStatus>({
     queryKey: ["/api/system/status"],
-    refetchInterval: 5000, // Update every 5 seconds
+    refetchInterval: false, // Disable for testing
   });
 
-  // Fetch Proton Drive status separately (every 30 seconds)
+  // Fetch Proton Drive status separately
   const { data: protonStatus } = useQuery({
     queryKey: ["/api/proton/status"],
-    refetchInterval: 30000, // Update every 30 seconds
+    refetchInterval: false, // Disable for testing
   });
 
-  // Fetch CPU chart data (every 2 seconds)
+  // Fetch CPU chart data
   const { data: cpuChartData } = useQuery<ChartData>({
     queryKey: ["/api/charts/cpu"],
-    refetchInterval: 2000, // Update every 2 seconds
+    refetchInterval: false, // Disable for testing
   });
 
-  // Fetch RAM chart data (every 2 seconds)
+  // Fetch RAM chart data
   const { data: ramChartData } = useQuery<ChartData>({
     queryKey: ["/api/charts/ram"],
-    refetchInterval: 2000, // Update every 2 seconds
+    refetchInterval: false, // Disable for testing
   });
 
-  // Fetch network chart data (every 2 seconds)
+  // Fetch network chart data
   const { data: networkChartData } = useQuery<NetworkChartData>({
     queryKey: ["/api/charts/network"],
-    refetchInterval: 2000, // Update every 2 seconds
+    refetchInterval: false, // Disable for testing
   });
 
   // Merge system status with Proton Drive data

@@ -18,7 +18,18 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
+  optimizeDeps: {
+    include: ["react", "react-dom"],
+  },
+  clearScreen: false,
   server: {
+    host: true,
+    allowedHosts: [
+      "wpanel.easydev.com.br",
+      "localhost",
+      "127.0.0.1",
+      "0.0.0.0"
+    ],
     proxy: {
       "/api": "http://localhost:8000",
     },
@@ -26,5 +37,13 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    hmr: false,
+    ws: false,
+    watch: {
+      usePolling: true,
+      interval: 1000,
+      ignored: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
+    },
+    cors: true,
   },
 });
