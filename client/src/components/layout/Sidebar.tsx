@@ -15,6 +15,7 @@ const defaultNavigationItems = [
   { id: 13, label: 'Banco', href: '/banco', icon: 'Database', parentId: null },
   { id: 14, label: 'Email', href: '/email-accounts', icon: 'Mail', parentId: null },
   { id: 15, label: 'Base de Dados', href: '/database-admin', icon: 'Database', parentId: null },
+  { id: 16, label: 'Serviços', href: '/services', icon: 'Zap', parentId: null },
   { id: 17, label: 'Tarefas', href: '/task-scheduler', icon: 'Calendar', parentId: null },
   { id: 18, label: 'Ajuda', href: '/help', icon: 'HelpCircle', parentId: null },
   { id: 19, label: 'Documentação', href: '/documentation', icon: 'FileText', parentId: null }

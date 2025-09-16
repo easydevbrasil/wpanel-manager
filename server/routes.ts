@@ -2291,6 +2291,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Service routes
+  app.get("/api/services", async (req, res) => {
+    try {
+      const services = await dbStorage.getServices();
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get services" });
+    }
+  });
+
+  app.get("/api/services/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const service = await dbStorage.getService(id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get service" });
+    }
+  });
+
+  app.post("/api/services", async (req, res) => {
+    try {
+      const service = await dbStorage.createService(req.body);
+      res.status(201).json(service);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  app.put("/api/services/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const service = await dbStorage.updateService(id, req.body);
+      res.json(service);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/services/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await dbStorage.deleteService(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
   // Manufacturer routes
   app.get("/api/manufacturers", async (req, res) => {
     try {

@@ -26,6 +26,7 @@ import NginxHosts from "@/pages/NginxHosts";
 import Expenses from "@/pages/Expenses";
 import Reminders from "@/pages/Reminders";
 import Banco from "@/pages/Banco";
+import Services from "@/pages/Services";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -68,6 +69,7 @@ function AuthenticatedRouter() {
         <Route path="/expenses" component={Expenses} />
         <Route path="/reminders" component={Reminders} />
         <Route path="/banco" component={Banco} />
+        <Route path="/services" component={Services} />
         <Route path="/help" component={Help} />
         <Route path="/documentation" component={Documentation} />
         <Route component={NotFound} />
