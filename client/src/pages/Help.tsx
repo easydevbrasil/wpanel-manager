@@ -25,6 +25,8 @@ import {
   Bell,
   Container,
   Shield,
+  Folder,
+  BarChart3,
 } from "lucide-react";
 
 // VS Code style editor component
@@ -83,12 +85,27 @@ function CategorySidebar({ selectedCategory, onSelectCategory }: {
   onSelectCategory: (category: string) => void;
 }) {
   const categories = [
-    { id: 'clients', label: 'Clientes', icon: Users, count: 8 },
-    { id: 'products', label: 'Produtos', icon: Package, count: 12 },
-    { id: 'suppliers', label: 'Fornecedores', icon: Truck, count: 6 },
-    { id: 'sales', label: 'Vendas', icon: ShoppingCart, count: 10 },
-    { id: 'support', label: 'Suporte', icon: Headphones, count: 7 },
-    { id: 'email-accounts', label: 'Contas Email', icon: Mail, count: 5 },
+    { id: 'auth', label: 'Autenticação', icon: Users, count: 6 },
+    { id: 'clients', label: 'Clientes', icon: Users, count: 5 },
+    { id: 'products', label: 'Produtos', icon: Package, count: 5 },
+    { id: 'suppliers', label: 'Fornecedores', icon: Truck, count: 5 },
+    { id: 'sales', label: 'Vendas', icon: ShoppingCart, count: 5 },
+    { id: 'services', label: 'Serviços', icon: Settings, count: 5 },
+    { id: 'categories', label: 'Categorias', icon: Folder, count: 5 },
+    { id: 'support', label: 'Suporte', icon: Headphones, count: 5 },
+    { id: 'expenses', label: 'Despesas', icon: FileText, count: 8 },
+    { id: 'providers', label: 'Provedores', icon: Truck, count: 5 },
+    { id: 'exchange-rates', label: 'Câmbio', icon: BarChart3, count: 7 },
+    { id: 'notifications', label: 'Notificações', icon: Bell, count: 4 },
+    { id: 'email-accounts', label: 'Contas Email', icon: Mail, count: 4 },
+    { id: 'navigation', label: 'Navegação', icon: Settings, count: 3 },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, count: 2 },
+    { id: 'cart', label: 'Carrinho', icon: ShoppingCart, count: 4 },
+    { id: 'firewall', label: 'Firewall', icon: Shield, count: 12 },
+    { id: 'docker', label: 'Docker', icon: Container, count: 6 },
+    { id: 'nginx', label: 'Nginx', icon: Settings, count: 11 },
+    { id: 'dns', label: 'DNS', icon: Settings, count: 7 },
+    { id: 'users', label: 'Usuários', icon: Users, count: 5 },
     { id: 'system', label: 'Sistema', icon: Settings, count: 4 },
   ];
 
@@ -791,6 +808,47 @@ export default function Help() {
     resourceId?: boolean;
   }> => {
     switch (category) {
+      case 'auth':
+        return [
+          {
+            method: 'POST',
+            endpoint: '/api/auth/login',
+            description: 'Fazer login no sistema',
+            examplePayload: {
+              username: "admin",
+              password: "senha123"
+            },
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/auth/logout',
+            description: 'Fazer logout do sistema',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/auth/refresh',
+            description: 'Renovar token de autenticação',
+            examplePayload: {
+              refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            },
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/auth/verify',
+            description: 'Verificar token de autenticação',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/auth/status',
+            description: 'Obter status de autenticação',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/user',
+            description: 'Obter dados do usuário logado',
+          },
+        ];
+
       case 'clients':
         return [
           {
@@ -812,10 +870,8 @@ export default function Help() {
               name: "João Silva",
               email: "joao@email.com",
               phone: "(11) 99999-9999",
-              address: "Rua das Flores, 123",
-              city: "São Paulo",
-              state: "SP",
-              zipCode: "01234-567"
+              cpf: "123.456.789-00",
+              company: "Empresa XYZ Ltda"
             },
           },
           {
@@ -844,19 +900,81 @@ export default function Help() {
             description: 'Obter todos os produtos',
           },
           {
+            method: 'GET',
+            endpoint: '/api/products/:id',
+            description: 'Obter um produto específico',
+            resourceId: true,
+          },
+          {
             method: 'POST',
             endpoint: '/api/products',
             description: 'Criar um novo produto',
             examplePayload: {
               name: "Smartphone XYZ",
               sku: "SMART-001",
-              price: 1299.99,
-              cost: 800.00,
+              price: "1299.99",
               categoryId: 1,
-              manufacturerId: 1,
               stock: 50,
               description: "Smartphone com 128GB"
             },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/products/:id',
+            description: 'Atualizar um produto',
+            resourceId: true,
+            examplePayload: {
+              name: "Smartphone XYZ Pro",
+              price: "1399.99"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/products/:id',
+            description: 'Excluir um produto',
+            resourceId: true,
+          },
+        ];
+
+      case 'suppliers':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/suppliers',
+            description: 'Obter todos os fornecedores',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/suppliers/:id',
+            description: 'Obter um fornecedor específico',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/suppliers',
+            description: 'Criar um novo fornecedor',
+            examplePayload: {
+              name: "Fornecedor ABC",
+              email: "contato@fornecedorabc.com",
+              phone: "(11) 8888-8888",
+              cnpj: "12.345.678/0001-90"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/suppliers/:id',
+            description: 'Atualizar um fornecedor',
+            resourceId: true,
+            examplePayload: {
+              name: "Fornecedor ABC Ltda",
+              email: "novo@fornecedorabc.com"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/suppliers/:id',
+            description: 'Excluir um fornecedor',
+            resourceId: true,
           },
         ];
 
@@ -868,15 +986,347 @@ export default function Help() {
             description: 'Obter todas as vendas',
           },
           {
+            method: 'GET',
+            endpoint: '/api/sales/:id',
+            description: 'Obter uma venda específica',
+            resourceId: true,
+          },
+          {
             method: 'POST',
             endpoint: '/api/sales',
             description: 'Criar uma nova venda',
             examplePayload: {
               clientId: 1,
-              totalAmount: 1299.99,
+              totalAmount: "1299.99",
               paymentMethod: "credit_card",
               status: "pending"
             },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/sales/:id',
+            description: 'Atualizar uma venda',
+            resourceId: true,
+            examplePayload: {
+              status: "completed"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/sales/:id',
+            description: 'Excluir uma venda',
+            resourceId: true,
+          },
+        ];
+
+      case 'services':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/services',
+            description: 'Obter todos os serviços',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/services/:id',
+            description: 'Obter um serviço específico',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/services',
+            description: 'Criar um novo serviço',
+            examplePayload: {
+              name: "Consultoria IT",
+              description: "Consultoria em tecnologia da informação",
+              sku: "CONS-IT-001",
+              price: "150.00",
+              categoryId: 1,
+              duration: "1",
+              durationType: "hours",
+              requiresBooking: true
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/services/:id',
+            description: 'Atualizar um serviço',
+            resourceId: true,
+            examplePayload: {
+              name: "Consultoria IT Premium",
+              price: "200.00"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/services/:id',
+            description: 'Excluir um serviço',
+            resourceId: true,
+          },
+        ];
+
+      case 'categories':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/categories',
+            description: 'Obter todas as categorias',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/categories/:id',
+            description: 'Obter uma categoria específica',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/categories',
+            description: 'Criar uma nova categoria',
+            examplePayload: {
+              name: "Eletrônicos",
+              description: "Produtos eletrônicos em geral",
+              status: "active"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/categories/:id',
+            description: 'Atualizar uma categoria',
+            resourceId: true,
+            examplePayload: {
+              name: "Eletrônicos Premium",
+              description: "Produtos eletrônicos de alta qualidade"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/categories/:id',
+            description: 'Excluir uma categoria',
+            resourceId: true,
+          },
+        ];
+
+      case 'support':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/support/tickets',
+            description: 'Obter todos os tickets de suporte',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/support/tickets',
+            description: 'Criar um novo ticket de suporte',
+            examplePayload: {
+              title: "Problema com produto",
+              description: "Cliente relatou defeito no produto",
+              priority: "high",
+              clientId: 1
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/support/tickets/:id',
+            description: 'Atualizar um ticket de suporte',
+            resourceId: true,
+            examplePayload: {
+              status: "resolved"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/support/tickets/:id',
+            description: 'Excluir um ticket de suporte',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/support/tickets/:id/messages',
+            description: 'Adicionar mensagem ao ticket',
+            resourceId: true,
+            examplePayload: {
+              message: "Problema foi resolvido com sucesso",
+              isInternal: false
+            },
+          },
+        ];
+
+      case 'expenses':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/expenses',
+            description: 'Obter todas as despesas',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/expenses/stats',
+            description: 'Obter estatísticas de despesas',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/expenses/:id',
+            description: 'Obter uma despesa específica',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/expenses',
+            description: 'Criar uma nova despesa',
+            examplePayload: {
+              description: "Compra de equipamentos",
+              amount: "1500.00",
+              currency: "BRL",
+              categoryId: 1,
+              providerId: 1,
+              date: "2025-01-15"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/expenses/:id',
+            description: 'Atualizar uma despesa',
+            resourceId: true,
+            examplePayload: {
+              description: "Compra de equipamentos de escritório",
+              amount: "1750.00"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/expenses/:id',
+            description: 'Excluir uma despesa',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/expenses/fix-currency',
+            description: 'Corrigir moedas das despesas',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/expense-categories',
+            description: 'Obter categorias de despesas',
+          },
+        ];
+
+      case 'providers':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/providers',
+            description: 'Obter todos os provedores',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/providers/:id',
+            description: 'Obter um provedor específico',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/providers',
+            description: 'Criar um novo provedor',
+            examplePayload: {
+              name: "AWS",
+              type: "cloud",
+              description: "Amazon Web Services",
+              website: "https://aws.amazon.com"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/providers/:id',
+            description: 'Atualizar um provedor',
+            resourceId: true,
+            examplePayload: {
+              name: "Amazon AWS",
+              description: "Amazon Web Services - Cloud Computing"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/providers/:id',
+            description: 'Excluir um provedor',
+            resourceId: true,
+          },
+        ];
+
+      case 'exchange-rates':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/exchange-rates',
+            description: 'Obter todas as taxas de câmbio',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/exchange-rates/:from/:to',
+            description: 'Obter taxa específica entre moedas',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/exchange-rates',
+            description: 'Criar nova taxa de câmbio',
+            examplePayload: {
+              fromCurrency: "USD",
+              toCurrency: "BRL",
+              rate: "5.25",
+              source: "manual"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/exchange-rates/:id',
+            description: 'Atualizar taxa de câmbio',
+            resourceId: true,
+            examplePayload: {
+              rate: "5.30"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/exchange-rates/:id',
+            description: 'Excluir taxa de câmbio',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/exchange-rates/update',
+            description: 'Atualizar todas as taxas automaticamente',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/convert/:amount/:from/:to',
+            description: 'Converter valor entre moedas',
+            resourceId: true,
+          },
+        ];
+
+      case 'notifications':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/notifications',
+            description: 'Obter todas as notificações',
+          },
+          {
+            method: 'PATCH',
+            endpoint: '/api/notifications/:id/read',
+            description: 'Marcar notificação como lida',
+            resourceId: true,
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/notifications/:id',
+            description: 'Excluir uma notificação',
+            resourceId: true,
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/notifications',
+            description: 'Excluir todas as notificações',
           },
         ];
 
@@ -884,21 +1334,417 @@ export default function Help() {
         return [
           {
             method: 'GET',
-            endpoint: '/api/email-accounts',
-            description: 'Obter todas as contas de email',
+            endpoint: '/api/emails',
+            description: 'Obter todos os emails',
+          },
+          {
+            method: 'PATCH',
+            endpoint: '/api/emails/:id/read',
+            description: 'Marcar email como lido',
+            resourceId: true,
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/emails/:id',
+            description: 'Excluir um email',
+            resourceId: true,
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/emails',
+            description: 'Excluir todos os emails',
+          },
+        ];
+
+      case 'navigation':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/navigation',
+            description: 'Obter itens de navegação',
           },
           {
             method: 'POST',
-            endpoint: '/api/email-accounts',
-            description: 'Criar uma nova conta de email',
+            endpoint: '/api/navigation/update',
+            description: 'Atualizar navegação do sistema',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/navigation',
+            description: 'Criar item de navegação',
             examplePayload: {
-              name: "Email Corporativo",
-              email: "admin@empresa.com",
-              provider: "smtp",
-              smtpHost: "smtp.empresa.com",
-              smtpPort: 587,
-              smtpSecure: true
+              label: "Novo Item",
+              href: "/novo-item",
+              icon: "Package",
+              order: 10,
+              parentId: null
             },
+          },
+        ];
+
+      case 'dashboard':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/dashboard/stats',
+            description: 'Obter estatísticas do dashboard',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/system/stats',
+            description: 'Obter estatísticas do sistema',
+          },
+        ];
+
+      case 'cart':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/cart',
+            description: 'Obter itens do carrinho',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/cart',
+            description: 'Adicionar item ao carrinho',
+            examplePayload: {
+              productName: "Produto XYZ",
+              price: 99.90,
+              quantity: 2
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/cart/:id',
+            description: 'Atualizar item do carrinho',
+            resourceId: true,
+            examplePayload: {
+              quantity: 3
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/cart/:id',
+            description: 'Remover item do carrinho',
+            resourceId: true,
+          },
+        ];
+
+      case 'firewall':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/firewall/rules',
+            description: 'Obter regras do firewall',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/firewall/stats',
+            description: 'Obter estatísticas do firewall',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/firewall/status',
+            description: 'Obter status do firewall',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/firewall/interfaces',
+            description: 'Obter interfaces de rede',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/firewall/rules',
+            description: 'Criar regra de firewall',
+            examplePayload: {
+              name: "Allow SSH",
+              action: "ACCEPT",
+              port: "22",
+              protocol: "tcp",
+              source: "0.0.0.0/0"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/firewall/rules/:id',
+            description: 'Atualizar regra de firewall',
+            resourceId: true,
+            examplePayload: {
+              name: "Allow SSH - Updated"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/firewall/rules/:id',
+            description: 'Excluir regra de firewall',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/firewall/quick-action',
+            description: 'Ação rápida do firewall',
+            examplePayload: {
+              action: "block_ip",
+              target: "192.168.1.100"
+            },
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/firewall/flush',
+            description: 'Limpar regras do firewall',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/firewall/save',
+            description: 'Salvar configurações do firewall',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/firewall/enable',
+            description: 'Ativar firewall',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/firewall/disable',
+            description: 'Desativar firewall',
+          },
+        ];
+
+      case 'docker':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/docker/status',
+            description: 'Obter status do Docker',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/docker/containers',
+            description: 'Obter lista de containers',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/docker/containers/:id/stats',
+            description: 'Obter estatísticas do container',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/docker/containers/:id/start',
+            description: 'Iniciar container',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/docker/containers/:id/stop',
+            description: 'Parar container',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/docker/containers/:id/restart',
+            description: 'Reiniciar container',
+            resourceId: true,
+          },
+        ];
+
+      case 'nginx':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/nginx/hosts',
+            description: 'Obter hosts do Nginx',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/nginx/hosts/:id',
+            description: 'Obter host específico',
+            resourceId: true,
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/nginx/hosts/status',
+            description: 'Obter status dos hosts',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/nginx/hosts',
+            description: 'Criar host no Nginx',
+            examplePayload: {
+              serverName: "exemplo.com",
+              documentRoot: "/var/www/exemplo",
+              port: 80,
+              sslEnabled: false
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/nginx/hosts/:id',
+            description: 'Atualizar host do Nginx',
+            resourceId: true,
+            examplePayload: {
+              serverName: "www.exemplo.com"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/nginx/hosts/:id',
+            description: 'Excluir host do Nginx',
+            resourceId: true,
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/nginx/hosts/:id/ssl',
+            description: 'Obter certificado SSL do host',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/nginx/hosts/:id/ssl/issue',
+            description: 'Emitir certificado SSL',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/nginx/hosts/:id/ssl/renew',
+            description: 'Renovar certificado SSL',
+            resourceId: true,
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/nginx/hosts/:id/config',
+            description: 'Obter configuração do host',
+            resourceId: true,
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/nginx/hosts/:id/config',
+            description: 'Atualizar configuração do host',
+            resourceId: true,
+            examplePayload: {
+              config: "server {\n  listen 80;\n  server_name exemplo.com;\n  ...\n}"
+            },
+          },
+        ];
+
+      case 'dns':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/dns/zone',
+            description: 'Obter informações da zona DNS',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/dns/records',
+            description: 'Obter registros DNS',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/dns/test',
+            description: 'Testar conexão DNS',
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/dns/records',
+            description: 'Criar registro DNS',
+            examplePayload: {
+              type: "A",
+              name: "www",
+              content: "192.168.1.100",
+              ttl: 3600
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/dns/records/:id',
+            description: 'Atualizar registro DNS',
+            resourceId: true,
+            examplePayload: {
+              content: "192.168.1.101"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/dns/records/:id',
+            description: 'Excluir registro DNS',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/dns/sync',
+            description: 'Sincronizar registros DNS',
+          },
+        ];
+
+      case 'users':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/users',
+            description: 'Obter todos os usuários',
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/users/:id',
+            description: 'Obter usuário específico',
+            resourceId: true,
+          },
+          {
+            method: 'POST',
+            endpoint: '/api/users',
+            description: 'Criar novo usuário',
+            examplePayload: {
+              username: "novousuario",
+              password: "senha123",
+              name: "Novo Usuário",
+              role: "user"
+            },
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/users/:id',
+            description: 'Atualizar usuário',
+            resourceId: true,
+            examplePayload: {
+              name: "Nome Atualizado"
+            },
+          },
+          {
+            method: 'DELETE',
+            endpoint: '/api/users/:id',
+            description: 'Excluir usuário',
+            resourceId: true,
+          },
+        ];
+
+      case 'system':
+        return [
+          {
+            method: 'GET',
+            endpoint: '/api/user/preferences',
+            description: 'Obter preferências do usuário',
+          },
+          {
+            method: 'PUT',
+            endpoint: '/api/user/preferences',
+            description: 'Atualizar preferências do usuário',
+            examplePayload: {
+              sidebarCollapsed: false,
+              theme: "dark",
+              primaryColor: "blue"
+            },
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/cnpj/:cnpj',
+            description: 'Consultar dados de CNPJ',
+            resourceId: true,
+          },
+          {
+            method: 'GET',
+            endpoint: '/api/permissions',
+            description: 'Obter permissões do usuário',
           },
         ];
 
