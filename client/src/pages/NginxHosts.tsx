@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RefreshCw, Server, Plus, Edit, Trash2, Globe, ExternalLink, AlertCircle, CheckCircle, FileText, Save, RotateCcw, Moon, Sun, Shield, Lock, Calendar } from "lucide-react";
+import { RefreshCw, Server, Plus, Edit, Trash2, Globe, ExternalLink, AlertCircle, CheckCircle, FileText, Save, RotateCcw, Moon, Sun, Shield, Lock, Calendar, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // import Editor from '@monaco-editor/react';
 // import { useColorTheme } from "@/hooks/useColorTheme";
@@ -27,6 +27,15 @@ interface NginxHost {
   port: number;
   createdAt: string;
   modifiedAt: string;
+}
+
+interface HostStatus {
+  id: string;
+  filename: string;
+  port: number | null;
+  status: 'online' | 'offline' | 'error';
+  lastChecked: string;
+  error?: string;
 }
 
 const hostSchema = z.object({
@@ -84,6 +93,12 @@ export default function NginxHosts() {
   // Fetch nginx hosts
   const { data: hosts = [], isLoading, refetch } = useQuery<NginxHost[]>({
     queryKey: ["/api/nginx/hosts"],
+  });
+
+  // Fetch hosts status
+  const { data: hostsStatus = [], isLoading: statusLoading, refetch: refetchStatus } = useQuery<HostStatus[]>({
+    queryKey: ["/api/nginx/hosts/status"],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Query para buscar detalhes específicos do host quando editando
@@ -534,6 +549,29 @@ export default function NginxHosts() {
     setIsDialogOpen(true);
   };
 
+  // Helper function to get host status
+  const getHostStatus = (hostId: string): HostStatus | null => {
+    return hostsStatus.find(status => status.id === hostId) || null;
+  };
+
+  // Helper function to get status badge variant and text
+  const getStatusDisplay = (status: HostStatus | null) => {
+    if (!status) {
+      return { variant: 'secondary' as const, text: 'Desconhecido', icon: '❓' };
+    }
+
+    switch (status.status) {
+      case 'online':
+        return { variant: 'default' as const, text: 'Online', icon: '🟢' };
+      case 'offline':
+        return { variant: 'destructive' as const, text: 'Offline', icon: '🔴' };
+      case 'error':
+        return { variant: 'secondary' as const, text: 'Erro', icon: '⚠️' };
+      default:
+        return { variant: 'secondary' as const, text: 'Desconhecido', icon: '❓' };
+    }
+  };
+
   const getStatusColor = (port: number) => {
     // Simple check - ports commonly used for different services
     if (port >= 3000 && port <= 3999) return "bg-blue-100 text-blue-800";
@@ -548,6 +586,22 @@ export default function NginxHosts() {
         <div className="flex items-center gap-2">
           <Server className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Gerenciamento de Hosts Nginx</h1>
+          {/* Status summary */}
+          {hostsStatus.length > 0 && (
+            <div className="flex items-center gap-2 ml-4">
+              <Badge variant="default" className="flex items-center gap-1">
+                🟢 {hostsStatus.filter(s => s.status === 'online').length}
+              </Badge>
+              <Badge variant="destructive" className="flex items-center gap-1">
+                🔴 {hostsStatus.filter(s => s.status === 'offline').length}
+              </Badge>
+              {hostsStatus.filter(s => s.status === 'error').length > 0 && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  ⚠️ {hostsStatus.filter(s => s.status === 'error').length}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -1227,12 +1281,15 @@ export default function NginxHosts() {
             </DialogContent>
           </Dialog>
           <Button
-            onClick={() => refetch()}
-            disabled={isLoading}
+            onClick={() => {
+              refetch();
+              refetchStatus();
+            }}
+            disabled={isLoading || statusLoading}
             variant="outline"
             size="sm"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || statusLoading ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
         </div>
@@ -1266,6 +1323,20 @@ export default function NginxHosts() {
                       </div>
 
                       <div className="flex items-center gap-3">
+                        {(() => {
+                          const status = getHostStatus(host.id);
+                          const statusDisplay = getStatusDisplay(status);
+                          return (
+                            <Badge variant={statusDisplay.variant} className="flex items-center gap-1">
+                              <span>{statusDisplay.icon}</span>
+                              <span>{statusDisplay.text}</span>
+                              {status?.port && (
+                                <span className="ml-1 text-xs opacity-75">:{status.port}</span>
+                              )}
+                            </Badge>
+                          );
+                        })()}
+
                         <Badge className={`font-mono text-xs ${getStatusColor(host.port)}`}>
                           Porta: {host.port}
                         </Badge>

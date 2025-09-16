@@ -28,7 +28,7 @@
         {
             "name": "Backup",
             "icon": "cloud",
-            "command": "zip -r /tmp/backup_$(date +%F_%T).zip /docker/wpanel/ && rclone copy /tmp/backup_$(date +%F_%T).zip protondrive:backups/wpanel/ --progress && rm /tmp/backup_$(date +%F_%T).zip"
+    "command": "bash /docker/scripts/vc_backup.sh"
         }
     ]
 }

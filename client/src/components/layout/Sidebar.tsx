@@ -1,11 +1,24 @@
-// Add documentation link manually
-const documentationItem = {
-  id: 9999,
-  label: 'Documentação',
-  href: '/documentation',
-  icon: 'FileText',
-  parentId: null
-};
+// Default navigation items for fallback when API fails
+const defaultNavigationItems = [
+  { id: 1, label: 'Dashboard', href: '/', icon: 'LayoutDashboard', parentId: null },
+  { id: 2, label: 'Clientes', href: '/clients', icon: 'Users', parentId: null },
+  { id: 3, label: 'Produtos', href: '/products', icon: 'Package', parentId: null },
+  { id: 4, label: 'Fornecedores', href: '/suppliers', icon: 'Truck', parentId: null },
+  { id: 5, label: 'Vendas', href: '/sales', icon: 'ShoppingCart', parentId: null },
+  { id: 6, label: 'Suporte', href: '/support', icon: 'Headphones', parentId: null },
+  { id: 7, label: 'Firewall', href: '/firewall', icon: 'Shield', parentId: null },
+  { id: 8, label: 'Docker', href: '/docker-containers', icon: 'Container', parentId: null },
+  { id: 9, label: 'DNS', href: '/dns', icon: 'Globe', parentId: null },
+  { id: 10, label: 'Nginx', href: '/nginx-hosts', icon: 'Server', parentId: null },
+  { id: 11, label: 'Despesas', href: '/expenses', icon: 'CreditCard', parentId: null },
+  { id: 12, label: 'Lembretes', href: '/reminders', icon: 'Bell', parentId: null },
+  { id: 13, label: 'Banco', href: '/banco', icon: 'Database', parentId: null },
+  { id: 14, label: 'Email', href: '/email-accounts', icon: 'Mail', parentId: null },
+  { id: 15, label: 'Base de Dados', href: '/database-admin', icon: 'Database', parentId: null },
+  { id: 17, label: 'Tarefas', href: '/task-scheduler', icon: 'Calendar', parentId: null },
+  { id: 18, label: 'Ajuda', href: '/help', icon: 'HelpCircle', parentId: null },
+  { id: 19, label: 'Documentação', href: '/documentation', icon: 'FileText', parentId: null }
+];
 
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
@@ -167,9 +180,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(defaultPreferences);
   const isMobile = useIsMobile();
 
-  const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
+  const { data: navigationItems = [], error: navigationError, isLoading: navigationLoading } = useQuery<NavigationItem[]>({
     queryKey: ["/api/navigation"],
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
+
+  // Use fallback navigation if API fails or returns empty array
+  const effectiveNavigationItems = navigationError || navigationItems.length === 0 
+    ? defaultNavigationItems 
+    : navigationItems;
 
   // Load user preferences
   const { data: preferencesData } = useQuery({
@@ -205,12 +225,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     }
   }, [preferencesData]);
 
-  // Auto-collapse on mobile devices only
+  // Auto-collapse on mobile devices (only on initial load, not constantly)
   useEffect(() => {
+    // Only auto-collapse when switching to mobile for the first time
     if (isMobile !== undefined && isMobile && !collapsed) {
-      onToggle();
+      // Add a small delay to prevent conflicts with other state changes
+      const timer = setTimeout(() => {
+        onToggle();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isMobile]);
+  }, [isMobile]); // Removed collapsed and onToggle from dependencies to prevent constant triggering
 
   // Functions to update preferences
   const updatePreference = async (key: keyof UserPreferences, value: any) => {
@@ -285,8 +310,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   };
 
   // Group items by parent
-  const parentItems = navigationItems.filter(item => !item.parentId);
-  const childItems = navigationItems.filter(item => item.parentId);
+  const parentItems = effectiveNavigationItems.filter(item => !item.parentId);
+  const childItems = effectiveNavigationItems.filter(item => item.parentId);
   const childrenByParent = childItems.reduce((acc, item) => {
     if (!item.parentId) return acc;
     if (!acc[item.parentId]) acc[item.parentId] = [];
@@ -354,7 +379,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
 
           <nav className="space-y-1">
-            {[...parentItems, documentationItem].map((item) => {
+            {/* Show loading indicator if navigation is loading */}
+            {navigationLoading && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
+              </div>
+            )}
+            
+            {/* Show error message if navigation failed and using fallback */}
+            {navigationError && (
+              <div className="px-3 py-2 mb-2 text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                Usando navegação padrão - API indisponível
+              </div>
+            )}
+            
+            {[...parentItems].map((item) => {
               const children = childrenByParent[item.id] || [];
               const hasChildren = children.length > 0;
               const isOpen = openItems.has(item.id);

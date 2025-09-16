@@ -922,10 +922,10 @@ export default function Help() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="documentation">Documentação</TabsTrigger>
-          <TabsTrigger value="examples">Exemplos</TabsTrigger>
-          <TabsTrigger value="api-reference">Referência da API</TabsTrigger>
-          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
+          <TabsTrigger value="documentation">Visão Geral</TabsTrigger>
+          <TabsTrigger value="examples">Tutoriais</TabsTrigger>
+          <TabsTrigger value="api-reference">API & Integrações</TabsTrigger>
+          <TabsTrigger value="webhooks">Configurações</TabsTrigger>
         </TabsList>
 
         {/* Documentação Tab */}
@@ -1080,7 +1080,7 @@ export default function Help() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Exemplos Interativos</CardTitle>
+                <CardTitle>Guia de Início Rápido</CardTitle>
                 <p className="text-gray-600 dark:text-gray-400">
                   Demonstrações práticas das funcionalidades do sistema
                 </p>
@@ -1227,10 +1227,10 @@ export default function Help() {
               <div className="p-6">
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold text-foreground mb-2">
-                    Documentação da API
+                    Documentação da API & Integrações
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Teste interativo das rotas da API com editor estilo VS Code
+                    API REST completa e sistema de webhooks para integração
                   </p>
                 </div>
 
@@ -1259,10 +1259,10 @@ export default function Help() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="w-5 h-5" />
-                  Configuração de Webhooks
+                  Configurações Avançadas do Sistema
                 </CardTitle>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Configure webhooks para receber notificações em tempo real sobre eventos do sistema
+                  Configure webhooks e automações para integração com sistemas externos
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">

@@ -341,13 +341,12 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
                   {/* Menu Items */}
                   <div className="space-y-1">
-                    <DropdownMenuItem
-                      className="cursor-pointer rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 transition-all duration-200"
-                      onClick={() => setUserProfileDialogOpen(true)}
-                    >
-                      <UserIcon className="w-4 h-4 mr-3 text-indigo-500" />
-                      <span className="font-medium">Perfil</span>
-                    </DropdownMenuItem>
+                    <Link href="/user-profile">
+                      <DropdownMenuItem className="cursor-pointer rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 transition-all duration-200">
+                        <UserIcon className="w-4 h-4 mr-3 text-indigo-500" />
+                        <span className="font-medium">Perfil</span>
+                      </DropdownMenuItem>
+                    </Link>
 
                     <DropdownMenuItem className="cursor-pointer rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 transition-all duration-200">
                       <Settings className="w-4 h-4 mr-3 text-purple-500" />

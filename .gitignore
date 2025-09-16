@@ -4,6 +4,8 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
-.env# Git config fixed
+.env
 easydev_vps_cc.zip
 logs/
+.next/
+.uploads/

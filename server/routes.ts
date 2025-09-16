@@ -2619,6 +2619,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check host status endpoint
+  app.get("/api/nginx/hosts/status", authenticateToken, async (req: any, res: any) => {
+    try {
+      const hostsDir = process.env.NGINX_HOSTS_DIR || "/docker/nginx/hosts";
+      if (!fs.existsSync(hostsDir)) {
+        return res.status(404).json({ message: "NGINX hosts directory not found" });
+      }
+      
+      const files = await fs.promises.readdir(hostsDir);
+      const hostFiles = files.filter(f => f.endsWith(".conf"));
+      const hostsStatus = [];
+      
+      // Helper function to check if a port is listening
+      const checkPortStatus = (port: number): Promise<boolean> => {
+        return new Promise((resolve) => {
+          const net = require('net');
+          const socket = new net.Socket();
+          
+          const timeout = setTimeout(() => {
+            socket.destroy();
+            resolve(false);
+          }, 2000); // 2 second timeout
+          
+          socket.connect(port, 'localhost', () => {
+            clearTimeout(timeout);
+            socket.destroy();
+            resolve(true);
+          });
+          
+          socket.on('error', () => {
+            clearTimeout(timeout);
+            resolve(false);
+          });
+        });
+      };
+      
+      // Check status for each host
+      const statusPromises = hostFiles.map(async (file) => {
+        const filePath = path.join(hostsDir, file);
+        try {
+          const content = await fs.promises.readFile(filePath, "utf8");
+          const domain = file.replace(".conf", "");
+          
+          // Extract proxy_pass port from nginx config
+          const proxyPassMatch = content.match(/proxy_pass\s+http:\/\/[^:]+:(\d+)/);
+          const port = proxyPassMatch ? parseInt(proxyPassMatch[1]) : null;
+          
+          // Check if the service is running on the port
+          const isOnline = port ? await checkPortStatus(port) : false;
+          
+          return {
+            id: domain,
+            filename: file,
+            port: port,
+            status: isOnline ? 'online' : 'offline',
+            lastChecked: new Date().toISOString()
+          };
+        } catch (error) {
+          return {
+            id: file.replace('.conf', ''),
+            filename: file,
+            port: null,
+            status: 'error',
+            error: 'Failed to read configuration',
+            lastChecked: new Date().toISOString()
+          };
+        }
+      });
+      
+      const results = await Promise.all(statusPromises);
+      res.json(results);
+      
+    } catch (error) {
+      console.error("Error checking host status:", error);
+      const errMsg = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to check host status", error: errMsg });
+    }
+  });
+
   // Cloudflare credentials endpoint
   app.get("/api/cloudflare/credentials", authenticateToken, async (req: any, res: any) => {
     try {

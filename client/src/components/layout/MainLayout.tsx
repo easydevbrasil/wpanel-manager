@@ -37,24 +37,30 @@ export function MainLayout({ children }: MainLayoutProps) {
     });
   };
 
-  // Handle click outside sidebar to collapse it
+  // Handle click outside sidebar to collapse it (only on mobile)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Only auto-collapse on mobile devices
       if (
+        isMobile &&
         !sidebarCollapsed &&
         sidebarRef.current &&
         !sidebarRef.current.contains(event.target as Node) &&
-        !(event.target as Element)?.closest('[data-sidebar-toggle]')
+        !(event.target as Element)?.closest('[data-sidebar-toggle]') &&
+        !(event.target as Element)?.closest('[data-dropdown-menu]')
       ) {
         setSidebarCollapsed(true);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [sidebarCollapsed]);
+    // Only add listener if on mobile
+    if (isMobile) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [sidebarCollapsed, isMobile]);
 
   return (
     <div className="min-h-screen bg-background">
