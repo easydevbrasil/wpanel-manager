@@ -151,8 +151,8 @@ const PropagationIndicator = ({ record }: { record: DNSRecord }) => {
           onClick={checkPropagation}
           className={`h-6 px-2 text-xs ${
             propagated 
-              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
-              : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/30' 
+              : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-900/30'
           }`}
         >
           {propagated ? (
@@ -176,7 +176,7 @@ const PropagationIndicator = ({ record }: { record: DNSRecord }) => {
       variant="ghost"
       size="sm"
       onClick={checkPropagation}
-      className="h-6 px-2 text-xs text-gray-600 hover:bg-gray-100"
+      className="h-6 px-2 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
     >
       <Zap className="w-3 h-3 mr-1" />
       Verificar DNS
@@ -508,19 +508,19 @@ export default function DNSSimple() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-gray-100">
                   <div className="text-center">
                     <div className="text-lg font-bold text-green-600">{Array.isArray(records) ? records.length : 0}</div>
-                    <div className="text-xs text-gray-600">Registros DNS</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Registros DNS</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
                       {Array.isArray(records) ? records.filter(r => r.proxied).length : 0}
                     </div>
-                    <div className="text-xs text-gray-600">Com Proxy Ativo</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Com Proxy Ativo</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-purple-600">
+                    <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
                       {connectionTest.timestamp ? new Date(connectionTest.timestamp).toLocaleTimeString() : 'Agora'}
                     </div>
-                    <div className="text-xs text-gray-600">Última Verificação</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Última Verificação</div>
                   </div>
                 </div>
               )}
@@ -543,7 +543,7 @@ export default function DNSSimple() {
               Registros DNS ({Array.isArray(records) ? records.length : 0})
             </div>
             {Array.isArray(records) && records.length > 0 && (
-              <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
                   <span>Ativos: {records.length}</span>
@@ -561,60 +561,60 @@ export default function DNSSimple() {
             <div className="text-center py-8">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
               <p className="text-lg font-medium mb-2">Carregando registros DNS...</p>
-              <p className="text-sm text-gray-600">Conectando-se aos servidores Cloudflare</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Conectando-se aos servidores Cloudflare</p>
             </div>
           ) : (
             <div className="space-y-3">
               {Array.isArray(records) && records.length > 0 ? (
                 records.map((record: DNSRecord) => (
-                  <div key={record.id} className="group p-4 border rounded-xl hover:shadow-md transition-all duration-200 bg-gradient-to-r from-white to-gray-50/50 hover:from-gray-50 hover:to-blue-50/30">
+                  <div key={record.id} className="group p-4 border rounded-xl hover:shadow-md transition-all duration-200 bg-gradient-to-r from-white to-gray-50/50 hover:from-gray-50 hover:to-blue-50/30 dark:from-gray-900 dark:to-gray-800/50 dark:hover:from-gray-800 dark:hover:to-blue-900/30 dark:border-gray-700">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="flex items-center gap-3">
                           {getRecordTypeIcon(record.type)}
-                          <Badge variant="outline" className="font-mono text-xs border-gray-300 bg-gray-50">
+                          <Badge variant="outline" className="font-mono text-xs border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">
                             {record.type}
                           </Badge>
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-gray-900 truncate text-base">{record.name}</div>
-                          <div className="text-sm text-gray-600 truncate font-mono bg-gray-100 px-2 py-1 rounded mt-1">
+                          <div className="font-semibold text-gray-900 dark:text-gray-100 truncate text-base">{record.name}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-300 truncate font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded mt-1">
                             {record.content}
                           </div>
                         </div>
                         
                         <div className="flex items-center gap-4">
                           <div className="text-center">
-                            <div className="text-xs text-gray-500 uppercase tracking-wide">TTL</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">TTL</div>
                             <div className="font-medium text-sm">
                               {record.ttl === 1 ? (
-                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Auto</Badge>
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Auto</Badge>
                               ) : (
-                                <span className="text-gray-700">{record.ttl}s</span>
+                                <span className="text-gray-700 dark:text-gray-300">{record.ttl}s</span>
                               )}
                             </div>
                           </div>
                           
                           {record.priority && (
                             <div className="text-center">
-                              <div className="text-xs text-gray-500 uppercase tracking-wide">Prioridade</div>
-                              <div className="font-medium text-sm text-gray-700">{record.priority}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Prioridade</div>
+                              <div className="font-medium text-sm text-gray-700 dark:text-gray-300">{record.priority}</div>
                             </div>
                           )}
                           
                           <div className="text-center">
-                            <div className="text-xs text-gray-500 uppercase tracking-wide">Proxy</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Proxy</div>
                             <div className="flex justify-center mt-1">
                               {record.proxied ? (
                                 <div className="flex items-center gap-1">
                                   <ProxyActiveIcon />
-                                  <span className="text-xs text-orange-600 font-medium">Ativo</span>
+                                  <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">Ativo</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1">
                                   <ProxyInactiveIcon />
-                                  <span className="text-xs text-gray-500">Desativado</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">Desativado</span>
                                 </div>
                               )}
                             </div>
@@ -631,7 +631,7 @@ export default function DNSSimple() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(record)}
-                          className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 opacity-70 group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 opacity-70 group-hover:opacity-100 transition-opacity"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -640,7 +640,7 @@ export default function DNSSimple() {
                           size="sm"
                           onClick={() => handleDelete(record.id, record.name)}
                           disabled={deleteMutation.isPending}
-                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 opacity-70 group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 opacity-70 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -653,8 +653,8 @@ export default function DNSSimple() {
                   <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
                     <Globe className="h-12 w-12 text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum registro DNS encontrado</h3>
-                  <p className="text-gray-600 mb-4 max-w-md mx-auto">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Nenhum registro DNS encontrado</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4 max-w-md mx-auto">
                     Comece criando seu primeiro registro DNS para gerenciar o tráfego do seu domínio.
                   </p>
                   <Button onClick={openNewRecordDialog} className="bg-blue-600 hover:bg-blue-700">
