@@ -561,20 +561,10 @@ async function generateMailAccountsFile() {
 // Function to restart mailserver container
 async function restartMailserverContainer() {
   try {
-    const dockerUri = process.env.DOCKER_URI || "http://0.0.0.0:2375";
+    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
-    // First, try to find the mailserver container
-    const containersResponse = await fetch(`${dockerUri}/containers/json?all=true`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (!containersResponse.ok) {
-      console.error("Failed to get containers list");
-      return;
-    }
-
-    const containers = await containersResponse.json();
+    // List all containers to find the mailserver
+    const containers = await docker.listContainers({ all: true });
     const mailserverContainer = containers.find((container: any) =>
       container.Names.some((name: string) => name.includes("mailserver")) ||
       container.Image.includes("mailserver") ||
@@ -589,17 +579,11 @@ async function restartMailserverContainer() {
 
     console.log(`Restarting mailserver container: ${mailserverContainer.Id}`);
 
-    // Restart the container
-    const restartResponse = await fetch(`${dockerUri}/containers/${mailserverContainer.Id}/restart`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
+    // Get container object and restart it
+    const containerObj = docker.getContainer(mailserverContainer.Id);
+    await containerObj.restart();
 
-    if (restartResponse.ok) {
-      console.log("Mailserver container restarted successfully");
-    } else {
-      console.error("Failed to restart mailserver container:", restartResponse.status);
-    }
+    console.log("Mailserver container restarted successfully using Docker socket");
   } catch (error) {
     console.error("Error restarting mailserver container:", error);
   }
@@ -2027,6 +2011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if firewall item already exists
       const items = await dbStorage.getNavigationItems();
       const firewallExists = items.some(item => item.href === '/firewall');
+      const servicesExists = items.some(item => item.href === '/services');
       const permissionsItem = items.find(item => item.href === '/user-permissions');
 
       // Remove user permissions item if it exists
@@ -2045,10 +2030,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Add services item if it doesn't exist
+      if (!servicesExists) {
+        await dbStorage.createNavigationItem({
+          label: 'Serviços',
+          href: '/services',
+          icon: 'Zap',
+          order: 16,
+          parentId: null
+        });
+      }
+
       res.json({ success: true, message: "Navigation updated successfully" });
     } catch (error) {
       console.error('Error updating navigation:', error);
       res.status(500).json({ message: "Failed to update navigation items" });
+    }
+  });
+
+  // Create navigation item
+  app.post("/api/navigation", async (req, res) => {
+    try {
+      const item = await dbStorage.createNavigationItem(req.body);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error('Error creating navigation item:', error);
+      res.status(500).json({ message: "Failed to create navigation item" });
     }
   });
 
