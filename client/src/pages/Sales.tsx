@@ -15,7 +15,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText, ChevronDown, ChevronUp, CreditCard, RefreshCw, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { CalendarIcon, Plus, Edit, Trash2, Search, Filter, ShoppingCart, User, Calendar, DollarSign, Package2, Truck, FileText, ChevronDown, ChevronUp, CreditCard, RefreshCw, ExternalLink, CheckCircle, AlertCircle, Check, ChevronsUpDown } from "lucide-react";
 import type { Sale, InsertSale, Client, Product, Service } from "@shared/schema";
 
 const saleFormSchema = z.object({
@@ -95,6 +98,9 @@ export default function Sales() {
     service?: any;
     type: 'product' | 'service';
   }>>([]);
+
+  // Estado para controlar se o popover está aberto
+  const [productPopoverOpen, setProductPopoverOpen] = useState(false);
   
   const createMutation = useMutation({
     mutationFn: (data: InsertSale) => apiRequest("POST", "/api/sales", data),
@@ -619,20 +625,52 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cliente</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um cliente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clientsArray.map((client: Client) => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
-                                {client.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value
+                                  ? clientsArray.find((client) => client.id === field.value)?.name
+                                  : "Selecione um cliente"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Pesquisar cliente..." />
+                              <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                <ScrollArea className="h-60">
+                                  {clientsArray.map((client: Client) => (
+                                    <CommandItem
+                                      key={client.id}
+                                      value={client.name}
+                                      onSelect={() => {
+                                        field.onChange(client.id)
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === client.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {client.name}
+                                    </CommandItem>
+                                  ))}
+                                </ScrollArea>
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -644,33 +682,56 @@ ${sale.notes ? `Observações: ${sale.notes}` : ''}
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium">Produtos e Serviços</h3>
                     <div className="flex gap-2">
-                      <Select onValueChange={(value) => {
-                        const [type, id] = value.split('-');
-                        if (type === 'product') {
-                          addProductToSale(parseInt(id));
-                        } else if (type === 'service') {
-                          addServiceToSale(parseInt(id));
-                        }
-                      }}>
-                        <SelectTrigger className="w-[300px]">
-                          <SelectValue placeholder="Selecionar produto ou serviço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem disabled value="products-header">--- PRODUTOS ---</SelectItem>
-                          {Array.isArray(products) && products.map((product: any) => (
-                            <SelectItem key={`product-${product.id}`} value={`product-${product.id}`}>
-                              {product.name} - {formatCurrency(product.price)}
-                            </SelectItem>
-                          ))}
-                          <SelectItem disabled value="services-header">--- SERVIÇOS ---</SelectItem>
-                          {Array.isArray(services) && services.map((service: any) => (
-                            <SelectItem key={`service-${service.id}`} value={`service-${service.id}`}>
-                              {service.name} - {formatCurrency(service.price)}
-                              {service.duration && ` (${service.duration} ${service.durationType})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={productPopoverOpen} onOpenChange={setProductPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={productPopoverOpen}
+                            className="w-[300px] justify-between"
+                          >
+                            Selecionar produto ou serviço
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Pesquisar produto ou serviço..." />
+                            <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                            <CommandGroup heading="Produtos">
+                              {Array.isArray(products) && products.map((product: any) => (
+                                <CommandItem
+                                  key={`product-${product.id}`}
+                                  value={`${product.name} - ${formatCurrency(product.price)}`}
+                                  onSelect={() => {
+                                    addProductToSale(product.id);
+                                    setProductPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check className="mr-2 h-4 w-4 opacity-0" />
+                                  {product.name} - {formatCurrency(product.price)}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                            <CommandGroup heading="Serviços">
+                              {Array.isArray(services) && services.map((service: any) => (
+                                <CommandItem
+                                  key={`service-${service.id}`}
+                                  value={`${service.name} - ${formatCurrency(service.price)} ${service.duration ? `(${service.duration} ${service.durationType})` : ''}`}
+                                  onSelect={() => {
+                                    addServiceToSale(service.id);
+                                    setProductPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check className="mr-2 h-4 w-4 opacity-0" />
+                                  {service.name} - {formatCurrency(service.price)}
+                                  {service.duration && ` (${service.duration} ${service.durationType})`}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                   

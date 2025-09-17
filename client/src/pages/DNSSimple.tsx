@@ -189,14 +189,18 @@ export default function DNSSimple() {
   const [editingRecord, setEditingRecord] = useState<DNSRecord | null>(null);
   const queryClient = useQueryClient();
 
-  // Test connection
+  // Test connection with auto-refresh
   const { data: connectionTest, isLoading: connectionLoading } = useQuery<ConnectionTest>({
     queryKey: ["/api/dns/test"],
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchIntervalInBackground: true,
   });
 
-  // Fetch DNS records
+  // Fetch DNS records with auto-refresh
   const { data: records = [], isLoading: recordsLoading, refetch } = useQuery<DNSRecord[]>({
     queryKey: ["/api/dns/records"],
+    refetchInterval: 15000, // Auto-refresh every 15 seconds
+    refetchIntervalInBackground: true,
   });
 
   // Create mutation
@@ -301,9 +305,13 @@ export default function DNSSimple() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Globe className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Gerenciamento DNS</h1>
+          <div className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            Auto-atualização
+          </div>
         </div>
         <div className="flex gap-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -474,15 +482,6 @@ export default function DNSSimple() {
               </Form>
             </DialogContent>
           </Dialog>
-          <Button
-            onClick={() => refetch()}
-            disabled={recordsLoading}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${recordsLoading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
         </div>
       </div>
 

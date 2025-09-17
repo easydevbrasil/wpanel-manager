@@ -9,7 +9,6 @@ import {
     Trash2,
     Calendar,
     CreditCard,
-    Tag,
     FileText,
     DollarSign,
     Bell,
@@ -98,12 +97,6 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
                                     <Calendar className="h-3 w-3" />
                                     {format(new Date(expense.date), "dd/MM/yyyy", { locale: ptBR })}
                                 </div>
-                                {expense.subcategory && (
-                                    <div className="flex items-center gap-1 truncate">
-                                        <Tag className="h-3 w-3" />
-                                        <span className="truncate">{expense.subcategory}</span>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>

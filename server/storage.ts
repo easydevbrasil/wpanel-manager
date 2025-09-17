@@ -39,7 +39,6 @@ import {
   taskTemplates,
   expenses,
   expenseCategories,
-  expenseSubcategories,
   paymentMethods,
   expenseReminders,
   exchangeRates,
@@ -105,8 +104,6 @@ import {
   type InsertExpense,
   type ExpenseCategory,
   type InsertExpenseCategory,
-  type ExpenseSubcategory,
-  type InsertExpenseSubcategory,
   type PaymentMethod,
   type InsertPaymentMethod,
   type ExpenseReminder,
@@ -327,13 +324,6 @@ export interface IStorage {
   createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory>;
   updateExpenseCategory(id: number, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory>;
   deleteExpenseCategory(id: number): Promise<void>;
-
-  // Expense Subcategories methods
-  getExpenseSubcategories(categoryId?: number): Promise<ExpenseSubcategory[]>;
-  getExpenseSubcategory(id: number): Promise<ExpenseSubcategory | undefined>;
-  createExpenseSubcategory(subcategory: InsertExpenseSubcategory): Promise<ExpenseSubcategory>;
-  updateExpenseSubcategory(id: number, subcategory: Partial<InsertExpenseSubcategory>): Promise<ExpenseSubcategory>;
-  deleteExpenseSubcategory(id: number): Promise<void>;
 
   // Payment Methods methods
   getPaymentMethods(): Promise<PaymentMethod[]>;
@@ -3495,6 +3485,92 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error creating default expense categories:', error);
     }
+
+    // Initialize default payment methods for Brazil
+    try {
+      const existingPaymentMethods = await db
+        .select()
+        .from(paymentMethods)
+        .limit(1);
+
+      if (existingPaymentMethods.length > 0) {
+        console.log('Payment methods already exist');
+        return;
+      }
+
+      console.log('Creating default Brazilian payment methods...');
+
+      const defaultPaymentMethods = [
+        {
+          name: 'PIX',
+          icon: 'Zap',
+          color: '#00BC7E',
+          sortOrder: 1
+        },
+        {
+          name: 'Cartão de Crédito',
+          icon: 'CreditCard',
+          color: '#3B82F6',
+          sortOrder: 2
+        },
+        {
+          name: 'Cartão de Débito',
+          icon: 'CreditCard',
+          color: '#10B981',
+          sortOrder: 3
+        },
+        {
+          name: 'Boleto',
+          icon: 'FileText',
+          color: '#F59E0B',
+          sortOrder: 4
+        },
+        {
+          name: 'Transferência Bancária',
+          icon: 'ArrowLeftRight',
+          color: '#8B5CF6',
+          sortOrder: 5
+        },
+        {
+          name: 'Dinheiro',
+          icon: 'DollarSign',
+          color: '#22C55E',
+          sortOrder: 6
+        },
+        {
+          name: 'Cheque',
+          icon: 'FileCheck',
+          color: '#6B7280',
+          sortOrder: 7
+        },
+        {
+          name: 'PayPal',
+          icon: 'Wallet',
+          color: '#0070BA',
+          sortOrder: 8
+        },
+        {
+          name: 'Mercado Pago',
+          icon: 'Smartphone',
+          color: '#009EE3',
+          sortOrder: 9
+        },
+        {
+          name: 'PagSeguro',
+          icon: 'Shield',
+          color: '#F7941E',
+          sortOrder: 10
+        }
+      ];
+
+      for (const method of defaultPaymentMethods) {
+        await db.insert(paymentMethods).values(method);
+      }
+
+      console.log('Default Brazilian payment methods created successfully');
+    } catch (error) {
+      console.error('Error creating default payment methods:', error);
+    }
   }
 
   // ==================== EXPENSES METHODS ====================
@@ -3704,77 +3780,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(expenseCategories.id, id));
     } catch (error) {
       console.error("Error deleting expense category:", error);
-      throw error;
-    }
-  }
-
-  // ===== EXPENSE SUBCATEGORIES METHODS =====
-
-  async getExpenseSubcategories(categoryId?: number): Promise<ExpenseSubcategory[]> {
-    try {
-      const whereConditions = [eq(expenseSubcategories.isActive, true)];
-
-      if (categoryId) {
-        whereConditions.push(eq(expenseSubcategories.categoryId, categoryId));
-      }
-
-      const subcategories = await db.select().from(expenseSubcategories)
-        .where(and(...whereConditions))
-        .orderBy(expenseSubcategories.sortOrder, expenseSubcategories.name);
-
-      return subcategories;
-    } catch (error) {
-      console.error("Error fetching expense subcategories:", error);
-      throw error;
-    }
-  }
-
-  async getExpenseSubcategory(id: number): Promise<ExpenseSubcategory | undefined> {
-    try {
-      const subcategory = await db.select().from(expenseSubcategories).where(eq(expenseSubcategories.id, id));
-      return subcategory[0];
-    } catch (error) {
-      console.error("Error fetching expense subcategory:", error);
-      throw error;
-    }
-  }
-
-  async createExpenseSubcategory(subcategory: InsertExpenseSubcategory): Promise<ExpenseSubcategory> {
-    try {
-      const newSubcategory = await db.insert(expenseSubcategories).values(subcategory).returning();
-      return newSubcategory[0];
-    } catch (error) {
-      console.error("Error creating expense subcategory:", error);
-      throw error;
-    }
-  }
-
-  async updateExpenseSubcategory(id: number, subcategory: Partial<InsertExpenseSubcategory>): Promise<ExpenseSubcategory> {
-    try {
-      const updatedSubcategory = await db.update(expenseSubcategories)
-        .set({ ...subcategory, updatedAt: new Date() })
-        .where(eq(expenseSubcategories.id, id))
-        .returning();
-
-      if (updatedSubcategory.length === 0) {
-        throw new Error("Subcategoria não encontrada");
-      }
-
-      return updatedSubcategory[0];
-    } catch (error) {
-      console.error("Error updating expense subcategory:", error);
-      throw error;
-    }
-  }
-
-  async deleteExpenseSubcategory(id: number): Promise<void> {
-    try {
-      // Soft delete - apenas marcar como inativo
-      await db.update(expenseSubcategories)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(expenseSubcategories.id, id));
-    } catch (error) {
-      console.error("Error deleting expense subcategory:", error);
       throw error;
     }
   }

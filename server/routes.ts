@@ -543,9 +543,13 @@ async function generateMailAccountsFile() {
   try {
     const accounts = await dbStorage.getEmailAccounts();
     const lines = accounts.map((account) => {
-      // For Postfix compatibility, we need to store the Argon2 hash directly
-      // Postfix supports various formats including Argon2
-      return `${account.email}|${account.password}`;
+      // Format password with {ARGON2ID} prefix for Postfix compatibility
+      // If password already has the prefix, use as is, otherwise add it
+      let formattedPassword = account.password;
+      if (!formattedPassword.startsWith('{ARGON2ID}')) {
+        formattedPassword = `{ARGON2ID}${formattedPassword}`;
+      }
+      return `${account.email}|${formattedPassword}`;
     });
 
     const filePath = process.env.POSTFIX_MAIL_ACCOUNTS_FILE || "./mail_accounts.cf";
@@ -558,9 +562,18 @@ async function generateMailAccountsFile() {
   }
 }
 
+// Global variable to track mailserver restart status
+let isRestartingMailserver = false;
+
 // Function to restart mailserver container
 async function restartMailserverContainer() {
+  if (isRestartingMailserver) {
+    console.log("Mailserver restart already in progress, skipping...");
+    return;
+  }
+
   try {
+    isRestartingMailserver = true;
     const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
     // List all containers to find the mailserver
@@ -586,6 +599,8 @@ async function restartMailserverContainer() {
     console.log("Mailserver container restarted successfully using Docker socket");
   } catch (error) {
     console.error("Error restarting mailserver container:", error);
+  } finally {
+    isRestartingMailserver = false;
   }
 }
 
@@ -1871,67 +1886,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting expense category:", error);
       res.status(500).json({ message: "Erro ao remover categoria" });
-    }
-  });
-
-  // ===== EXPENSE SUBCATEGORIES ROUTES =====
-
-  app.get("/api/expense-subcategories", async (req, res) => {
-    try {
-      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
-      const subcategories = await dbStorage.getExpenseSubcategories(categoryId);
-      res.json(subcategories);
-    } catch (error) {
-      console.error("Error getting expense subcategories:", error);
-      res.status(500).json({ message: "Erro ao buscar subcategorias" });
-    }
-  });
-
-  app.get("/api/expense-subcategories/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const subcategory = await dbStorage.getExpenseSubcategory(id);
-
-      if (!subcategory) {
-        return res.status(404).json({ message: "Subcategoria não encontrada" });
-      }
-
-      res.json(subcategory);
-    } catch (error) {
-      console.error("Error getting expense subcategory:", error);
-      res.status(500).json({ message: "Erro ao buscar subcategoria" });
-    }
-  });
-
-  app.post("/api/expense-subcategories", async (req, res) => {
-    try {
-      const subcategory = await dbStorage.createExpenseSubcategory(req.body);
-      res.status(201).json(subcategory);
-    } catch (error) {
-      console.error("Error creating expense subcategory:", error);
-      res.status(500).json({ message: "Erro ao criar subcategoria" });
-    }
-  });
-
-  app.put("/api/expense-subcategories/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const subcategory = await dbStorage.updateExpenseSubcategory(id, req.body);
-      res.json(subcategory);
-    } catch (error) {
-      console.error("Error updating expense subcategory:", error);
-      res.status(500).json({ message: "Erro ao atualizar subcategoria" });
-    }
-  });
-
-  app.delete("/api/expense-subcategories/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await dbStorage.deleteExpenseSubcategory(id);
-      res.json({ message: "Subcategoria removida com sucesso" });
-    } catch (error) {
-      console.error("Error deleting expense subcategory:", error);
-      res.status(500).json({ message: "Erro ao remover subcategoria" });
     }
   });
 
@@ -4246,6 +4200,14 @@ server {
     }
   });
 
+  // Get mailserver restart status (must be before /:id route)
+  app.get("/api/email-accounts/restart-status", async (req, res) => {
+    res.json({ 
+      isRestarting: isRestartingMailserver,
+      message: isRestartingMailserver ? "Mailserver is restarting..." : "Mailserver is ready"
+    });
+  });
+
   app.get("/api/email-accounts/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -4263,9 +4225,18 @@ server {
     try {
       const account = await dbStorage.createEmailAccount(req.body);
       await generateMailAccountsFile();
-      await restartMailserverContainer();
+      
+      // Start mailserver restart in background
+      restartMailserverContainer();
+      
       broadcastUpdate("email_account_created", account);
-      res.status(201).json(account);
+      res.status(201).json({ 
+        ...account, 
+        restartStatus: { 
+          isRestarting: true, 
+          message: "Email account created. Mailserver is restarting..." 
+        }
+      });
     } catch (error) {
       res.status(400).json({ message: "Failed to create email account" });
     }
@@ -4276,9 +4247,18 @@ server {
       const id = parseInt(req.params.id);
       const account = await dbStorage.updateEmailAccount(id, req.body);
       await generateMailAccountsFile();
-      await restartMailserverContainer();
+      
+      // Start mailserver restart in background
+      restartMailserverContainer();
+      
       broadcastUpdate("email_account_updated", account);
-      res.json(account);
+      res.json({ 
+        ...account, 
+        restartStatus: { 
+          isRestarting: true, 
+          message: "Email account updated. Mailserver is restarting..." 
+        }
+      });
     } catch (error) {
       res.status(400).json({ message: "Failed to update email account" });
     }
@@ -4289,9 +4269,18 @@ server {
       const id = parseInt(req.params.id);
       await dbStorage.deleteEmailAccount(id);
       await generateMailAccountsFile();
-      await restartMailserverContainer();
+      
+      // Start mailserver restart in background
+      restartMailserverContainer();
+      
       broadcastUpdate("email_account_deleted", { id });
-      res.status(204).send();
+      res.json({ 
+        success: true,
+        restartStatus: { 
+          isRestarting: true, 
+          message: "Email account deleted. Mailserver is restarting..." 
+        }
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete email account" });
     }
@@ -4309,6 +4298,8 @@ server {
       res.status(400).json({ message: "Failed to set default email account" });
     }
   });
+
+
 
   // User Permissions routes
   app.get("/api/permissions", authenticateToken, async (req, res) => {

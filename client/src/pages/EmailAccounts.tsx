@@ -75,7 +75,35 @@ export default function EmailAccounts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [isRestartingMailserver, setIsRestartingMailserver] = useState(false);
   useWebSocket();
+
+  // Function to poll mailserver restart status
+  const pollRestartStatus = async () => {
+    const checkStatus = async () => {
+      try {
+        const response = await fetch('/api/email-accounts/restart-status');
+        const data = await response.json();
+        
+        if (!data.isRestarting) {
+          setIsRestartingMailserver(false);
+          toast({
+            title: "✅ Servidor reiniciado",
+            description: "Servidor de email foi reiniciado com sucesso!",
+          });
+          return;
+        }
+        
+        // Continue polling if still restarting
+        setTimeout(checkStatus, 2000);
+      } catch (error) {
+        console.error('Error checking restart status:', error);
+        setIsRestartingMailserver(false);
+      }
+    };
+    
+    checkStatus();
+  };
 
   const form = useForm<EmailAccountFormData>({
     resolver: zodResolver(emailAccountSchema),
@@ -178,14 +206,21 @@ export default function EmailAccounts() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/email-accounts'] });
       toast({
         title: "✅ Conta criada",
-        description: "Conta de email criada com sucesso",
+        description: "Conta de email criada com sucesso. Reiniciando servidor de email...",
       });
       setIsDialogOpen(false);
       form.reset();
+      
+      // Show loading modal if restart is happening
+      if (data.restartStatus?.isRestarting) {
+        setIsRestartingMailserver(true);
+        // Poll for restart status
+        pollRestartStatus();
+      }
     },
     onError: () => {
       toast({
@@ -206,15 +241,21 @@ export default function EmailAccounts() {
       if (!response.ok) throw new Error('Failed to update email account');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/email-accounts'] });
       toast({
         title: "✅ Conta atualizada",
-        description: "Conta de email atualizada com sucesso",
+        description: "Conta de email atualizada com sucesso. Reiniciando servidor de email...",
       });
       setIsDialogOpen(false);
       setEditingAccount(null);
       form.reset();
+      
+      // Show loading modal if restart is happening
+      if (data.restartStatus?.isRestarting) {
+        setIsRestartingMailserver(true);
+        pollRestartStatus();
+      }
     },
     onError: () => {
       toast({
@@ -231,13 +272,20 @@ export default function EmailAccounts() {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete email account');
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/email-accounts'] });
       toast({
         title: "🗑️ Conta removida",
-        description: "Conta de email removida com sucesso",
+        description: "Conta de email removida com sucesso. Reiniciando servidor de email...",
       });
+      
+      // Show loading modal if restart is happening
+      if (data.restartStatus?.isRestarting) {
+        setIsRestartingMailserver(true);
+        pollRestartStatus();
+      }
     },
     onError: () => {
       toast({
@@ -594,6 +642,42 @@ export default function EmailAccounts() {
           </Button>
         </Card>
       )}
+
+      {/* Modal de Loading para Restart do Mailserver */}
+      <Dialog open={isRestartingMailserver} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" closeDisabled>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-6 h-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+              Reiniciando Servidor de Email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 animate-pulse">
+                <Mail className="w-16 h-16 text-blue-500 animate-bounce" />
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Aguarde enquanto o servidor de email é reiniciado para aplicar as alterações...
+              </p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  Configurações atualizadas com sucesso
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  Reiniciando container mailserver...
+                </span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -43,6 +43,13 @@
       "when": 1757695092616,
       "tag": "0005_spooky_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758103638632,
+      "tag": "0006_loose_sway",
+      "breakpoints": true
     }
   ]
 }

@@ -729,7 +729,6 @@ export const expenses = pgTable("expenses", {
   originalAmount: decimal("original_amount", { precision: 10, scale: 2 }), // Valor na moeda original
   currency: text("currency").notNull().default("BRL"), // BRL, USD, EUR, etc
   category: text("category").notNull(),
-  subcategory: text("subcategory"),
   date: timestamp("date").defaultNow().notNull(),
   dueDate: timestamp("due_date"), // Data de vencimento para agendamento
   scheduledDate: timestamp("scheduled_date"), // Data agendada para pagamento
@@ -763,17 +762,6 @@ export const expenseCategories = pgTable("expense_categories", {
   name: text("name").notNull().unique(),
   icon: text("icon").default("FileText"), // Nome do ícone do Lucide
   color: text("color").default("#6B7280"), // Cor hex para o ícone
-  isActive: boolean("is_active").notNull().default(true),
-  sortOrder: integer("sort_order").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Expense subcategories table
-export const expenseSubcategories = pgTable("expense_subcategories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  categoryId: integer("category_id").references(() => expenseCategories.id, { onDelete: "cascade" }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -816,12 +804,6 @@ export const insertExpenseCategoriesSchema = createInsertSchema(expenseCategorie
   updatedAt: true,
 });
 
-export const insertExpenseSubcategoriesSchema = createInsertSchema(expenseSubcategories).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const insertPaymentMethodsSchema = createInsertSchema(paymentMethods).omit({
   id: true,
   createdAt: true,
@@ -842,9 +824,6 @@ export type InsertExpenseReminder = z.infer<typeof insertExpenseReminderSchema>;
 
 export type ExpenseCategory = typeof expenseCategories.$inferSelect;
 export type InsertExpenseCategory = z.infer<typeof insertExpenseCategoriesSchema>;
-
-export type ExpenseSubcategory = typeof expenseSubcategories.$inferSelect;
-export type InsertExpenseSubcategory = z.infer<typeof insertExpenseSubcategoriesSchema>;
 
 export type PaymentMethod = typeof paymentMethods.$inferSelect;
 export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodsSchema>;

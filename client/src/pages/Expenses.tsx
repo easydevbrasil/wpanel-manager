@@ -20,6 +20,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { ExpenseCategoriesManager } from "@/components/ExpenseCategoriesManager";
+import { PaymentMethodsManager } from "@/components/PaymentMethodsManager";
 import ServiceProvidersManager from "@/components/ServiceProvidersManager";
 import ExpenseCard from "@/components/ExpenseCard";
 import {
@@ -35,7 +36,10 @@ import {
   Filter,
   Download,
   FileText,
+  FileCheck,
   Zap,
+  ArrowLeftRight,
+  Wallet,
   Wifi,
   Shield,
   Coffee,
@@ -102,7 +106,6 @@ const expenseSchema = z.object({
   currency: z.enum(["BRL", "USD", "EUR"]).default("BRL"),
   originalAmount: z.string().optional(),
   category: z.string().min(1, "Categoria é obrigatória"),
-  subcategory: z.string().optional(),
   date: z.date(),
   dueDate: z.date().optional(),
   scheduledDate: z.date().optional(),
@@ -125,13 +128,6 @@ interface Category {
   isActive: boolean;
 }
 
-interface Subcategory {
-  id: number;
-  name: string;
-  categoryId: number;
-  isActive: boolean;
-}
-
 interface PaymentMethod {
   id: number;
   name: string;
@@ -147,7 +143,6 @@ interface Expense {
   currency?: string;
   originalAmount?: number;
   category: string;
-  subcategory?: string;
   date: string;
   dueDate?: string;
   scheduledDate?: string;
@@ -179,22 +174,6 @@ const useExpenseCategories = () => {
       const response = await apiRequest('GET', '/api/expense-categories');
       return response.json();
     },
-    staleTime: 1000 * 60 * 10, // 10 minutos
-  });
-};
-
-// Hook para buscar subcategorias do banco de dados
-const useExpenseSubcategories = (categoryId?: number) => {
-  return useQuery<Subcategory[]>({
-    queryKey: ['/api/expense-subcategories', categoryId],
-    queryFn: async () => {
-      const url = categoryId
-        ? `/api/expense-subcategories?categoryId=${categoryId}`
-        : '/api/expense-subcategories';
-      const response = await apiRequest('GET', url);
-      return response.json();
-    },
-    enabled: !!categoryId,
     staleTime: 1000 * 60 * 10, // 10 minutos
   });
 };
@@ -339,12 +318,9 @@ export default function Expenses() {
     }
   });
 
-  // Buscar categorias, subcategorias e métodos de pagamento do banco
+  // Buscar categorias e métodos de pagamento do banco
   const { data: dbCategories = [] } = useExpenseCategories();
   const { data: dbPaymentMethods = [] } = usePaymentMethods();
-  const { data: dbSubcategories = [] } = useExpenseSubcategories(
-    dbCategories.find(cat => cat.name === selectedCategory)?.id
-  );
 
   // Mutations
   const createMutation = useMutation({
@@ -492,7 +468,6 @@ export default function Expenses() {
       currency: "BRL",
       originalAmount: "",
       category: "",
-      subcategory: "",
       date: new Date(),
       dueDate: undefined,
       scheduledDate: undefined,
@@ -547,7 +522,6 @@ export default function Expenses() {
         currency: (expense as any).currency || "BRL",
         originalAmount: expense.originalAmount?.toString(),
         category: expense.category || "",
-        subcategory: expense.subcategory || "",
         date: parseDate(expense.date) || new Date(),
         dueDate: parseDate(expense.dueDate),
         scheduledDate: parseDate(expense.scheduledDate),
@@ -587,7 +561,6 @@ export default function Expenses() {
       description: "",
       amount: "",
       category: "",
-      subcategory: "",
       date: new Date(),
       dueDate: undefined,
       scheduledDate: undefined,
@@ -620,7 +593,31 @@ export default function Expenses() {
     return <IconComponent className="h-4 w-4" />;
   };
 
+  const getPaymentMethodData = (methodName: string) => {
+    const method = dbPaymentMethods.find(m => m.name === methodName);
+    return method || null;
+  };
+
   const getPaymentMethodColor = (method: string) => {
+    const paymentMethod = getPaymentMethodData(method);
+    if (paymentMethod && paymentMethod.color) {
+      // Converte cor hex para classes CSS
+      const colorMap: { [key: string]: string } = {
+        '#00BC7E': 'bg-green-100 text-green-800',
+        '#3B82F6': 'bg-blue-100 text-blue-800',
+        '#10B981': 'bg-emerald-100 text-emerald-800',
+        '#F59E0B': 'bg-amber-100 text-amber-800',
+        '#8B5CF6': 'bg-violet-100 text-violet-800',
+        '#22C55E': 'bg-green-100 text-green-800',
+        '#6B7280': 'bg-gray-100 text-gray-800',
+        '#0070BA': 'bg-blue-100 text-blue-800',
+        '#009EE3': 'bg-cyan-100 text-cyan-800',
+        '#F7941E': 'bg-orange-100 text-orange-800',
+      };
+      return colorMap[paymentMethod.color] || 'bg-muted text-muted-foreground';
+    }
+    
+    // Fallback para métodos antigos
     switch (method) {
       case "PIX": return "bg-green-100 text-green-800";
       case "Cartão de Crédito": return "bg-blue-100 text-blue-800";
@@ -628,6 +625,26 @@ export default function Expenses() {
       case "Dinheiro": return "bg-yellow-100 text-yellow-800";
       default: return "bg-muted text-muted-foreground";
     }
+  };
+
+  const getPaymentMethodIcon = (methodName: string) => {
+    const method = getPaymentMethodData(methodName);
+    if (method) {
+      const iconMap: { [key: string]: any } = {
+        'Zap': Zap,
+        'CreditCard': CreditCard,
+        'DollarSign': DollarSign,
+        'FileText': FileText,
+        'ArrowLeftRight': ArrowLeftRight,
+        'FileCheck': FileCheck,
+        'Wallet': Wallet,
+        'Smartphone': Smartphone,
+        'Shield': Shield,
+      };
+      const IconComponent = iconMap[method.icon];
+      return IconComponent ? <IconComponent className="h-4 w-4" style={{ color: method.color }} /> : <CreditCard className="h-4 w-4" />;
+    }
+    return <CreditCard className="h-4 w-4" />;
   };
 
   const getPaymentMethodName = (method: string) => {
@@ -887,7 +904,6 @@ export default function Expenses() {
                               <Select onValueChange={(value) => {
                                 field.onChange(value);
                                 setSelectedCategory(value);
-                                form.setValue("subcategory", "");
                               }} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -910,33 +926,6 @@ export default function Expenses() {
                           )}
                         />
 
-                        {selectedCategory && (
-                          <FormField
-                            control={form.control}
-                            name="subcategory"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Subcategoria</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Selecione uma subcategoria" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {dbSubcategories.map((subcategory) => (
-                                      <SelectItem key={subcategory.id} value={subcategory.name}>
-                                        {subcategory.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        )}
-
                         <FormField
                           control={form.control}
                           name="paymentMethod"
@@ -952,7 +941,10 @@ export default function Expenses() {
                                 <SelectContent>
                                   {dbPaymentMethods.map((method) => (
                                     <SelectItem key={method.id} value={method.name}>
-                                      {method.name}
+                                      <div className="flex items-center gap-2">
+                                        {getPaymentMethodIcon(method.name)}
+                                        {method.name}
+                                      </div>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1221,6 +1213,7 @@ export default function Expenses() {
             <TabsTrigger value="expenses" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">Despesas</TabsTrigger>
             <TabsTrigger value="analytics" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-700">Análises</TabsTrigger>
             <TabsTrigger value="categories" className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700">Categorias</TabsTrigger>
+            <TabsTrigger value="payment-methods" className="data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700">Métodos de Pagamento</TabsTrigger>
             <TabsTrigger value="providers" className="data-[state=active]:bg-orange-50 data-[state=active]:text-orange-700">Prestadores</TabsTrigger>
           </TabsList>
 
@@ -1347,7 +1340,6 @@ export default function Expenses() {
                                     <div className="flex flex-col">
                                       <div className="font-medium">{expense.description}</div>
                                       <div className="text-sm text-gray-500">
-                                        {expense.subcategory && `${expense.subcategory} • `}
                                         {format(new Date(expense.date), "dd/MM/yyyy", { locale: ptBR })}
                                       </div>
                                     </div>
@@ -1447,6 +1439,10 @@ export default function Expenses() {
 
           <TabsContent value="categories">
             <ExpenseCategoriesManager />
+          </TabsContent>
+
+          <TabsContent value="payment-methods">
+            <PaymentMethodsManager />
           </TabsContent>
 
           <TabsContent value="providers">

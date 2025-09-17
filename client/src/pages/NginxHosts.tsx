@@ -554,21 +554,46 @@ export default function NginxHosts() {
     return hostsStatus.find(status => status.id === hostId) || null;
   };
 
-  // Helper function to get status badge variant and text
+  // Helper function to get status badge variant and text with colored icons
   const getStatusDisplay = (status: HostStatus | null) => {
     if (!status) {
-      return { variant: 'secondary' as const, text: 'Desconhecido', icon: '❓' };
+      return { 
+        icon: <AlertCircle className="w-4 h-4 text-gray-500" />, 
+        text: 'Verificando...', 
+        bgColor: 'bg-gray-50', 
+        textColor: 'text-gray-700' 
+      };
     }
 
     switch (status.status) {
       case 'online':
-        return { variant: 'default' as const, text: 'Online', icon: '🟢' };
+        return { 
+          icon: <CheckCircle className="w-4 h-4 text-green-500" />, 
+          text: 'HTTP 200 OK', 
+          bgColor: 'bg-green-50', 
+          textColor: 'text-green-700' 
+        };
       case 'offline':
-        return { variant: 'destructive' as const, text: 'Offline', icon: '🔴' };
+        return { 
+          icon: <AlertCircle className="w-4 h-4 text-red-500" />, 
+          text: 'Inacessível', 
+          bgColor: 'bg-red-50', 
+          textColor: 'text-red-700' 
+        };
       case 'error':
-        return { variant: 'secondary' as const, text: 'Erro', icon: '⚠️' };
+        return { 
+          icon: <AlertCircle className="w-4 h-4 text-orange-500" />, 
+          text: 'Erro HTTP', 
+          bgColor: 'bg-orange-50', 
+          textColor: 'text-orange-700' 
+        };
       default:
-        return { variant: 'secondary' as const, text: 'Desconhecido', icon: '❓' };
+        return { 
+          icon: <AlertCircle className="w-4 h-4 text-gray-500" />, 
+          text: 'Status desconhecido', 
+          bgColor: 'bg-gray-50', 
+          textColor: 'text-gray-700' 
+        };
     }
   };
 
@@ -583,9 +608,13 @@ export default function NginxHosts() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Server className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Gerenciamento de Hosts Nginx</h1>
+          <div className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            Auto-verificação HTTP
+          </div>
           {/* Status summary */}
           {hostsStatus.length > 0 && (
             <div className="flex items-center gap-2 ml-4">
@@ -1280,18 +1309,6 @@ export default function NginxHosts() {
               )}
             </DialogContent>
           </Dialog>
-          <Button
-            onClick={() => {
-              refetch();
-              refetchStatus();
-            }}
-            disabled={isLoading || statusLoading}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || statusLoading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
         </div>
       </div>
 
@@ -1327,13 +1344,13 @@ export default function NginxHosts() {
                           const status = getHostStatus(host.id);
                           const statusDisplay = getStatusDisplay(status);
                           return (
-                            <Badge variant={statusDisplay.variant} className="flex items-center gap-1">
-                              <span>{statusDisplay.icon}</span>
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusDisplay.bgColor} ${statusDisplay.textColor} text-sm font-medium`}>
+                              {statusDisplay.icon}
                               <span>{statusDisplay.text}</span>
                               {status?.port && (
                                 <span className="ml-1 text-xs opacity-75">:{status.port}</span>
                               )}
-                            </Badge>
+                            </div>
                           );
                         })()}
 
