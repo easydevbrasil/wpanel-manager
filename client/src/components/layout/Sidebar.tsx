@@ -1,25 +1,70 @@
-// Default navigation items for fallback when API fails
-const defaultNavigationItems = [
-  { id: 1, label: 'Dashboard', href: '/', icon: 'LayoutDashboard', parentId: null },
-  { id: 2, label: 'Clientes', href: '/clients', icon: 'Users', parentId: null },
-  { id: 3, label: 'Produtos', href: '/products', icon: 'Package', parentId: null },
-  { id: 4, label: 'Fornecedores', href: '/suppliers', icon: 'Truck', parentId: null },
-  { id: 5, label: 'Vendas', href: '/sales', icon: 'ShoppingCart', parentId: null },
-  { id: 6, label: 'Suporte', href: '/support', icon: 'Headphones', parentId: null },
-  { id: 7, label: 'Firewall', href: '/firewall', icon: 'Shield', parentId: null },
-  { id: 8, label: 'Docker', href: '/docker-containers', icon: 'Container', parentId: null },
-  { id: 9, label: 'DNS', href: '/dns', icon: 'Globe', parentId: null },
-  { id: 10, label: 'Nginx', href: '/nginx-hosts', icon: 'Server', parentId: null },
-  { id: 11, label: 'Despesas', href: '/expenses', icon: 'CreditCard', parentId: null },
-  { id: 12, label: 'Lembretes', href: '/reminders', icon: 'Bell', parentId: null },
-  { id: 13, label: 'Banco', href: '/banco', icon: 'Database', parentId: null },
-  { id: 14, label: 'Email', href: '/email-accounts', icon: 'Mail', parentId: null },
-  { id: 15, label: 'Base de Dados', href: '/database-admin', icon: 'Database', parentId: null },
-  { id: 16, label: 'Serviços', href: '/services', icon: 'Zap', parentId: null },
-  { id: 17, label: 'Tarefas', href: '/task-scheduler', icon: 'Calendar', parentId: null },
-  { id: 18, label: 'Ajuda', href: '/help', icon: 'HelpCircle', parentId: null },
-  { id: 19, label: 'Documentação', href: '/documentation', icon: 'FileText', parentId: null }
+// Navigation items organized by groups for better UX
+const navigationGroups = [
+  {
+    id: 'business',
+    label: 'Negócios',
+    icon: 'BarChart3',
+    items: [
+      { id: 1, label: 'Dashboard', href: '/', icon: 'LayoutDashboard', parentId: null },
+      { id: 2, label: 'Clientes', href: '/clients', icon: 'Users', parentId: null },
+      { id: 3, label: 'Produtos', href: '/products', icon: 'Package', parentId: null },
+      { id: 4, label: 'Fornecedores', href: '/suppliers', icon: 'Truck', parentId: null },
+      { id: 5, label: 'Vendas', href: '/sales', icon: 'ShoppingCart', parentId: null },
+      { id: 16, label: 'Serviços', href: '/services', icon: 'Zap', parentId: null },
+    ]
+  },
+  {
+    id: 'financial',
+    label: 'Financeiro',
+    icon: 'CreditCard',
+    items: [
+      { id: 11, label: 'Despesas', href: '/expenses', icon: 'CreditCard', parentId: null },
+      { id: 13, label: 'Banco', href: '/banco', icon: 'Database', parentId: null },
+    ]
+  },
+  {
+    id: 'infrastructure',
+    label: 'Infraestrutura',
+    icon: 'Server',
+    items: [
+      { id: 8, label: 'Docker', href: '/docker-containers', icon: 'Container', parentId: null },
+      { id: 9, label: 'DNS', href: '/dns', icon: 'Globe', parentId: null },
+      { id: 10, label: 'Nginx', href: '/nginx-hosts', icon: 'Server', parentId: null },
+      { id: 7, label: 'Firewall', href: '/firewall', icon: 'Shield', parentId: null },
+      { id: 15, label: 'Base de Dados', href: '/database-admin', icon: 'Database', parentId: null },
+    ]
+  },
+  {
+    id: 'communication',
+    label: 'Comunicação',
+    icon: 'Mail',
+    items: [
+      { id: 14, label: 'Email', href: '/email-accounts', icon: 'Mail', parentId: null },
+      { id: 6, label: 'Suporte', href: '/support', icon: 'Headphones', parentId: null },
+    ]
+  },
+  {
+    id: 'productivity',
+    label: 'Produtividade',
+    icon: 'Calendar',
+    items: [
+      { id: 12, label: 'Lembretes', href: '/reminders', icon: 'Bell', parentId: null },
+      { id: 17, label: 'Tarefas', href: '/task-scheduler', icon: 'Calendar', parentId: null },
+    ]
+  },
+  {
+    id: 'help',
+    label: 'Ajuda & Docs',
+    icon: 'HelpCircle',
+    items: [
+      { id: 18, label: 'Ajuda', href: '/help', icon: 'HelpCircle', parentId: null },
+      { id: 19, label: 'Documentação', href: '/documentation', icon: 'FileText', parentId: null },
+    ]
+  }
 ];
+
+// Flatten groups for backward compatibility
+const defaultNavigationItems = navigationGroups.flatMap(group => group.items);
 
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
@@ -175,6 +220,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [location] = useLocation();
   const [openItems, setOpenItems] = useState<Set<number>>(new Set([])); // Start with all collapsed
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['business'])); // Business group open by default
   const { theme, setTheme, actualTheme } = useTheme();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -331,6 +377,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     setOpenItems(newOpenItems);
   };
 
+  const toggleGroup = (groupId: string) => {
+    if (collapsed) return;
+    const newOpenGroups = new Set(openGroups);
+    if (newOpenGroups.has(groupId)) {
+      newOpenGroups.delete(groupId);
+    } else {
+      newOpenGroups.add(groupId);
+    }
+    setOpenGroups(newOpenGroups);
+  };
+
   const renderIcon = (iconName: string) => {
     const Icon = iconMap[iconName as keyof typeof iconMap];
     return Icon ? <Icon className={collapsed ? "w-5 h-5" : "w-4 h-4"} /> : <LayoutDashboard className={collapsed ? "w-5 h-5" : "w-4 h-4"} />;
@@ -379,7 +436,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </Button>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="space-y-2">
             {/* Show loading indicator if navigation is loading */}
             {navigationLoading && (
               <div className="flex items-center justify-center py-4">
@@ -394,105 +451,184 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </div>
             )}
             
-            {[...parentItems].map((item) => {
-              const children = childrenByParent[item.id] || [];
-              const hasChildren = children.length > 0;
-              const isOpen = openItems.has(item.id);
-              const itemIsActive = isActive(item.href);
-
-              if (hasChildren) {
-                return (
+            {/* Render grouped navigation when using fallback or when API doesn't return proper structure */}
+            {(navigationError || navigationItems.length === 0) ? (
+              // Render grouped navigation
+              navigationGroups.map((group) => (
+                <div key={group.id} className="space-y-1">
                   <Collapsible
-                    key={item.id}
-                    open={!collapsed && isOpen}
-                    onOpenChange={() => toggleItem(item.id)}
+                    open={!collapsed && openGroups.has(group.id)}
+                    onOpenChange={() => toggleGroup(group.id)}
                   >
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
                         className={cn(
-                          "w-full group relative rounded-2xl transition-all duration-300 hover:scale-[1.02]",
+                          "w-full group relative rounded-xl transition-all duration-300 hover:scale-[1.02]",
                           "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
                           "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
-                          "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
-                          collapsed ? "justify-center px-3 py-2 h-10" : "justify-between px-4 py-2 h-10"
+                          "hover:shadow-md hover:shadow-indigo-200/20 dark:hover:shadow-indigo-900/20",
+                          "text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300",
+                          collapsed ? "justify-center px-3 py-2 h-9" : "justify-between px-3 py-2 h-9"
                         )}
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <div className="relative">
-                            {renderIcon(item.icon)}
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                            {renderIcon(group.icon)}
                           </div>
                           {!collapsed && (
-                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
-                              {item.label}
+                            <span className="text-sm font-semibold">
+                              {group.label}
                             </span>
                           )}
                         </div>
-                        {!collapsed && hasChildren && (
+                        {!collapsed && (
                           <ChevronDown
                             className={cn(
-                              "w-4 h-4 transition-all duration-300 text-gray-500 group-hover:text-indigo-600",
-                              isOpen && "rotate-180"
+                              "w-4 h-4 transition-all duration-300",
+                              openGroups.has(group.id) && "rotate-180"
                             )}
                           />
                         )}
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1.5 mt-2">
-                      {children.map((child) => (
-                        <Link key={child.id} href={child.href || "#"}>
+                    <CollapsibleContent className="space-y-1 mt-1 ml-2">
+                      {group.items.map((item) => (
+                        <Link key={item.id} href={item.href || "#"}>
                           <div
                             className={cn(
-                              "block ml-8 px-4 py-2.5 text-sm rounded-xl transition-all duration-300 cursor-pointer group",
-                              "border-l-4 border-transparent hover:border-indigo-400 dark:hover:border-indigo-500",
-                              "hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 dark:hover:from-indigo-900/10 dark:hover:to-purple-900/10",
+                              "flex items-center gap-3 rounded-lg transition-all duration-300 cursor-pointer group relative",
+                              "border border-transparent hover:border-indigo-200/30 dark:hover:border-indigo-700/30",
                               "hover:shadow-md hover:shadow-indigo-200/20 dark:hover:shadow-indigo-900/20",
-                              isActive(child.href)
-                                ? "bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-500 shadow-md font-medium"
-                                : "text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                              collapsed ? "justify-center px-3 py-2 h-9" : "px-3 py-2 h-9",
+                              isActive(item.href)
+                                ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30"
+                                : "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/10 dark:hover:to-purple-900/10 text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                             )}
                           >
-                            {child.label}
+                            <div className="relative flex-shrink-0">
+                              {renderIcon(item.icon)}
+                              {!isActive(item.href) && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/10 to-purple-400/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                              )}
+                            </div>
+                            {!collapsed && (
+                              <span className="text-sm font-medium transition-colors duration-300">
+                                {item.label}
+                              </span>
+                            )}
+                            {isActive(item.href) && !collapsed && (
+                              <div className="absolute right-2 w-1.5 h-1.5 bg-white rounded-full shadow-lg"></div>
+                            )}
                           </div>
                         </Link>
                       ))}
                     </CollapsibleContent>
                   </Collapsible>
-                );
-              } else {
-                return (
-                  <Link key={item.id} href={item.href || "#"}>
-                    <div
-                      className={cn(
-                        "flex items-center gap-4 rounded-2xl transition-all duration-300 cursor-pointer group relative hover:scale-[1.02]",
-                        "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
-                        "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
-                        collapsed ? "justify-center px-3 py-2 h-10" : "px-4 py-2 h-10",
-                        itemIsActive
-                          ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 border-indigo-400/50"
-                          : "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-300"
-                      )}
+                </div>
+              ))
+            ) : (
+              // Render original structure from API
+              [...parentItems].map((item) => {
+                const children = childrenByParent[item.id] || [];
+                const hasChildren = children.length > 0;
+                const isOpen = openItems.has(item.id);
+                const itemIsActive = isActive(item.href);
+
+                if (hasChildren) {
+                  return (
+                    <Collapsible
+                      key={item.id}
+                      open={!collapsed && isOpen}
+                      onOpenChange={() => toggleItem(item.id)}
                     >
-                      <div className="relative">
-                        {renderIcon(item.icon)}
-                        {!itemIsActive && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "w-full group relative rounded-2xl transition-all duration-300 hover:scale-[1.02]",
+                            "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
+                            "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20",
+                            "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
+                            collapsed ? "justify-center px-3 py-2 h-10" : "justify-between px-4 py-2 h-10"
+                          )}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="relative">
+                              {renderIcon(item.icon)}
+                              <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                            </div>
+                            {!collapsed && (
+                              <span className="text-base font-semibold text-gray-700 dark:text-gray-300 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
+                                {item.label}
+                              </span>
+                            )}
+                          </div>
+                          {!collapsed && hasChildren && (
+                            <ChevronDown
+                              className={cn(
+                                "w-4 h-4 transition-all duration-300 text-gray-500 group-hover:text-indigo-600",
+                                isOpen && "rotate-180"
+                              )}
+                            />
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-1.5 mt-2">
+                        {children.map((child) => (
+                          <Link key={child.id} href={child.href || "#"}>
+                            <div
+                              className={cn(
+                                "block ml-8 px-4 py-2.5 text-sm rounded-xl transition-all duration-300 cursor-pointer group",
+                                "border-l-4 border-transparent hover:border-indigo-400 dark:hover:border-indigo-500",
+                                "hover:bg-gradient-to-r hover:from-indigo-50/50 hover:to-purple-50/50 dark:hover:from-indigo-900/10 dark:hover:to-purple-900/10",
+                                "hover:shadow-md hover:shadow-indigo-200/20 dark:hover:shadow-indigo-900/20",
+                                isActive(child.href)
+                                  ? "bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-500 shadow-md font-medium"
+                                  : "text-gray-600 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                              )}
+                            >
+                              {child.label}
+                            </div>
+                          </Link>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                } else {
+                  return (
+                    <Link key={item.id} href={item.href || "#"}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-4 rounded-2xl transition-all duration-300 cursor-pointer group relative hover:scale-[1.02]",
+                          "border border-transparent hover:border-indigo-200/50 dark:hover:border-indigo-700/50",
+                          "hover:shadow-lg hover:shadow-indigo-200/30 dark:hover:shadow-indigo-900/30",
+                          collapsed ? "justify-center px-3 py-2 h-10" : "px-4 py-2 h-10",
+                          itemIsActive
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 border-indigo-400/50"
+                            : "hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 text-gray-700 dark:text-gray-300 hover:text-indigo-700 dark:hover:text-indigo-300"
+                        )}
+                      >
+                        <div className="relative">
+                          {renderIcon(item.icon)}
+                          {!itemIsActive && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
+                          )}
+                        </div>
+                        {!collapsed && (
+                          <span className="text-base font-semibold transition-colors duration-300">
+                            {item.label}
+                          </span>
+                        )}
+                        {itemIsActive && !collapsed && (
+                          <div className="absolute right-2 w-2 h-2 bg-white rounded-full shadow-lg"></div>
                         )}
                       </div>
-                      {!collapsed && (
-                        <span className="text-base font-semibold transition-colors duration-300">
-                          {item.label}
-                        </span>
-                      )}
-                      {itemIsActive && !collapsed && (
-                        <div className="absolute right-2 w-2 h-2 bg-white rounded-full shadow-lg"></div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              }
-            })}
+                    </Link>
+                  );
+                }
+              })
+            )}
           </nav>
         </div>
 
