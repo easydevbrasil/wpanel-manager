@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProviderSimple, useAuth } from "@/components/AuthProviderSimple";
 import { useColorTheme } from "@/hooks/useColorTheme";
+import { useScreenOrientation } from "@/hooks/useScreenOrientation";
+import { RotateScreenOverlay } from "@/components/RotateScreenOverlay";
 import { Switch, Route } from "wouter";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Dashboard from "@/pages/Dashboard";
@@ -32,6 +34,7 @@ import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { shouldRotate } = useScreenOrientation();
   useColorTheme(); // Apply color theme based on user preferences
 
   if (isLoading) {
@@ -50,31 +53,34 @@ function AuthenticatedRouter() {
   }
 
   return (
-    <MainLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/clients" component={Clients} />
-        <Route path="/products" component={Products} />
-        <Route path="/suppliers" component={Suppliers} />
-        <Route path="/sales" component={Sales} />
-        <Route path="/support" component={Support} />
-        <Route path="/email-accounts" component={EmailAccounts} />
-        <Route path="/database-admin" component={DatabaseAdmin} />
-        <Route path="/user-profile" component={UserProfile} />
-        <Route path="/docker-containers" component={DockerContainers} />
-        <Route path="/task-scheduler" component={TaskScheduler} />
-        <Route path="/firewall" component={Firewall} />
-        <Route path="/dns" component={DNSSimple} />
-        <Route path="/nginx-hosts" component={NginxHosts} />
-        <Route path="/expenses" component={Expenses} />
-        <Route path="/reminders" component={Reminders} />
-        <Route path="/banco" component={Banco} />
-        <Route path="/services" component={Services} />
-        <Route path="/help" component={Help} />
-        <Route path="/documentation" component={Documentation} />
-        <Route component={NotFound} />
-      </Switch>
-    </MainLayout>
+    <>
+      <RotateScreenOverlay isVisible={shouldRotate} />
+      <MainLayout>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/clients" component={Clients} />
+          <Route path="/products" component={Products} />
+          <Route path="/suppliers" component={Suppliers} />
+          <Route path="/sales" component={Sales} />
+          <Route path="/support" component={Support} />
+          <Route path="/email-accounts" component={EmailAccounts} />
+          <Route path="/database-admin" component={DatabaseAdmin} />
+          <Route path="/user-profile" component={UserProfile} />
+          <Route path="/docker-containers" component={DockerContainers} />
+          <Route path="/task-scheduler" component={TaskScheduler} />
+          <Route path="/firewall" component={Firewall} />
+          <Route path="/dns" component={DNSSimple} />
+          <Route path="/nginx-hosts" component={NginxHosts} />
+          <Route path="/expenses" component={Expenses} />
+          <Route path="/reminders" component={Reminders} />
+          <Route path="/banco" component={Banco} />
+          <Route path="/services" component={Services} />
+          <Route path="/help" component={Help} />
+          <Route path="/documentation" component={Documentation} />
+          <Route component={NotFound} />
+        </Switch>
+      </MainLayout>
+    </>
   );
 }
 
